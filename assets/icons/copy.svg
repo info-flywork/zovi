@@ -1,0 +1,6 @@
+<svg preserveAspectRatio="none" width="100%" height="100%" overflow="visible" style="display: block;" viewBox="0 0 21.5 21.5" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g id="Group">
+<path id="Vector" d="M14.75 11.65V15.85C14.75 19.35 13.35 20.75 9.85 20.75H5.65C2.15 20.75 0.75 19.35 0.75 15.85V11.65C0.75 8.15 2.15 6.75 5.65 6.75H9.85C13.35 6.75 14.75 8.15 14.75 11.65Z" stroke="var(--stroke-0, black)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+<path id="Vector_2" d="M20.75 5.65V9.85C20.75 13.35 19.35 14.75 15.85 14.75H14.75V11.65C14.75 8.15 13.35 6.75 9.85 6.75H6.75V5.65C6.75 2.15 8.15 0.75 11.65 0.75H15.85C19.35 0.75 20.75 2.15 20.75 5.65Z" stroke="var(--stroke-0, black)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+</g>
+</svg>

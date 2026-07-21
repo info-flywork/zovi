@@ -1,0 +1,51 @@
+name: zovi
+description: Zovi — be here, share now
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.12.1
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.8
+  flutter_bloc: ^9.1.1
+  bloc: ^9.0.0
+  equatable: ^2.0.7
+  go_router: ^15.1.2
+  dio: ^5.8.0+1
+  get_it: ^8.0.3
+  injectable: ^2.5.0
+  json_annotation: ^4.9.0
+  flutter_svg: ^2.1.0
+  google_fonts: ^6.2.1
+  shared_preferences: ^2.5.3
+  flutter_secure_storage: ^9.2.4
+  url_launcher: ^6.3.2
+  permission_handler: ^12.0.3
+  image_picker: ^1.2.3
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+  build_runner: ^2.4.15
+  json_serializable: ^6.9.5
+  injectable_generator: ^2.7.0
+  flutter_launcher_icons: ^0.14.3
+
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: assets/images/zovi_app_icon.png
+  remove_alpha_ios: true
+  min_sdk_android: 21
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/icons/
+    - assets/images/
+    - assets/stickers/
+    - assets/stamps/

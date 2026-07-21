@@ -1,0 +1,113 @@
+abstract final class AssetPaths {
+  // Icons (SVG)
+  static const String iconHeart = 'assets/icons/heart.svg';
+  static const String iconFormatCircle = 'assets/icons/format_circle.svg';
+  static const String iconFlame = 'assets/icons/flame.svg';
+  static const String iconSend = 'assets/icons/send.svg';
+  static const String iconAddCircle = 'assets/icons/add_circle.svg';
+  static const String iconSettings = 'assets/icons/settings.svg';
+  static const String iconLocation = 'assets/icons/location.svg';
+  static const String iconCamera = 'assets/icons/camera.svg';
+  static const String iconStories = 'assets/icons/stories.svg';
+  static const String iconChat = 'assets/icons/chat.svg';
+  static const String iconNavigate = 'assets/icons/navigate.svg';
+  static const String iconAdd = 'assets/icons/add.svg';
+  static const String iconStreakFlame = 'assets/icons/streak_flame.svg';
+  static const String iconClose = 'assets/icons/close.svg';
+  static const String iconVerified = 'assets/icons/verified.svg';
+  static const String iconVerifiedOrange = 'assets/icons/verified_orange.svg';
+  static const String iconHeartCircle = 'assets/icons/heart_circle.svg';
+  static const String iconGoogle = 'assets/icons/google.svg';
+  static const String iconApple = 'assets/icons/apple.svg';
+  static const String iconUser = 'assets/icons/user.svg';
+  static const String iconAt = 'assets/icons/@.svg';
+  static const String iconBirth = 'assets/icons/birth.svg';
+  static const String iconFlagTr = 'assets/icons/flag_tr.svg';
+  static const String iconArrowLeft = 'assets/icons/arrow-left.svg';
+  static const String iconBack = 'assets/icons/back_icon.svg';
+  static const String iconExport = 'assets/icons/export.svg';
+  static const String iconExportCircle = 'assets/icons/export_circle.svg';
+  static const String iconSettingsProfile = 'assets/icons/settings_profile.svg';
+  static const String iconSetting = 'assets/icons/setting.svg';
+  static const String iconLocationSmall = 'assets/icons/location_small.svg';
+  static const String iconLocationDark = 'assets/icons/location_dark.svg';
+  static const String iconProfileClip = 'assets/icons/profile_clip.svg';
+  static const String iconCalendarDate = 'assets/icons/calendar_date.svg';
+  static const String iconAddWhite = 'assets/icons/add_white.svg';
+  static const String iconSendGray = 'assets/icons/send_gray.svg';
+  static const String iconUserAdd = 'assets/icons/user_add.svg';
+  static const String iconCopy = 'assets/icons/copy.svg';
+  static const String iconCopy2 = 'assets/icons/copy_2.svg';
+  static const String iconCloseSheet = 'assets/icons/close_sheet.svg';
+  static const String iconCloseCircle = 'assets/icons/close_circle.svg';
+  static const String iconBell = 'assets/icons/bell.svg';
+  static const String iconStars = 'assets/icons/stars.svg';
+  static const String iconVisits = 'assets/icons/visists.svg';
+  static const String iconTickPink = 'assets/icons/tick_pink.svg';
+  static const String iconShare = 'assets/icons/share.svg';
+  static const String iconAddCircleOutline = 'assets/icons/add-circle.svg';
+  static const String iconLink = 'assets/icons/link.svg';
+  static const String iconLinkBottomsheet = 'assets/icons/link_bottomsheet.svg';
+  static const String iconSearch = 'assets/icons/search.svg';
+  static const String iconLocationOutlined = 'assets/icons/location_outlined.svg';
+  static const String iconLocationFilled = 'assets/icons/location-filled.svg';
+
+  // Intro radar avatars (PNG)
+  static const String introAvatarOrange = 'assets/icons/orange_avatar.png';
+  static const String introAvatarGreen = 'assets/icons/green_avatar.png';
+  static const String introAvatarGreen2 = 'assets/icons/green_avatar_2.png';
+  static const String introAvatarPink = 'assets/icons/pink_avatar.png';
+  static const String introAvatarPurple = 'assets/icons/purple_avatar.png';
+  static const String introAvatarPurple2 = 'assets/icons/purple_avatar_2.png';
+  static const String introAvatarBlack = 'assets/icons/black_avatar.png';
+  static const String introAvatarWhite = 'assets/icons/white_avatar.png';
+
+  // Images (PNG)
+  static const String logoApp = 'assets/images/logo_app.png';
+  static const String mapLa = 'assets/images/map_la.png';
+  static const String avatarYou = 'assets/images/avatar_you.png';
+  static const String avatarLyra = 'assets/images/avatar_lyra.png';
+  static const String avatarJessica = 'assets/images/avatar_jessica.png';
+  static const String avatarSona = 'assets/images/avatar_sona.png';
+  static const String avatarNova = 'assets/images/avatar_nova.png';
+  static const String avatarJulia = 'assets/images/avatar_julia.png';
+  static const String storyJulia = 'assets/images/story_julia.png';
+  static const String shareLink = 'assets/images/share_link.png';
+  static const String checkinPlace = 'assets/images/checkin_place.png';
+  static const String notification = 'assets/images/notification.png';
+  static const String pulseJhon = 'assets/images/jhon.png';
+  static const String pulseJessica = 'assets/images/jessica.png';
+  static const String greenTick = 'assets/images/green_tick.png';
+  static const String mapFirst = 'assets/images/map-first.png';
+  static const String mapSecond = 'assets/images/map_second.png';
+  static const String mapSecondAvatar = 'assets/images/map_second_avatar.png';
+  static const String pulse1 = 'assets/images/pulse-1.png';
+  static const String pulse2 = 'assets/images/pulse-2.png';
+  static const String pulse3 = 'assets/images/pulse-3.png';
+  static const String blueLocation = 'assets/images/blue-location.png';
+  static const String chain = 'assets/images/chain.png';
+
+  // Stickers (PNG)
+  static const String stickerNightFlame = 'assets/stickers/night_flame.png';
+  static const String stickerExplorer = 'assets/stickers/explorer.png';
+  static const String stickerBlueTick = 'assets/stickers/blue_tick.png';
+
+  // Stamps (PNG)
+  static const String stamp1 = 'assets/stamps/1.png';
+  static const String stamp2 = 'assets/stamps/2.png';
+  static const String stamp3 = 'assets/stamps/3.png';
+  static const String stamp4 = 'assets/stamps/4.png';
+  static const String stamp5 = 'assets/stamps/5.png';
+  static const String stamp6 = 'assets/stamps/6.png';
+  static const String stamp7 = 'assets/stamps/7.png';
+  static const String stamp8 = 'assets/stamps/8.png';
+  static const String stamp9 = 'assets/stamps/9.png';
+  static const String stamp10 = 'assets/stamps/10.png';
+  static const String stamp11 = 'assets/stamps/11.png';
+  static const String stamp12 = 'assets/stamps/12.png';
+  static const String stamp13 = 'assets/stamps/13.png';
+  static const String stamp14 = 'assets/stamps/14.png';
+  static const String stamp15 = 'assets/stamps/15.png';
+  static const String stamp16 = 'assets/stamps/16.png';
+  static const String stamp17 = 'assets/stamps/17.png';
+}
