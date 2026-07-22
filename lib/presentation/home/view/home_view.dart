@@ -32,6 +32,9 @@ part 'widgets/home_header_section.dart';
 part 'widgets/home_loaded_body.dart';
 part 'widgets/home_loading_body.dart';
 part 'widgets/home_map_marker.dart';
+part 'widgets/home_map_anon_marker.dart';
+part 'widgets/home_map_venue_marker.dart';
+part 'widgets/home_map_friend_sheet.dart';
 part 'widgets/home_map_section.dart';
 part 'widgets/home_stories_row.dart';
 
@@ -53,6 +56,7 @@ class _HomeViewState extends State<HomeView> with HomeViewMixin {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.white,
+      resizeToAvoidBottomInset: false,
       body: BlocConsumer<HomeBloc, HomeState>(
         listener: (context, state) {
           if (state is HomeError) showErrorSnackbar(state.message);
@@ -61,11 +65,15 @@ class _HomeViewState extends State<HomeView> with HomeViewMixin {
         builder: (context, state) {
           return switch (state) {
             HomeInitial() || HomeLoading() => const HomeLoadingBody(),
-            HomeLoaded(:final stories, :final mapFriends, :final city) =>
+            HomeLoaded(
+              :final stories,
+              :final mapFriends,
+              :final hasUnreadMessages,
+            ) =>
               HomeLoadedBody(
                 stories: stories,
                 mapFriends: mapFriends,
-                city: city,
+                hasUnreadMessages: hasUnreadMessages,
                 onStoryTap: onStoryTap,
                 onAddTap: onAddTap,
               ),

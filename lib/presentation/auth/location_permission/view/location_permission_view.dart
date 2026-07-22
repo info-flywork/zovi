@@ -82,6 +82,7 @@ class LocationPermissionView extends StatelessWidget {
                     onPressed: isLoading
                         ? null
                         : () {
+                            FocusManager.instance.primaryFocus?.unfocus();
                             context.read<LocationPermissionBloc>().add(
                               const LocationPermissionContinueTapped(),
                             );

@@ -1,5 +1,5 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:permission_handler/permission_handler.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:zovi/core/utils/enum/route_paths.dart';
 import 'package:zovi/domain/auth/auth_repository.dart';
 import 'package:zovi/presentation/auth/location_permission/bloc/location_permission_event.dart';
@@ -20,9 +20,28 @@ class LocationPermissionBloc
   ) async {
     emit(const LocationPermissionLoading());
 
-    await Permission.locationWhenInUse.request();
-    await _authRepository.completeOnboarding();
+    final granted = await _requestLocationPermission();
 
+    if (!granted) {
+      await Geolocator.openAppSettings();
+      // İzin yokken home'a geçme; tekrar deneyebilsin.
+      emit(const LocationPermissionInitial());
+      return;
+    }
+
+    await _authRepository.completeOnboarding();
     emit(LocationPermissionSuccess(navigateTo: RoutePaths.home.path));
+  }
+
+  Future<bool> _requestLocationPermission() async {
+    var permission = await Geolocator.checkPermission();
+
+    // İlk kez veya reddedildiyse native dialog.
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+    }
+
+    return permission == LocationPermission.whileInUse ||
+        permission == LocationPermission.always;
   }
 }

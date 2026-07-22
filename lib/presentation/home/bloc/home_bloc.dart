@@ -19,11 +19,12 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
     try {
       final stories = await _userRepository.getStories();
       final mapFriends = await _userRepository.getMapFriends();
+      final hasUnreadMessages = await _userRepository.hasUnreadMessages();
       emit(
         HomeLoaded(
           stories: stories,
           mapFriends: mapFriends,
-          city: 'Los Angeles',
+          hasUnreadMessages: hasUnreadMessages,
         ),
       );
     } catch (e) {

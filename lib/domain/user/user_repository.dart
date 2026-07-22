@@ -136,6 +136,10 @@ class MapFriend extends Equatable {
     required this.streak,
     required this.x,
     required this.y,
+    this.isFriend = true,
+    this.distanceMeters,
+    this.locationLabel,
+    this.etaMinutes,
   });
 
   final String name;
@@ -143,9 +147,40 @@ class MapFriend extends Equatable {
   final int streak;
   final double x;
   final double y;
+  final bool isFriend;
+  final int? distanceMeters;
+  final String? locationLabel;
+  final int? etaMinutes;
 
   @override
-  List<Object?> get props => [name, avatarPath, streak, x, y];
+  List<Object?> get props => [
+        name,
+        avatarPath,
+        streak,
+        x,
+        y,
+        isFriend,
+        distanceMeters,
+        locationLabel,
+        etaMinutes,
+      ];
+}
+
+class MapVenue extends Equatable {
+  const MapVenue({
+    required this.name,
+    required this.peopleCount,
+    required this.x,
+    required this.y,
+  });
+
+  final String name;
+  final int peopleCount;
+  final double x;
+  final double y;
+
+  @override
+  List<Object?> get props => [name, peopleCount, x, y];
 }
 
 class CheckInItem extends Equatable {
@@ -363,6 +398,9 @@ class UserRepository {
         streak: 12,
         x: -0.45,
         y: -0.15,
+        locationLabel: 'Silver Lake, Los Angeles',
+        etaMinutes: 15,
+        distanceMeters: 120,
       ),
       MapFriend(
         name: 'Sona',
@@ -370,8 +408,55 @@ class UserRepository {
         streak: 5,
         x: 0.45,
         y: -0.05,
+        locationLabel: 'Echo Park, Los Angeles',
+        etaMinutes: 10,
+        distanceMeters: 50,
       ),
     ];
+  }
+
+  Future<List<MapFriend>> getMapNearbyAnons() async {
+    return const [
+      MapFriend(
+        name: 'Anonim',
+        avatarPath: AssetPaths.iconPinkPerson,
+        streak: 0,
+        x: -0.28,
+        y: 0.02,
+        isFriend: false,
+        distanceMeters: 300,
+      ),
+      MapFriend(
+        name: 'Anonim',
+        avatarPath: AssetPaths.iconPinkPerson,
+        streak: 0,
+        x: 0.28,
+        y: -0.02,
+        isFriend: false,
+        distanceMeters: 180,
+      ),
+    ];
+  }
+
+  Future<List<MapVenue>> getMapVenues() async {
+    return const [
+      MapVenue(
+        name: 'Beverly Hills',
+        peopleCount: 12,
+        x: -0.22,
+        y: -0.12,
+      ),
+      MapVenue(
+        name: 'Santa Monica',
+        peopleCount: 8,
+        x: 0.32,
+        y: 0.08,
+      ),
+    ];
+  }
+
+  Future<bool> hasUnreadMessages() async {
+    return true;
   }
 
   Future<List<CheckInItem>> getCheckIns() async {

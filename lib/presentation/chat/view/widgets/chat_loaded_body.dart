@@ -42,7 +42,7 @@ class _ChatLoadedBodyState extends State<ChatLoadedBody> {
       username: 'sonaiglesias',
       avatarPath: AssetPaths.avatarSona,
       preview: 'Hey!',
-      isUnread: false,
+      isUnread: true,
     ),
     const _ChatPreview(
       name: 'Jessica Blues',

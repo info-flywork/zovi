@@ -37,6 +37,10 @@ abstract final class AssetPaths {
   static const String iconSettingsProfile = 'assets/icons/settings_profile.svg';
   static const String iconSetting = 'assets/icons/setting.svg';
   static const String iconSetting2 = 'assets/icons/setting_2.svg';
+  static const String iconRadar = 'assets/icons/radar.svg';
+  static const String iconProfile6 = 'assets/icons/profile6.svg';
+  static const String iconPinkQuestion = 'assets/icons/pink_question.png';
+  static const String iconPinkPerson = 'assets/icons/pink_person.png';
   static const String iconLocationSmall = 'assets/icons/location_small.svg';
   static const String iconLocationDark = 'assets/icons/location_dark.svg';
   static const String iconProfileClip = 'assets/icons/profile_clip.svg';

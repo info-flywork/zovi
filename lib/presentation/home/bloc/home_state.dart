@@ -20,15 +20,15 @@ final class HomeLoaded extends HomeState {
   const HomeLoaded({
     required this.stories,
     required this.mapFriends,
-    required this.city,
+    required this.hasUnreadMessages,
   });
 
   final List<StoryPreview> stories;
   final List<MapFriend> mapFriends;
-  final String city;
+  final bool hasUnreadMessages;
 
   @override
-  List<Object?> get props => [stories, mapFriends, city];
+  List<Object?> get props => [stories, mapFriends, hasUnreadMessages];
 }
 
 final class HomeError extends HomeState {

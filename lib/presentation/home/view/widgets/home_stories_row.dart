@@ -13,7 +13,7 @@ class HomeStoriesRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      height: 110,
+      height: 105,
       child: ListView.separated(
         physics: const ClampingScrollPhysics(),
         scrollDirection: Axis.horizontal,

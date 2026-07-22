@@ -45,6 +45,7 @@ class MainWrapper extends StatelessWidget {
 
     return Scaffold(
       backgroundColor: AppColors.white,
+      resizeToAvoidBottomInset: false,
       body: Stack(
         fit: StackFit.expand,
         children: [
@@ -58,7 +59,7 @@ class MainWrapper extends StatelessWidget {
                 20,
                 0,
                 20,
-                MediaQuery.paddingOf(context).bottom + 8,
+                (MediaQuery.viewPaddingOf(context).bottom - 10).clamp(0.0, 40.0),
               ),
               child: DecoratedBox(
                 decoration: BoxDecoration(

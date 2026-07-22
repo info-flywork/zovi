@@ -4,7 +4,7 @@ class HomeLoadedBody extends StatelessWidget {
   const HomeLoadedBody({
     required this.stories,
     required this.mapFriends,
-    required this.city,
+    required this.hasUnreadMessages,
     required this.onStoryTap,
     required this.onAddTap,
     super.key,
@@ -12,7 +12,7 @@ class HomeLoadedBody extends StatelessWidget {
 
   final List<StoryPreview> stories;
   final List<MapFriend> mapFriends;
-  final String city;
+  final bool hasUnreadMessages;
   final ValueChanged<StoryPreview> onStoryTap;
   final VoidCallback onAddTap;
 
@@ -22,11 +22,10 @@ class HomeLoadedBody extends StatelessWidget {
       bottom: false,
       child: Column(
         children: [
-          const HomeHeaderSection(),
+          HomeHeaderSection(hasUnreadMessages: hasUnreadMessages),
           HomeStoriesRow(stories: stories, onStoryTap: onStoryTap),
           Expanded(
             child: HomeMapSection(
-              city: city,
               mapFriends: mapFriends,
               onAddTap: onAddTap,
             ),
