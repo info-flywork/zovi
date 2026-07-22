@@ -6,7 +6,6 @@ class AddPlanPlace {
     required this.distanceLabel,
     required this.friendAvatars,
     required this.friendsLabel,
-    this.isHighlighted = false,
   });
 
   final String categoryKey;
@@ -15,5 +14,4 @@ class AddPlanPlace {
   final String distanceLabel;
   final List<String> friendAvatars;
   final String friendsLabel;
-  final bool isHighlighted;
 }

@@ -27,11 +27,20 @@ import 'package:zovi/presentation/auth/phone_verified/view/phone_verified_view.d
 import 'package:zovi/presentation/auth/splash/bloc/splash_bloc.dart';
 import 'package:zovi/presentation/auth/splash/view/splash_view.dart';
 import 'package:zovi/presentation/chat/bloc/chat_bloc.dart';
+import 'package:zovi/presentation/chat/model/chat_detail_route_args.dart';
+import 'package:zovi/presentation/chat/model/chat_request_item.dart';
+import 'package:zovi/presentation/chat/model/group_info_route_args.dart';
+import 'package:zovi/presentation/chat/view/chat_detail_view.dart';
+import 'package:zovi/presentation/chat/view/chat_requests_view.dart';
 import 'package:zovi/presentation/chat/view/chat_view.dart';
+import 'package:zovi/presentation/chat/view/group_gallery_view.dart';
+import 'package:zovi/presentation/chat/view/group_info_view.dart';
 import 'package:zovi/presentation/discover/bloc/discover_bloc.dart';
 import 'package:zovi/presentation/discover/view/discover_view.dart';
 import 'package:zovi/presentation/home/bloc/home_bloc.dart';
 import 'package:zovi/presentation/home/view/home_view.dart';
+import 'package:zovi/presentation/home/view/tribe_view.dart';
+import 'package:zovi/presentation/notifications/view/notifications_view.dart';
 import 'package:zovi/presentation/profile/bloc/profile_bloc.dart';
 import 'package:zovi/presentation/profile/edit/model/edit_profile_field_route_args.dart';
 import 'package:zovi/presentation/profile/edit/model/edit_profile_links_route_args.dart';
@@ -45,9 +54,17 @@ import 'package:zovi/presentation/profile/add_plan/model/add_plan_success_route_
 import 'package:zovi/presentation/profile/add_plan/view/add_plan_view.dart';
 import 'package:zovi/presentation/profile/add_plan/view/add_plan_details_view.dart';
 import 'package:zovi/presentation/profile/add_plan/view/add_plan_success_view.dart';
+import 'package:zovi/presentation/profile/settings/view/change_password_view.dart';
+import 'package:zovi/presentation/profile/settings/view/personal_info_view.dart';
+import 'package:zovi/presentation/profile/settings/view/settings_view.dart';
+import 'package:zovi/presentation/profile/stickers/view/create_sticker_success_view.dart';
+import 'package:zovi/presentation/profile/stickers/view/create_sticker_view.dart';
+import 'package:zovi/presentation/profile/stickers/view/stickers_view.dart';
 import 'package:zovi/presentation/profile/view/profile_view.dart';
 import 'package:zovi/presentation/stories/bloc/stories_bloc.dart';
+import 'package:zovi/presentation/stories/model/story_detail_route_args.dart';
 import 'package:zovi/presentation/stories/view/stories_view.dart';
+import 'package:zovi/presentation/stories/view/story_detail_view.dart';
 
 abstract final class AppRouter {
   static final GlobalKey<NavigatorState> rootKey = GlobalKey<NavigatorState>();
@@ -206,6 +223,20 @@ abstract final class AppRouter {
         ],
       ),
       GoRoute(
+        path: RoutePaths.storyDetail.path,
+        name: RoutePaths.storyDetail.name,
+        redirect: (context, state) {
+          if (state.extra is! StoryDetailRouteArgs) {
+            return RoutePaths.stories.path;
+          }
+          return null;
+        },
+        builder: (context, state) {
+          final args = state.extra! as StoryDetailRouteArgs;
+          return StoryDetailView(args: args);
+        },
+      ),
+      GoRoute(
         path: RoutePaths.editProfile.path,
         name: RoutePaths.editProfile.name,
         redirect: (context, state) {
@@ -290,6 +321,102 @@ abstract final class AppRouter {
             friendsLabel: args.place.friendsLabel,
           );
         },
+      ),
+      GoRoute(
+        path: RoutePaths.settings.path,
+        name: RoutePaths.settings.name,
+        builder: (context, state) => const SettingsView(),
+      ),
+      GoRoute(
+        path: RoutePaths.stickers.path,
+        name: RoutePaths.stickers.name,
+        builder: (context, state) => const StickersView(),
+      ),
+      GoRoute(
+        path: RoutePaths.createSticker.path,
+        name: RoutePaths.createSticker.name,
+        builder: (context, state) => const CreateStickerView(),
+      ),
+      GoRoute(
+        path: RoutePaths.createStickerSuccess.path,
+        name: RoutePaths.createStickerSuccess.name,
+        builder: (context, state) => const CreateStickerSuccessView(),
+      ),
+      GoRoute(
+        path: RoutePaths.chatDetail.path,
+        name: RoutePaths.chatDetail.name,
+        redirect: (context, state) {
+          if (state.extra is! ChatDetailRouteArgs) {
+            return RoutePaths.chat.path;
+          }
+          return null;
+        },
+        builder: (context, state) {
+          final args = state.extra! as ChatDetailRouteArgs;
+          return ChatDetailView(args: args);
+        },
+      ),
+      GoRoute(
+        path: RoutePaths.chatRequests.path,
+        name: RoutePaths.chatRequests.name,
+        redirect: (context, state) {
+          if (state.extra is! ChatRequestsRouteArgs) {
+            return RoutePaths.chat.path;
+          }
+          return null;
+        },
+        builder: (context, state) {
+          final args = state.extra! as ChatRequestsRouteArgs;
+          return ChatRequestsView(requests: args.requests);
+        },
+      ),
+      GoRoute(
+        path: RoutePaths.groupInfo.path,
+        name: RoutePaths.groupInfo.name,
+        redirect: (context, state) {
+          if (state.extra is! GroupInfoRouteArgs) {
+            return RoutePaths.chat.path;
+          }
+          return null;
+        },
+        builder: (context, state) {
+          final args = state.extra! as GroupInfoRouteArgs;
+          return GroupInfoView(args: args);
+        },
+      ),
+      GoRoute(
+        path: RoutePaths.groupGallery.path,
+        name: RoutePaths.groupGallery.name,
+        redirect: (context, state) {
+          if (state.extra is! GroupInfoRouteArgs) {
+            return RoutePaths.chat.path;
+          }
+          return null;
+        },
+        builder: (context, state) {
+          final args = state.extra! as GroupInfoRouteArgs;
+          return GroupGalleryView(args: args);
+        },
+      ),
+      GoRoute(
+        path: RoutePaths.personalInfo.path,
+        name: RoutePaths.personalInfo.name,
+        builder: (context, state) => const PersonalInfoView(),
+      ),
+      GoRoute(
+        path: RoutePaths.changePassword.path,
+        name: RoutePaths.changePassword.name,
+        builder: (context, state) => const ChangePasswordView(),
+      ),
+      GoRoute(
+        path: RoutePaths.tribe.path,
+        name: RoutePaths.tribe.name,
+        builder: (context, state) => const TribeView(),
+      ),
+      GoRoute(
+        path: RoutePaths.notifications.path,
+        name: RoutePaths.notifications.name,
+        builder: (context, state) => const NotificationsView(),
       ),
       GoRoute(
         path: RoutePaths.discover.path,

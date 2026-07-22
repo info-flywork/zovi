@@ -77,11 +77,11 @@ class _CountryPickerSheetState extends State<CountryPickerSheet> {
               ),
             ),
             const SizedBox(height: 20),
-            const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 16),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Text(
-                'Ülke seç',
-                style: TextStyle(
+                'country_picker_title'.tr(),
+                style: const TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.w600,
                   letterSpacing: -0.4,
@@ -96,7 +96,7 @@ class _CountryPickerSheetState extends State<CountryPickerSheet> {
                 controller: _searchController,
                 onChanged: _onSearchChanged,
                 decoration: InputDecoration(
-                  hintText: 'Ülke veya kod ara',
+                  hintText: 'country_search_hint'.tr(),
                   hintStyle: const TextStyle(
                     color: AppColors.placeholder,
                     fontSize: 16,
@@ -134,7 +134,7 @@ class _CountryPickerSheetState extends State<CountryPickerSheet> {
             const SizedBox(height: 12),
             Flexible(
               child: _showEmptyState
-                  ? const _CountrySearchEmpty()
+                  ? _CountrySearchEmpty()
                   : ListView.separated(
                 padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
                 itemCount: _filteredCountries.length,
@@ -233,9 +233,9 @@ class _CountrySearchEmpty extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 16),
-            const Text(
-              'Ülke bulunamadı',
-              style: TextStyle(
+            Text(
+              'country_not_found_title'.tr(),
+              style: const TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.w600,
                 letterSpacing: -0.36,
@@ -243,10 +243,10 @@ class _CountrySearchEmpty extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 8),
-            const Text(
-              'Farklı bir ülke adı veya kod dene.',
+            Text(
+              'country_not_found_subtitle'.tr(),
               textAlign: TextAlign.center,
-              style: TextStyle(
+              style: const TextStyle(
                 fontSize: 14,
                 height: 1.4,
                 color: AppColors.textSecondary,

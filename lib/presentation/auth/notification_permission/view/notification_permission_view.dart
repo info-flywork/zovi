@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -33,9 +34,9 @@ class NotificationPermissionView extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const SizedBox(height: 20),
-                    const Text(
-                      'Turn on notifications',
-                      style: TextStyle(
+                    Text(
+                      'notification_title'.tr(),
+                      style: const TextStyle(
                         fontSize: 36,
                         fontWeight: FontWeight.w500,
                         height: 48 / 36,
@@ -44,9 +45,9 @@ class NotificationPermissionView extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 10),
-                    const Text(
-                      'Get updates about places to explore, reminders to check in, and your friends\' activity. You can manage your notification settings anytime.',
-                      style: TextStyle(
+                    Text(
+                      'notification_subtitle'.tr(),
+                      style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w500,
                         height: 20 / 16,
@@ -62,7 +63,7 @@ class NotificationPermissionView extends StatelessWidget {
                     ),
                     const Spacer(),
                     AppButton(
-                      label: isLoading ? 'Loading...' : 'Continue',
+                      label: isLoading ? 'loading'.tr() : 'continue'.tr(),
                       onPressed: isLoading
                           ? null
                           : () {

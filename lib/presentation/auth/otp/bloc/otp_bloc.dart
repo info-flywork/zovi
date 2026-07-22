@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:zovi/core/models/country.dart';
 import 'package:zovi/core/utils/enum/route_paths.dart';
@@ -53,7 +54,7 @@ class OtpBloc extends Bloc<OtpEvent, OtpState> {
     if (!state.isCodeComplete) {
       emit(
         OtpError(
-          message: '6 haneli kodu gir.',
+          message: 'error_enter_otp'.tr(),
           phone: state.phone,
           selectedCountry: state.selectedCountry,
           code: state.code,
@@ -80,7 +81,7 @@ class OtpBloc extends Bloc<OtpEvent, OtpState> {
     if (!verified) {
       emit(
         OtpError(
-          message: 'Doğrulama kodu hatalı.',
+          message: 'error_invalid_otp'.tr(),
           phone: state.phone,
           selectedCountry: state.selectedCountry,
           code: state.code,

@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -59,21 +60,21 @@ class _BirthdayViewState extends State<BirthdayView> with BirthdayViewMixin {
   }
 }
 
-String formatBirthDate(DateTime date) {
-  const months = [
-    'January',
-    'February',
-    'March',
-    'April',
-    'May',
-    'June',
-    'July',
-    'August',
-    'September',
-    'October',
-    'November',
-    'December',
-  ];
+const _monthKeys = [
+  'month_january',
+  'month_february',
+  'month_march',
+  'month_april',
+  'month_may',
+  'month_june',
+  'month_july',
+  'month_august',
+  'month_september',
+  'month_october',
+  'month_november',
+  'month_december',
+];
 
-  return '${date.day} ${months[date.month - 1]} ${date.year}';
+String formatBirthDate(DateTime date) {
+  return '${date.day} ${_monthKeys[date.month - 1].tr()} ${date.year}';
 }

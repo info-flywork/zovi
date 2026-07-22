@@ -1,9 +1,13 @@
 abstract final class AssetPaths {
   // Icons (SVG)
-  static const String iconHeart = 'assets/icons/heart.svg';
-  static const String iconFormatCircle = 'assets/icons/format_circle.svg';
-  static const String iconFlame = 'assets/icons/flame.svg';
-  static const String iconSend = 'assets/icons/send.svg';
+  static const String iconHeart = 'assets/icons/heart1.svg';
+  static const String iconHeart2 = 'assets/icons/heart2.svg';
+  static const String iconVerify = 'assets/icons/verify.svg';
+  static const String iconFormatCircle = 'assets/icons/format-circle.svg';
+  static const String iconFlame = 'assets/icons/flame2.svg';
+  static const String iconSend = 'assets/icons/send_outlined.svg';
+  static const String iconAddBlack = 'assets/icons/add-black.svg';
+  static const String iconReelsSquare = 'assets/icons/reels_square.svg';
   static const String iconAddCircle = 'assets/icons/add_circle.svg';
   static const String iconSettings = 'assets/icons/settings.svg';
   static const String iconLocation = 'assets/icons/location.svg';
@@ -17,6 +21,7 @@ abstract final class AssetPaths {
   static const String iconVerified = 'assets/icons/verified.svg';
   static const String iconVerifiedOrange = 'assets/icons/verified_orange.svg';
   static const String iconHeartCircle = 'assets/icons/heart_circle.svg';
+  static const String iconHeartCircleFilled = 'assets/icons/heart-circle.svg';
   static const String iconGoogle = 'assets/icons/google.svg';
   static const String iconApple = 'assets/icons/apple.svg';
   static const String iconUser = 'assets/icons/user.svg';
@@ -51,6 +56,44 @@ abstract final class AssetPaths {
   static const String iconSearch = 'assets/icons/search.svg';
   static const String iconLocationOutlined = 'assets/icons/location_outlined.svg';
   static const String iconLocationFilled = 'assets/icons/location-filled.svg';
+  static const String iconUserSquare = 'assets/icons/user-square.svg';
+  static const String iconKey = 'assets/icons/key.svg';
+  static const String iconNotificationBing = 'assets/icons/notification-bing.svg';
+  static const String iconNotif = 'assets/icons/notif.svg';
+  static const String iconSecurity = 'assets/icons/security.svg';
+  static const String iconForbidden = 'assets/icons/forbidden.svg';
+  static const String iconLanguageSquare = 'assets/icons/language-square.svg';
+  static const String iconLocation7 = 'assets/icons/location-7.svg';
+  static const String iconRight = 'assets/icons/right_icon.svg';
+  static const String iconPublic = 'assets/icons/public.svg';
+  static const String iconFriends = 'assets/icons/friends.svg';
+  static const String iconChatCamera = 'assets/icons/chat-camera.svg';
+  static const String iconChatGallery = 'assets/icons/chat-gallery.svg';
+  static const String iconChatMicrophone = 'assets/icons/chat-microphone.svg';
+  static const String iconChatSticker = 'assets/icons/chat-sticker.svg';
+  static const String iconChatSend = 'assets/icons/chat-send.svg';
+  static const String iconRequestEmpty = 'assets/icons/request_empty.svg';
+  static const String iconAi = 'assets/icons/ai.svg';
+  static const String iconThreeDot = 'assets/icons/three_dot.svg';
+  static const String iconMember = 'assets/icons/member.svg';
+  static const String iconStreak = 'assets/icons/streak.svg';
+  static const String iconTrash = 'assets/icons/trash.svg';
+  static const String iconStampCamera = 'assets/icons/stamp_camera.svg';
+  static const String iconStampExportArrow = 'assets/icons/stamp_export-arrow.svg';
+  static const String iconStampGallery = 'assets/icons/stamp_gallery.svg';
+
+  static const String flagEnglish = 'assets/flags/english.svg';
+  static const String flagGerman = 'assets/flags/german.svg';
+  static const String flagItalian = 'assets/flags/italian.svg';
+  static const String flagFrench = 'assets/flags/french.svg';
+  static const String flagTurkish = 'assets/flags/turkish.svg';
+  static const String flagJapanese = 'assets/flags/japanese.svg';
+  static const String flagSpanish = 'assets/flags/spain.svg';
+  static const String flagRussian = 'assets/flags/russian.svg';
+  static const String flagKorean = 'assets/flags/korean.svg';
+  static const String flagHindi = 'assets/flags/hindi.svg';
+  static const String flagPortuguese = 'assets/flags/portuguese.svg';
+  static const String flagChinese = 'assets/flags/chinese.svg';
 
   // Intro radar avatars (PNG)
   static const String introAvatarOrange = 'assets/icons/orange_avatar.png';

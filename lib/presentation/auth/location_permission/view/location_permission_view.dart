@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -31,9 +32,9 @@ class LocationPermissionView extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const SizedBox(height: 20),
-                  const Text(
-                    'Enable location to capture your journey',
-                    style: TextStyle(
+                  Text(
+                    'location_title'.tr(),
+                    style: const TextStyle(
                       fontSize: 36,
                       fontWeight: FontWeight.w500,
                       height: 40 / 36,
@@ -42,24 +43,24 @@ class LocationPermissionView extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 20),
-                  const _FeatureRow(
+                  _FeatureRow(
                     iconPath: AssetPaths.iconTickPink,
-                    text: 'Check in to record where life takes you',
+                    text: 'location_bullet_check_in'.tr(),
                   ),
                   const SizedBox(height: 18),
-                  const _FeatureRow(
+                  _FeatureRow(
                     iconPath: AssetPaths.iconBell,
-                    text: 'Get timely reminders to check in',
+                    text: 'location_bullet_reminders'.tr(),
                   ),
                   const SizedBox(height: 18),
-                  const _FeatureRow(
+                  _FeatureRow(
                     iconPath: AssetPaths.iconVisits,
-                    text: 'Build a personalized map of your visits',
+                    text: 'location_bullet_map'.tr(),
                   ),
                   const SizedBox(height: 18),
-                  const _FeatureRow(
+                  _FeatureRow(
                     iconPath: AssetPaths.iconStars,
-                    text: 'Discover must-visit spots around you',
+                    text: 'location_bullet_discover'.tr(),
                   ),
                   const SizedBox(height: 26),
                   const Row(
@@ -77,7 +78,7 @@ class LocationPermissionView extends StatelessWidget {
                   ),
                   const Spacer(),
                   AppButton(
-                    label: isLoading ? 'Loading...' : 'Get Started',
+                    label: isLoading ? 'loading'.tr() : 'get_started'.tr(),
                     onPressed: isLoading
                         ? null
                         : () {
@@ -209,10 +210,10 @@ class _MapSecondPreview extends StatelessWidget {
                   ),
                   RichText(
                     textAlign: TextAlign.center,
-                    text: const TextSpan(
+                    text: TextSpan(
                       style: _mapLabelStyle,
                       children: [
-                        TextSpan(
+                        const TextSpan(
                           text: 'Samantha',
                           style: TextStyle(
                             fontSize: 10,
@@ -221,7 +222,7 @@ class _MapSecondPreview extends StatelessWidget {
                             letterSpacing: -0.2,
                           ),
                         ),
-                        TextSpan(text: ' checked in'),
+                        TextSpan(text: ' ${'location_demo_checked_in'.tr()}'),
                       ],
                     ),
                   ),

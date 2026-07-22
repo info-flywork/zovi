@@ -9,15 +9,27 @@ class HomeHeaderSection extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       child: Row(
         children: [
-          const AppIcon(AssetPaths.iconHeart, size: 32),
+          GestureDetector(
+            onTap: () => context.push(RoutePaths.notifications.path),
+            behavior: HitTestBehavior.opaque,
+            child: const AppIcon(AssetPaths.iconHeart, size: 32),
+          ),
           const SizedBox(width: 10),
-          const AppIcon(AssetPaths.iconFormatCircle, size: 32),
+          GestureDetector(
+            onTap: () => context.push(RoutePaths.tribe.path),
+            behavior: HitTestBehavior.opaque,
+            child: const AppIcon(AssetPaths.iconFormatCircle, size: 32),
+          ),
           const Spacer(),
-          Text('zovi', style: AppTheme.brandWordmarkSmall),
+          Text('app_name'.tr(), style: AppTheme.brandWordmarkSmall),
           const Spacer(),
           const AppIcon(AssetPaths.iconFlame, size: 32),
           const SizedBox(width: 10),
-          const AppIcon(AssetPaths.iconSend, size: 32),
+          GestureDetector(
+            onTap: () => context.go(RoutePaths.chat.path),
+            behavior: HitTestBehavior.opaque,
+            child: const AppIcon(AssetPaths.iconSend, size: 32),
+          ),
         ],
       ),
     );

@@ -4,10 +4,13 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:zovi/core/theme/app_colors.dart';
 
 abstract final class AppTheme {
+  static const String fontFamily = 'SF Pro';
+
   static ThemeData get light {
     final base = ThemeData(
       useMaterial3: true,
       brightness: Brightness.light,
+      fontFamily: fontFamily,
       scaffoldBackgroundColor: AppColors.white,
       colorScheme: ColorScheme.fromSeed(
         seedColor: AppColors.zoviOrange,
@@ -19,15 +22,25 @@ abstract final class AppTheme {
     );
 
     return base.copyWith(
-      textTheme: GoogleFonts.plusJakartaSansTextTheme(base.textTheme).apply(
+      textTheme: base.textTheme.apply(
+        fontFamily: fontFamily,
         bodyColor: AppColors.deepRoast,
         displayColor: AppColors.deepRoast,
+      ),
+      primaryTextTheme: base.primaryTextTheme.apply(
+        fontFamily: fontFamily,
       ),
       appBarTheme: const AppBarTheme(
         elevation: 0,
         backgroundColor: AppColors.white,
         foregroundColor: AppColors.deepRoast,
         systemOverlayStyle: SystemUiOverlayStyle.dark,
+        titleTextStyle: TextStyle(
+          fontFamily: fontFamily,
+          fontSize: 16,
+          fontWeight: FontWeight.w600,
+          color: AppColors.deepRoast,
+        ),
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
@@ -36,7 +49,8 @@ abstract final class AppTheme {
           elevation: 0,
           minimumSize: const Size.fromHeight(54),
           shape: const StadiumBorder(),
-          textStyle: GoogleFonts.plusJakartaSans(
+          textStyle: const TextStyle(
+            fontFamily: fontFamily,
             fontSize: 16,
             fontWeight: FontWeight.w600,
           ),

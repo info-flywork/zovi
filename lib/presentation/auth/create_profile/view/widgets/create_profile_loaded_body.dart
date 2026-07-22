@@ -37,9 +37,9 @@ class CreateProfileLoadedBody extends StatelessWidget {
             stepCount: stepCount,
           ),
           const SizedBox(height: 20),
-          const Text(
-            'Create your profile',
-            style: TextStyle(
+          Text(
+            'create_profile_title'.tr(),
+            style: const TextStyle(
               fontSize: 36,
               fontWeight: FontWeight.w500,
               height: 48 / 36,
@@ -48,9 +48,9 @@ class CreateProfileLoadedBody extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 10),
-          const Text(
-            'Your real name is only used for verification — it won\'t appear publicly.',
-            style: TextStyle(
+          Text(
+            'create_profile_subtitle'.tr(),
+            style: const TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w500,
               height: 20 / 16,
@@ -60,8 +60,8 @@ class CreateProfileLoadedBody extends StatelessWidget {
           ),
           const SizedBox(height: 20),
           ProfileTextField(
-            label: 'Full name',
-            hint: 'Sam Lee',
+            label: 'full_name'.tr(),
+            hint: 'full_name_hint'.tr(),
             iconPath: AssetPaths.iconUser,
             iconBackgroundColor: const Color(0x337B2FFF),
             value: fullName,
@@ -69,8 +69,8 @@ class CreateProfileLoadedBody extends StatelessWidget {
           ),
           const SizedBox(height: 20),
           ProfileTextField(
-            label: 'Username',
-            hint: 'samlee12345',
+            label: 'username'.tr(),
+            hint: 'username_hint'.tr(),
             iconPath: AssetPaths.iconAt,
             iconBackgroundColor: const Color(0x3300C896),
             value: username,
@@ -78,7 +78,7 @@ class CreateProfileLoadedBody extends StatelessWidget {
           ),
           const Spacer(),
           AppButton(
-            label: isLoading ? 'Continuing...' : 'Continue',
+            label: isLoading ? 'continuing'.tr() : 'continue'.tr(),
             onPressed: canContinue ? onContinue : null,
           ),
         ],

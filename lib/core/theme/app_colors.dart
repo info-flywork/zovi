@@ -22,4 +22,8 @@ abstract final class AppColors {
   static const Color accentBlue = Color(0xFF448CFC);
   static const Color doneBlue = Color(0xFF448AFF);
   static const Color borderDivider = Color(0xFFE8E8F0);
+  static const Color switchActive = Color(0xFF33C658);
+  static const Color logoutRed = Color(0xFFE30A17);
+  static const Color chatPurple = Color(0xFF7B2FFF);
+  static const Color chatBubbleIncoming = Color(0xFFF4F4F9);
 }

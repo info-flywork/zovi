@@ -27,9 +27,9 @@ class BirthdayLoadedBody extends StatelessWidget {
         children: [
           AuthProgressBar(activeIndex: activeStepIndex, stepCount: stepCount),
           const SizedBox(height: 20),
-          const Text(
-            'When\'s your birthday?',
-            style: TextStyle(
+          Text(
+            'birthday_title'.tr(),
+            style: const TextStyle(
               fontSize: 36,
               fontWeight: FontWeight.w500,
               height: 48 / 36,
@@ -38,9 +38,9 @@ class BirthdayLoadedBody extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 10),
-          const Text(
-            'We require your birthday to keep Zovi a safe place. This won\'t be shown publicly.',
-            style: TextStyle(
+          Text(
+            'birthday_subtitle'.tr(),
+            style: const TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w500,
               height: 20 / 16,
@@ -49,9 +49,9 @@ class BirthdayLoadedBody extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 20),
-          const Text(
-            'Date of birth',
-            style: TextStyle(
+          Text(
+            'date_of_birth'.tr(),
+            style: const TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w500,
               height: 20 / 16,
@@ -101,7 +101,7 @@ class BirthdayLoadedBody extends StatelessWidget {
           ),
           const Spacer(),
           AppButton(
-            label: isLoading ? 'Continuing...' : 'Continue',
+            label: isLoading ? 'continuing'.tr() : 'continue'.tr(),
             onPressed: isLoading ? null : onContinue,
           ),
         ],

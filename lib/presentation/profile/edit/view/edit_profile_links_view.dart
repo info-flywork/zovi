@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:zovi/core/snackbar/app_snackbar.dart';
@@ -34,7 +35,7 @@ class _EditProfileLinksViewState extends State<EditProfileLinksView> {
     setState(() => _links = [..._links, link]);
     AppSnackbar.instance.showLinkAdded(
       context,
-      'A link has been added to your bio.',
+      'link_added_snackbar'.tr(),
     );
   }
 
@@ -53,10 +54,10 @@ class _EditProfileLinksViewState extends State<EditProfileLinksView> {
                 children: [
                   _AddLinkRow(onTap: _addLink),
                   ..._links.map(_LinkItemRow.new),
-                  const Padding(
-                    padding: EdgeInsets.fromLTRB(0, 16, 24, 24),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(0, 16, 24, 24),
                     child: Text(
-                      'Your links are visible to everyone on and off Zovi.',
+                      'links_visibility'.tr(),
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         fontSize: 16,
@@ -96,8 +97,8 @@ class _LinksHeader extends StatelessWidget {
               child: const AppIcon(AssetPaths.iconBack, size: 24),
             ),
             const SizedBox(width: 12),
-            const Text(
-              'Links',
+            Text(
+              'links'.tr(),
               style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
@@ -132,8 +133,8 @@ class _AddLinkRow extends StatelessWidget {
           children: [
             const AppIcon(AssetPaths.iconAddCircleOutline, size: 24),
             const SizedBox(width: 12),
-            const Text(
-              'Add link',
+            Text(
+              'add_link'.tr(),
               style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w500,

@@ -1,8 +1,18 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 import 'package:zovi/core/theme/app_colors.dart';
 import 'package:zovi/core/utils/constants/asset_paths.dart';
+import 'package:zovi/core/utils/enum/route_paths.dart';
+import 'package:zovi/core/widgets/app_confirm_dialog.dart';
+import 'package:zovi/core/widgets/app_icon.dart';
+import 'package:zovi/core/widgets/app_search_field.dart';
+import 'package:zovi/core/widgets/bottom_navigation_bar/main_wrapper.dart';
 import 'package:zovi/presentation/chat/bloc/chat_bloc.dart';
+import 'package:zovi/presentation/chat/model/chat_detail_route_args.dart';
+import 'package:zovi/presentation/chat/model/chat_request_item.dart';
+import 'package:zovi/presentation/chat/view/widgets/chat_swipe_delete_tile.dart';
 
 part 'mixin/chat_view_mixin.dart';
 part 'widgets/chat_loaded_body.dart';
@@ -23,13 +33,9 @@ class _ChatViewState extends State<ChatView> with ChatViewMixin {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return const Scaffold(
       backgroundColor: AppColors.white,
-      appBar: AppBar(
-        title: const Text('Chat', style: TextStyle(fontWeight: FontWeight.w600)),
-        centerTitle: true,
-      ),
-      body: const ChatLoadedBody(),
+      body: SafeArea(bottom: false, child: ChatLoadedBody()),
     );
   }
 }

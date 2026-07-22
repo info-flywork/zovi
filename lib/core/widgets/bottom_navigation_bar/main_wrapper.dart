@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:zovi/core/theme/app_colors.dart';
@@ -9,6 +10,9 @@ class MainWrapper extends StatelessWidget {
   const MainWrapper({required this.child, super.key});
 
   final Widget child;
+
+  /// Floating bottom nav yaklaşık yüksekliği (içerik padding için).
+  static const double navBarHeight = 72;
 
   int _indexForLocation(String location) {
     if (location.startsWith(RoutePaths.stories.path)) return 2;
@@ -22,9 +26,9 @@ class MainWrapper extends StatelessWidget {
       case 0:
         context.go(RoutePaths.home.path);
       case 1:
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Kamera yakında')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('camera_coming_soon'.tr())));
       case 2:
         context.go(RoutePaths.stories.path);
       case 3:
@@ -40,59 +44,78 @@ class MainWrapper extends StatelessWidget {
     final currentIndex = _indexForLocation(location);
 
     return Scaffold(
-      body: child,
-      bottomNavigationBar: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-            decoration: BoxDecoration(
-              color: AppColors.white,
-              borderRadius: BorderRadius.circular(999),
-              boxShadow: const [
-                BoxShadow(
-                  color: Color(0x26000000),
-                  blurRadius: 4,
-                  offset: Offset(0, 1),
+      backgroundColor: AppColors.white,
+      body: Stack(
+        fit: StackFit.expand,
+        children: [
+          child,
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 0,
+            child: Padding(
+              padding: EdgeInsets.fromLTRB(
+                20,
+                0,
+                20,
+                MediaQuery.paddingOf(context).bottom + 8,
+              ),
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  color: AppColors.white,
+                  borderRadius: BorderRadius.circular(999),
+                  boxShadow: const [
+                    BoxShadow(
+                      color: Color(0x26000000),
+                      blurRadius: 4,
+                      offset: Offset(0, 1),
+                    ),
+                  ],
                 ),
-              ],
-            ),
-            child: Row(
-              children: [
-                _NavItem(
-                  label: 'Map',
-                  icon: AssetPaths.iconLocation,
-                  selected: currentIndex == 0,
-                  onTap: () => _onTap(context, 0),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 6,
+                  ),
+                  child: Row(
+                    children: [
+                      _NavItem(
+                        label: 'nav_map'.tr(),
+                        icon: AssetPaths.iconLocationOutlined,
+                        selected: currentIndex == 0,
+                        onTap: () => _onTap(context, 0),
+                      ),
+                      _NavItem(
+                        label: 'nav_camera'.tr(),
+                        icon: AssetPaths.iconStampCamera,
+                        selected: currentIndex == 1,
+                        onTap: () => _onTap(context, 1),
+                      ),
+                      _NavItem(
+                        label: 'nav_stories'.tr(),
+                        icon: 'assets/icons/search-favorite.svg',
+                        selected: currentIndex == 2,
+                        onTap: () => _onTap(context, 2),
+                      ),
+                      _NavItem(
+                        label: 'nav_chat'.tr(),
+                        icon: AssetPaths.iconChat,
+                        selected: currentIndex == 3,
+                        onTap: () => _onTap(context, 3),
+                      ),
+                      _NavItem(
+                        label: 'nav_profile'.tr(),
+                        selected: currentIndex == 4,
+                        onTap: () => _onTap(context, 4),
+                        avatar: AssetPaths.avatarYou,
+                      ),
+                    ],
+                  ),
                 ),
-                _NavItem(
-                  label: 'Camera',
-                  icon: AssetPaths.iconCamera,
-                  selected: currentIndex == 1,
-                  onTap: () => _onTap(context, 1),
-                ),
-                _NavItem(
-                  label: 'Stories',
-                  icon: AssetPaths.iconStories,
-                  selected: currentIndex == 2,
-                  onTap: () => _onTap(context, 2),
-                ),
-                _NavItem(
-                  label: 'Chat',
-                  icon: AssetPaths.iconChat,
-                  selected: currentIndex == 3,
-                  onTap: () => _onTap(context, 3),
-                ),
-                _NavItem(
-                  label: 'Profile',
-                  selected: currentIndex == 4,
-                  onTap: () => _onTap(context, 4),
-                  avatar: AssetPaths.avatarYou,
-                ),
-              ],
+              ),
             ),
           ),
-        ),
+        ],
       ),
     );
   }
@@ -131,17 +154,14 @@ class _NavItem extends StatelessWidget {
                   height: 28,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    border: Border.all(
-                      color: AppColors.zoviOrange,
-                      width: 2,
-                    ),
+                    border: Border.all(color: AppColors.zoviOrange, width: 2),
                   ),
                   child: ClipOval(
                     child: Image.asset(avatar!, fit: BoxFit.cover),
                   ),
                 )
               else
-                AppIcon(icon!, size: 28, color: color),
+                AppIcon(icon!, size: 24, color: color),
               const SizedBox(height: 4),
               Text(
                 label,

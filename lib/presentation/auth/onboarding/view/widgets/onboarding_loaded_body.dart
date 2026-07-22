@@ -35,9 +35,9 @@ class OnboardingLoadedBody extends StatelessWidget {
         children: [
           const AuthProgressBar(activeIndex: 0, stepCount: 4),
           const SizedBox(height: 20),
-          const Text(
-            'Merhaba, seni tanıyalım',
-            style: TextStyle(
+          Text(
+            'onboarding_title'.tr(),
+            style: const TextStyle(
               fontSize: 35,
               fontWeight: FontWeight.w500,
               height: 1.33,
@@ -46,9 +46,9 @@ class OnboardingLoadedBody extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 10),
-          const Text(
-            'Numaran sadece giriş için kullanılır, profilinde görünmez.',
-            style: TextStyle(
+          Text(
+            'onboarding_subtitle'.tr(),
+            style: const TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w500,
               color: AppColors.textSecondary,
@@ -71,11 +71,11 @@ class OnboardingLoadedBody extends StatelessWidget {
                 height: 1,
                 color: AppColors.textSecondary,
               ),
-              const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 10),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 10),
                 child: Text(
-                  'veya',
-                  style: TextStyle(
+                  'or'.tr(),
+                  style: const TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w500,
                     height: 20 / 16,
@@ -93,13 +93,13 @@ class OnboardingLoadedBody extends StatelessWidget {
           ),
           const SizedBox(height: 16),
           SocialLoginButton(
-            label: 'Continue with Google',
+            label: 'continue_with_google'.tr(),
             iconPath: AssetPaths.iconGoogle,
             onTap: onGoogle,
           ),
           const SizedBox(height: 10),
           SocialLoginButton(
-            label: 'Continue with Apple',
+            label: 'continue_with_apple'.tr(),
             iconPath: AssetPaths.iconApple,
             onTap: onApple,
           ),
@@ -112,7 +112,7 @@ class OnboardingLoadedBody extends StatelessWidget {
                 height: 1.4,
               ),
               children: [
-                const TextSpan(text: 'Devam ederek '),
+                TextSpan(text: 'terms_prefix'.tr()),
                 WidgetSpan(
                   alignment: PlaceholderAlignment.baseline,
                   baseline: TextBaseline.alphabetic,
@@ -126,9 +126,9 @@ class OnboardingLoadedBody extends StatelessWidget {
                         );
                       }
                     },
-                    child: const Text(
-                      'Kullanım Şartları',
-                      style: TextStyle(
+                    child: Text(
+                      'terms_link'.tr(),
+                      style: const TextStyle(
                         fontSize: 14,
                         color: AppColors.zoviOrange,
                         fontWeight: FontWeight.bold,
@@ -137,14 +137,14 @@ class OnboardingLoadedBody extends StatelessWidget {
                     ),
                   ),
                 ),
-                const TextSpan(text: "'nı kabul etmiş olursun."),
+                TextSpan(text: 'terms_suffix'.tr()),
               ],
             ),
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 16),
           AppButton(
-            label: isLoading ? 'Gönderiliyor...' : 'Kod Gönder',
+            label: isLoading ? 'sending'.tr() : 'send_code'.tr(),
             onPressed: canSendCode ? onSendCode : null,
           ),
         ],

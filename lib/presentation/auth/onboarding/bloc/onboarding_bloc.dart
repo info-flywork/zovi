@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:zovi/core/utils/enum/route_paths.dart';
 import 'package:zovi/core/utils/phone/phone_format.dart';
@@ -50,7 +51,7 @@ class OnboardingBloc extends Bloc<OnboardingEvent, OnboardingState> {
     if (phone.isEmpty) {
       emit(
         OnboardingError(
-          message: 'Telefon numarası gir.',
+          message: 'error_enter_phone'.tr(),
           phone: phone,
           selectedCountry: state.selectedCountry,
         ),

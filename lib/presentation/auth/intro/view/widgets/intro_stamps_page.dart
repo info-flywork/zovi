@@ -9,10 +9,10 @@ class IntroStampsPage extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(16, 24, 16, 0),
       child: Column(
         children: [
-          const Text(
-            'Travel, explore, earn stamps',
+          Text(
+            'intro_stamps_title'.tr(),
             textAlign: TextAlign.center,
-            style: TextStyle(
+            style: const TextStyle(
               fontSize: 32,
               fontWeight: FontWeight.w600,
               letterSpacing: -0.6,
@@ -20,27 +20,27 @@ class IntroStampsPage extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 12),
-          const Text(
-            'Every check-in moves you forward. Venue badges, night owl titles, and city leaderboards are waiting for you.',
+          Text(
+            'intro_stamps_subtitle'.tr(),
             textAlign: TextAlign.center,
-            style: TextStyle(
+            style: const TextStyle(
               fontSize: 16,
               height: 1.35,
               color: AppColors.textSecondary,
             ),
           ),
           const SizedBox(height: 40),
-          const _StampCard(
-            title: 'Night Flame',
-            subtitle: '5 late-night check-ins',
+          _StampCard(
+            title: 'intro_stamp_night_flame_title'.tr(),
+            subtitle: 'intro_stamp_night_flame_subtitle'.tr(),
             progress: 0.72,
             sticker: AssetPaths.stickerNightFlame,
             rotation: -1.26,
           ),
           const SizedBox(height: 16),
-          const _StampCard(
-            title: 'Explorer',
-            subtitle: '10 new venues',
+          _StampCard(
+            title: 'intro_stamp_explorer_title'.tr(),
+            subtitle: 'intro_stamp_explorer_subtitle'.tr(),
             progress: 0.45,
             sticker: AssetPaths.stickerExplorer,
             rotation: 1.41,
@@ -53,10 +53,10 @@ class IntroStampsPage extends StatelessWidget {
               color: AppColors.zoviOrange.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(12),
             ),
-            child: const Text(
-              '+4 stamps waiting for you',
+            child: Text(
+              'intro_stamps_waiting'.tr(),
               textAlign: TextAlign.center,
-              style: TextStyle(
+              style: const TextStyle(
                 color: AppColors.zoviOrange,
                 fontSize: 16,
                 fontWeight: FontWeight.w700,

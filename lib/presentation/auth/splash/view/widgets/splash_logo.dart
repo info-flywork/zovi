@@ -18,10 +18,10 @@ class SplashLogo extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 16),
-        Text(StringConstants.appName, style: AppTheme.brandWordmark),
+        Text('app_name'.tr(), style: AppTheme.brandWordmark),
         const SizedBox(height: 8),
         Text(
-          StringConstants.tagline,
+          'tagline'.tr(),
           style: const TextStyle(
             fontSize: 20,
             fontWeight: FontWeight.w500,

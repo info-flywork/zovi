@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:zovi/core/theme/app_colors.dart';
@@ -58,9 +59,9 @@ class _AddProfileLinkViewState extends State<AddProfileLinkView> {
                 autofocus: true,
                 keyboardType: TextInputType.url,
                 textInputAction: TextInputAction.next,
-                decoration: const InputDecoration(
-                  hintText: 'https://jhondoe4512.com',
-                  hintStyle: TextStyle(
+                decoration: InputDecoration(
+                  hintText: 'link_url_hint'.tr(),
+                  hintStyle: const TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w500,
                     height: 18 / 16,
@@ -91,9 +92,9 @@ class _AddProfileLinkViewState extends State<AddProfileLinkView> {
                 controller: _titleController,
                 textInputAction: TextInputAction.done,
                 onSubmitted: (_) => _onDone(),
-                decoration: const InputDecoration(
-                  hintText: 'My Website!',
-                  hintStyle: TextStyle(
+                decoration: InputDecoration(
+                  hintText: 'link_title_hint'.tr(),
+                  hintStyle: const TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w500,
                     height: 18 / 16,
@@ -143,8 +144,8 @@ class _AddLinkHeader extends StatelessWidget {
               child: const AppIcon(AssetPaths.iconBack, size: 24),
             ),
             const SizedBox(width: 12),
-            const Text(
-              'Add link',
+            Text(
+              'add_link'.tr(),
               style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
@@ -157,11 +158,11 @@ class _AddLinkHeader extends StatelessWidget {
             GestureDetector(
               onTap: onDone,
               behavior: HitTestBehavior.opaque,
-              child: const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
                 child: Text(
-                  'Done',
-                  style: TextStyle(
+                  'done'.tr(),
+                  style: const TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w500,
                     height: 1,

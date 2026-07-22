@@ -43,8 +43,8 @@ class ProfileMap extends StatelessWidget {
                           ),
                         ),
                       ),
-                      const Text(
-                        '0km',
+                      Text(
+                        'distance_km'.tr(),
                         style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w500,

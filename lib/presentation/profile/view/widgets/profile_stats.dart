@@ -48,11 +48,11 @@ class ProfileStats extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       child: Row(
         children: [
-          card('${user.checkIns}', 'Check-in'),
+          card('${user.checkIns}', 'stat_check_in'.tr()),
           const SizedBox(width: 10),
-          card('${user.followers}', 'Follower'),
+          card('${user.followers}', 'stat_follower'.tr()),
           const SizedBox(width: 10),
-          card('${user.friends}', 'Friends'),
+          card('${user.friends}', 'stat_friends'.tr()),
         ],
       ),
     );

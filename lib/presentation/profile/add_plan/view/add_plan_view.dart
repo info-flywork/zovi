@@ -1,25 +1,27 @@
-import 'dart:async';
-
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:zovi/core/theme/app_colors.dart';
 import 'package:zovi/core/utils/constants/asset_paths.dart';
 import 'package:zovi/core/utils/enum/route_paths.dart';
 import 'package:zovi/core/widgets/app_icon.dart';
+import 'package:zovi/core/widgets/app_search_field.dart';
 import 'package:zovi/presentation/profile/add_plan/model/add_plan_details_route_args.dart';
 import 'package:zovi/presentation/profile/add_plan/model/add_plan_place.dart';
 
 enum _PlanCategory {
-  all('All', ''),
-  music('Music', '🎶'),
-  cafe('Cafe', '☕'),
-  park('Park', '🏞️'),
-  culture('Kultur', '🏛️'),
-  restaurant('Restaurant', '🍕');
+  all('category_all', ''),
+  music('category_music', '🎶'),
+  cafe('category_cafe', '☕'),
+  park('category_park', '🏞️'),
+  culture('category_culture', '🏛️'),
+  restaurant('category_restaurant', '🍕');
 
-  const _PlanCategory(this.label, this.emoji);
-  final String label;
+  const _PlanCategory(this.labelKey, this.emoji);
+  final String labelKey;
   final String emoji;
+
+  String get label => labelKey.tr();
 }
 
 class AddPlanView extends StatefulWidget {
@@ -31,9 +33,8 @@ class AddPlanView extends StatefulWidget {
 
 class _AddPlanViewState extends State<AddPlanView> {
   _PlanCategory _selectedCategory = _PlanCategory.all;
-  final TextEditingController _searchController = TextEditingController();
-  Timer? _searchDebounce;
   String _searchQuery = '';
+  AddPlanPlace? _selectedPlace;
 
   static const List<AddPlanPlace> _mockPlans = [
     AddPlanPlace(
@@ -46,8 +47,7 @@ class _AddPlanViewState extends State<AddPlanView> {
         AssetPaths.avatarSona,
         AssetPaths.avatarJessica,
       ],
-      friendsLabel: '5+ friends\nare joining',
-      isHighlighted: true,
+      friendsLabel: '5',
     ),
     AddPlanPlace(
       categoryKey: 'music',
@@ -59,7 +59,7 @@ class _AddPlanViewState extends State<AddPlanView> {
         AssetPaths.avatarSona,
         AssetPaths.avatarJessica,
       ],
-      friendsLabel: '5+ friends\nare joining',
+      friendsLabel: '5',
     ),
     AddPlanPlace(
       categoryKey: 'cafe',
@@ -71,8 +71,7 @@ class _AddPlanViewState extends State<AddPlanView> {
         AssetPaths.avatarNova,
         AssetPaths.avatarJulia,
       ],
-      friendsLabel: '3+ friends\nare joining',
-      isHighlighted: true,
+      friendsLabel: '3',
     ),
     AddPlanPlace(
       categoryKey: 'cafe',
@@ -84,7 +83,7 @@ class _AddPlanViewState extends State<AddPlanView> {
         AssetPaths.avatarLyra,
         AssetPaths.avatarSona,
       ],
-      friendsLabel: '2+ friends\nare joining',
+      friendsLabel: '2',
     ),
     AddPlanPlace(
       categoryKey: 'park',
@@ -96,8 +95,7 @@ class _AddPlanViewState extends State<AddPlanView> {
         AssetPaths.avatarJessica,
         AssetPaths.avatarNova,
       ],
-      friendsLabel: '4+ friends\nare joining',
-      isHighlighted: true,
+      friendsLabel: '4',
     ),
     AddPlanPlace(
       categoryKey: 'park',
@@ -109,7 +107,7 @@ class _AddPlanViewState extends State<AddPlanView> {
         AssetPaths.avatarLyra,
         AssetPaths.avatarJessica,
       ],
-      friendsLabel: '3+ friends\nare joining',
+      friendsLabel: '3',
     ),
     AddPlanPlace(
       categoryKey: 'culture',
@@ -121,8 +119,7 @@ class _AddPlanViewState extends State<AddPlanView> {
         AssetPaths.avatarSona,
         AssetPaths.avatarLyra,
       ],
-      friendsLabel: '6+ friends\nare joining',
-      isHighlighted: true,
+      friendsLabel: '6',
     ),
     AddPlanPlace(
       categoryKey: 'culture',
@@ -134,7 +131,7 @@ class _AddPlanViewState extends State<AddPlanView> {
         AssetPaths.avatarNova,
         AssetPaths.avatarSona,
       ],
-      friendsLabel: '2+ friends\nare joining',
+      friendsLabel: '2',
     ),
     AddPlanPlace(
       categoryKey: 'restaurant',
@@ -146,8 +143,7 @@ class _AddPlanViewState extends State<AddPlanView> {
         AssetPaths.avatarJulia,
         AssetPaths.avatarSona,
       ],
-      friendsLabel: '7+ friends\nare joining',
-      isHighlighted: true,
+      friendsLabel: '7',
     ),
     AddPlanPlace(
       categoryKey: 'restaurant',
@@ -159,7 +155,7 @@ class _AddPlanViewState extends State<AddPlanView> {
         AssetPaths.avatarJessica,
         AssetPaths.avatarJulia,
       ],
-      friendsLabel: '4+ friends\nare joining',
+      friendsLabel: '4',
     ),
   ];
 
@@ -177,30 +173,17 @@ class _AddPlanViewState extends State<AddPlanView> {
     }).toList();
   }
 
-  @override
-  void initState() {
-    super.initState();
-    _searchController.addListener(_onSearchChanged);
-  }
-
-  @override
-  void dispose() {
-    _searchDebounce?.cancel();
-    _searchController
-      ..removeListener(_onSearchChanged)
-      ..dispose();
-    super.dispose();
-  }
-
-  void _onSearchChanged() {
-    _searchDebounce?.cancel();
-    _searchDebounce = Timer(const Duration(milliseconds: 300), () {
-      if (!mounted) return;
-      setState(() => _searchQuery = _searchController.text);
+  void _onTapPlan(AddPlanPlace place) {
+    setState(() {
+      _selectedPlace = _selectedPlace?.placeName == place.placeName
+          ? null
+          : place;
     });
   }
 
-  void _openDetails(AddPlanPlace place) {
+  void _continue() {
+    final place = _selectedPlace;
+    if (place == null) return;
     context.push(
       RoutePaths.addPlanDetails.path,
       extra: AddPlanDetailsRouteArgs(place: place),
@@ -220,7 +203,12 @@ class _AddPlanViewState extends State<AddPlanView> {
                 padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
                 child: Column(
                   children: [
-                    _SearchBar(controller: _searchController),
+                    AppSearchField(
+                      hintText: 'search_places_hint'.tr(),
+                      onDebouncedChanged: (value) {
+                        setState(() => _searchQuery = value);
+                      },
+                    ),
                     const SizedBox(height: 16),
                     _CategoryFilterRow(
                       selectedCategory: _selectedCategory,
@@ -256,7 +244,8 @@ class _AddPlanViewState extends State<AddPlanView> {
                             : _PlanList(
                                 key: ValueKey(_selectedCategory),
                                 plans: _filteredPlans,
-                                onTapPlan: _openDetails,
+                                selectedPlaceName: _selectedPlace?.placeName,
+                                onTapPlan: _onTapPlan,
                               ),
                       ),
                     ),
@@ -264,7 +253,7 @@ class _AddPlanViewState extends State<AddPlanView> {
                 ),
               ),
             ),
-            const _ContinueButton(),
+            _ContinueButton(enabled: _selectedPlace != null, onTap: _continue),
           ],
         ),
       ),
@@ -280,11 +269,11 @@ class _EmptyPlanState extends StatelessWidget {
     return Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
-        children: const [
-          AppIcon(AssetPaths.iconSearch, size: 40),
-          SizedBox(height: 12),
+        children: [
+          const AppIcon(AssetPaths.iconSearch, size: 40),
+          const SizedBox(height: 12),
           Text(
-            'No places found',
+            'no_places_found'.tr(),
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w500,
@@ -316,8 +305,8 @@ class _AddPlanHeader extends StatelessWidget {
               child: const AppIcon(AssetPaths.iconBack, size: 24),
             ),
             const SizedBox(width: 12),
-            const Text(
-              'Add Plan',
+            Text(
+              'add_plan_title'.tr(),
               style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w500,
@@ -328,54 +317,6 @@ class _AddPlanHeader extends StatelessWidget {
             ),
           ],
         ),
-      ),
-    );
-  }
-}
-
-class _SearchBar extends StatelessWidget {
-  const _SearchBar({required this.controller});
-
-  final TextEditingController controller;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(10),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF4F4F9),
-        borderRadius: BorderRadius.circular(99999),
-      ),
-      child: Row(
-        children: [
-          const AppIcon(AssetPaths.iconSearch, size: 24),
-          const SizedBox(width: 10),
-          Expanded(
-            child: TextField(
-              controller: controller,
-              decoration: const InputDecoration(
-                hintText: 'Search places',
-                hintStyle: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w400,
-                  height: 20 / 16,
-                  letterSpacing: -0.32,
-                  color: Color(0xFFB9B9C6),
-                ),
-                border: InputBorder.none,
-                isDense: true,
-                contentPadding: EdgeInsets.zero,
-              ),
-              style: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w500,
-                height: 20 / 16,
-                letterSpacing: -0.32,
-                color: AppColors.deepRoast,
-              ),
-            ),
-          ),
-        ],
       ),
     );
   }
@@ -451,12 +392,12 @@ class _NearbyTitle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Row(
+    return Row(
       children: [
-        AppIcon(AssetPaths.iconLocationOutlined, size: 24),
-        SizedBox(width: 8),
+        const AppIcon(AssetPaths.iconLocationOutlined, size: 24),
+        const SizedBox(width: 8),
         Text(
-          'Nearby Places',
+          'nearby_places'.tr(),
           style: TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.w600,
@@ -474,44 +415,58 @@ class _PlanList extends StatelessWidget {
   const _PlanList({
     required super.key,
     required this.plans,
+    required this.selectedPlaceName,
     required this.onTapPlan,
   });
 
   final List<AddPlanPlace> plans;
+  final String? selectedPlaceName;
   final ValueChanged<AddPlanPlace> onTapPlan;
 
   @override
   Widget build(BuildContext context) {
     return ListView.separated(
+      physics: const ClampingScrollPhysics(),
       itemCount: plans.length,
       separatorBuilder: (_, _) => const SizedBox(height: 12),
-      itemBuilder: (context, index) => _NearbyPlanCard(
-        plan: plans[index],
-        onTap: () => onTapPlan(plans[index]),
-      ),
+      itemBuilder: (context, index) {
+        final plan = plans[index];
+        return _NearbyPlanCard(
+          plan: plan,
+          isSelected: plan.placeName == selectedPlaceName,
+          onTap: () => onTapPlan(plan),
+        );
+      },
     );
   }
 }
 
 class _NearbyPlanCard extends StatelessWidget {
-  const _NearbyPlanCard({required this.plan, required this.onTap});
+  const _NearbyPlanCard({
+    required this.plan,
+    required this.isSelected,
+    required this.onTap,
+  });
 
   final AddPlanPlace plan;
+  final bool isSelected;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    final borderColor = plan.isHighlighted
+    final borderColor = isSelected
         ? AppColors.zoviOrange
         : const Color(0xFFE2E2E2);
-    final backgroundColor = plan.isHighlighted
+    final backgroundColor = isSelected
         ? AppColors.zoviOrange.withValues(alpha: 0.10)
         : AppColors.white;
 
     return GestureDetector(
       onTap: onTap,
       behavior: HitTestBehavior.opaque,
-      child: Container(
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        curve: Curves.easeOutCubic,
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           color: backgroundColor,
@@ -563,7 +518,7 @@ class _NearbyPlanCard extends StatelessWidget {
             _AvatarPile(avatars: plan.friendAvatars),
             const SizedBox(width: 8),
             Text(
-              plan.friendsLabel,
+              'friends_are_joining'.tr(namedArgs: {'count': plan.friendsLabel}),
               textAlign: TextAlign.left,
               style: const TextStyle(
                 fontSize: 12,
@@ -619,31 +574,42 @@ class _AvatarPile extends StatelessWidget {
 }
 
 class _ContinueButton extends StatelessWidget {
-  const _ContinueButton();
+  const _ContinueButton({required this.enabled, required this.onTap});
+
+  final bool enabled;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     return SafeArea(
       top: false,
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
         child: SizedBox(
           width: double.infinity,
           height: 54,
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              color: AppColors.deepRoast,
-              borderRadius: BorderRadius.circular(999),
-            ),
-            child: const Center(
-              child: Text(
-                'Continue',
-                style: TextStyle(
-                  fontSize: 34 / 2,
-                  fontWeight: FontWeight.w600,
-                  height: 1,
-                  letterSpacing: -0.34,
-                  color: AppColors.white,
+          child: GestureDetector(
+            onTap: enabled ? onTap : null,
+            behavior: HitTestBehavior.opaque,
+            child: AnimatedOpacity(
+              duration: const Duration(milliseconds: 180),
+              opacity: enabled ? 1 : 0.4,
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  color: AppColors.deepRoast,
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Center(
+                  child: Text(
+                    'continue'.tr(),
+                    style: const TextStyle(
+                      fontSize: 34 / 2,
+                      fontWeight: FontWeight.w600,
+                      height: 1,
+                      letterSpacing: -0.34,
+                      color: AppColors.white,
+                    ),
+                  ),
                 ),
               ),
             ),

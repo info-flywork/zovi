@@ -7,8 +7,8 @@ class StoriesBloc extends Bloc<StoriesEvent, StoriesState> {
   StoriesBloc(this._userRepository) : super(const StoriesInitial()) {
     on<StoriesStarted>((event, emit) async {
       emit(const StoriesLoading());
-      final stories = await _userRepository.getStories();
-      emit(StoriesLoaded(stories: stories.where((s) => !s.isYou).toList()));
+      final items = await _userRepository.getStoryFeed();
+      emit(StoriesLoaded(items: items));
     });
   }
 

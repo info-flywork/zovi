@@ -18,33 +18,28 @@ class ProfileHeader extends StatelessWidget {
         children: [
           Row(
             children: [
-              GestureDetector(
-                onTap: () {
-                  if (context.canPop()) {
-                    context.pop();
-                  }
-                },
-                child: const AppIcon(AssetPaths.iconArrowLeft, size: 32),
-              ),
               const Spacer(),
-              const AppIcon(AssetPaths.iconProfileClip, size: 32),
+              GestureDetector(
+                onTap: () => context.push(RoutePaths.stickers.path),
+                child: const AppIcon(AssetPaths.iconProfileClip, size: 32),
+              ),
               const SizedBox(width: 20),
               GestureDetector(
                 onTap: onShareTap,
                 child: const AppIcon(AssetPaths.iconExportCircle, size: 32),
               ),
               const SizedBox(width: 20),
-              const AppIcon(AssetPaths.iconSetting, size: 32),
+              GestureDetector(
+                onTap: () => context.push(RoutePaths.settings.path),
+                child: const AppIcon(AssetPaths.iconSetting, size: 32),
+              ),
             ],
           ),
           const SizedBox(height: 10),
           SizedBox(
             width: 120,
             height: 120,
-            child: ProfileAvatar(
-              path: user.avatarPath,
-              size: 120,
-            ),
+            child: ProfileAvatar(path: user.avatarPath, size: 120),
           ),
           const SizedBox(height: 10),
           Text(

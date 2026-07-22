@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:zovi/core/theme/app_colors.dart';
@@ -81,10 +82,10 @@ class _AddPlanDetailsViewState extends State<AddPlanDetailsView> {
                     ),
                   ),
                   const SizedBox(height: 24),
-                  const Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 16),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
                     child: Text(
-                      'Saat seç',
+                      'select_time'.tr(),
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w600,
@@ -153,11 +154,11 @@ class _AddPlanDetailsViewState extends State<AddPlanDetailsView> {
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
                         RichText(
-                          text: const TextSpan(
+                          text: TextSpan(
                             children: [
                               TextSpan(
-                                text: 'Not Ekle',
-                                style: TextStyle(
+                                text: 'add_note'.tr(),
+                                style: const TextStyle(
                                   fontSize: 16,
                                   fontWeight: FontWeight.w600,
                                   height: 1,
@@ -166,8 +167,8 @@ class _AddPlanDetailsViewState extends State<AddPlanDetailsView> {
                                 ),
                               ),
                               TextSpan(
-                                text: ' (isteğe bağlı)',
-                                style: TextStyle(
+                                text: ' ${'optional'.tr()}',
+                                style: const TextStyle(
                                   fontSize: 14,
                                   fontWeight: FontWeight.w400,
                                   height: 1,
@@ -191,12 +192,12 @@ class _AddPlanDetailsViewState extends State<AddPlanDetailsView> {
                             maxLines: null,
                             expands: true,
                             textAlignVertical: TextAlignVertical.top,
-                            decoration: const InputDecoration(
+                            decoration: InputDecoration(
                               border: InputBorder.none,
                               isDense: true,
                               contentPadding: EdgeInsets.zero,
-                              hintText: 'Planın hakkında bir not ekle...',
-                              hintStyle: TextStyle(
+                              hintText: 'note_hint'.tr(),
+                              hintStyle: const TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w500,
                                 height: 1.2,
@@ -215,16 +216,16 @@ class _AddPlanDetailsViewState extends State<AddPlanDetailsView> {
                         ),
                         const SizedBox(height: 28),
                         _VisibilitySwitchRow(
-                          title: 'Arkadaşlarına göster',
-                          subtitle: 'Planın arkadaş listende görünür',
+                          title: 'show_to_friends_title'.tr(),
+                          subtitle: 'show_to_friends_subtitle'.tr(),
                           value: _showToFriends,
                           onChanged: (value) =>
                               setState(() => _showToFriends = value),
                         ),
                         const SizedBox(height: 16),
                         _VisibilitySwitchRow(
-                          title: 'Yakınlara göster',
-                          subtitle: 'Nearby kullanıcılar planını görebilir',
+                          title: 'show_to_nearby_title'.tr(),
+                          subtitle: 'show_to_nearby_subtitle'.tr(),
                           value: _showToNearby,
                           onChanged: (value) =>
                               setState(() => _showToNearby = value),
@@ -265,8 +266,8 @@ class _DetailsHeader extends StatelessWidget {
               child: const AppIcon(AssetPaths.iconBack, size: 24),
             ),
             const SizedBox(width: 12),
-            const Text(
-              'Details',
+            Text(
+              'details_title'.tr(),
               style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w500,
@@ -345,11 +346,11 @@ class _SelectedPlaceCard extends StatelessWidget {
           GestureDetector(
             onTap: onChangeTap,
             behavior: HitTestBehavior.opaque,
-            child: const Padding(
-              padding: EdgeInsets.symmetric(vertical: 8),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8),
               child: Text(
-                'Değiştir',
-                style: TextStyle(
+                'change'.tr(),
+                style: const TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w500,
                   height: 1,
@@ -446,9 +447,9 @@ class _SaveButton extends StatelessWidget {
                 color: AppColors.deepRoast,
                 borderRadius: BorderRadius.circular(999),
               ),
-              child: const Center(
+              child: Center(
                 child: Text(
-                  'Save Plan',
+                  'save_plan'.tr(),
                   style: TextStyle(
                     fontSize: 17,
                     fontWeight: FontWeight.w600,

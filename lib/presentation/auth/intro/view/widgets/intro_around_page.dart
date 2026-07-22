@@ -24,11 +24,11 @@ class IntroAroundPage extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 8),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8),
             child: Text(
-              "Who's around you?",
-              style: TextStyle(
+              'intro_around_title'.tr(),
+              style: const TextStyle(
                 fontSize: 32,
                 fontWeight: FontWeight.w600,
                 letterSpacing: -0.6,
@@ -37,12 +37,12 @@ class IntroAroundPage extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 10),
-          const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 8),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8),
             child: Text(
               textAlign: TextAlign.center,
-              'See your friends on the map. Strangers in the same location appear anonymously—unexpected connections are waiting for you.',
-              style: TextStyle(
+              'intro_around_subtitle'.tr(),
+              style: const TextStyle(
                 fontSize: 16,
                 height: 1.35,
                 color: AppColors.textSecondary,

@@ -100,6 +100,35 @@ class StoryPreview extends Equatable {
   List<Object?> get props => [name, avatarPath, isYou, hasStory];
 }
 
+class StoryMediaItem extends Equatable {
+  const StoryMediaItem({
+    required this.imagePath,
+    required this.label,
+    required this.avatarPath,
+    this.caption =
+        'Lorem Ipsum is simply dummy text of the printing and typesetting industry...',
+    this.isReel = false,
+    this.isVerified = true,
+  });
+
+  final String imagePath;
+  final String label;
+  final String avatarPath;
+  final String caption;
+  final bool isReel;
+  final bool isVerified;
+
+  @override
+  List<Object?> get props => [
+    imagePath,
+    label,
+    avatarPath,
+    caption,
+    isReel,
+    isVerified,
+  ];
+}
+
 class MapFriend extends Equatable {
   const MapFriend({
     required this.name,
@@ -237,6 +266,92 @@ class UserRepository {
       StoryPreview(name: 'Jessica', avatarPath: AssetPaths.avatarJessica),
       StoryPreview(name: 'Sona', avatarPath: AssetPaths.avatarSona),
       StoryPreview(name: 'Nova', avatarPath: AssetPaths.avatarNova),
+    ];
+  }
+
+  Future<List<StoryMediaItem>> getStoryFeed() async {
+    return const [
+      StoryMediaItem(
+        imagePath: AssetPaths.avatarLyra,
+        label: 'Lyra Jhonson',
+        avatarPath: AssetPaths.avatarLyra,
+        isReel: true,
+      ),
+      StoryMediaItem(
+        imagePath: AssetPaths.avatarJessica,
+        label: 'Jessica Blues',
+        avatarPath: AssetPaths.avatarJessica,
+        isReel: true,
+      ),
+      StoryMediaItem(
+        imagePath: AssetPaths.avatarYou,
+        label: 'You',
+        avatarPath: AssetPaths.avatarYou,
+        isReel: true,
+        isVerified: false,
+      ),
+      StoryMediaItem(
+        imagePath: AssetPaths.avatarSona,
+        label: 'Sona Black',
+        avatarPath: AssetPaths.avatarSona,
+        isReel: true,
+      ),
+      StoryMediaItem(
+        imagePath: AssetPaths.checkinPlace,
+        label: 'Desert Trip',
+        avatarPath: AssetPaths.avatarJulia,
+      ),
+      StoryMediaItem(
+        imagePath: AssetPaths.mapFirst,
+        label: 'Mountains',
+        avatarPath: AssetPaths.avatarNova,
+      ),
+      StoryMediaItem(
+        imagePath: AssetPaths.pulseJhon,
+        label: 'Drive',
+        avatarPath: AssetPaths.avatarYou,
+      ),
+      StoryMediaItem(
+        imagePath: AssetPaths.pulseJessica,
+        label: 'Roadtrip',
+        avatarPath: AssetPaths.avatarJessica,
+      ),
+      StoryMediaItem(
+        imagePath: AssetPaths.pulse1,
+        label: 'Speed',
+        avatarPath: AssetPaths.avatarSona,
+      ),
+      StoryMediaItem(
+        imagePath: AssetPaths.mapSecond,
+        label: 'City Walk',
+        avatarPath: AssetPaths.avatarLyra,
+      ),
+      StoryMediaItem(
+        imagePath: AssetPaths.storyJulia,
+        label: 'Julia Ivanova',
+        avatarPath: AssetPaths.avatarJulia,
+        isReel: true,
+      ),
+      StoryMediaItem(
+        imagePath: AssetPaths.pulse2,
+        label: 'Cat',
+        avatarPath: AssetPaths.avatarNova,
+      ),
+      StoryMediaItem(
+        imagePath: AssetPaths.pulse3,
+        label: 'Ginger',
+        avatarPath: AssetPaths.avatarJulia,
+      ),
+      StoryMediaItem(
+        imagePath: AssetPaths.blueLocation,
+        label: 'Cruise',
+        avatarPath: AssetPaths.avatarYou,
+      ),
+      StoryMediaItem(
+        imagePath: AssetPaths.avatarNova,
+        label: 'Nova',
+        avatarPath: AssetPaths.avatarNova,
+      ),
     ];
   }
 

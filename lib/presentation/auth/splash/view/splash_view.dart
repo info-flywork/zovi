@@ -1,10 +1,10 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:zovi/core/theme/app_colors.dart';
 import 'package:zovi/core/theme/app_theme.dart';
 import 'package:zovi/core/utils/constants/asset_paths.dart';
-import 'package:zovi/core/utils/constants/string_constants.dart';
 import 'package:zovi/presentation/auth/splash/bloc/splash_bloc.dart';
 import 'package:zovi/presentation/auth/splash/bloc/splash_event.dart';
 import 'package:zovi/presentation/auth/splash/bloc/splash_state.dart';

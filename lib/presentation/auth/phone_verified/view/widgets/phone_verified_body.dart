@@ -19,10 +19,10 @@ class PhoneVerifiedBody extends StatelessWidget {
             fit: BoxFit.contain,
           ),
           const SizedBox(height: 24),
-          const Text(
-            'Numaran\ndoğrulandı 🎉',
+          Text(
+            'phone_verified_title'.tr(),
             textAlign: TextAlign.center,
-            style: TextStyle(
+            style: const TextStyle(
               fontSize: 28,
               fontWeight: FontWeight.w700,
               height: 1.2,
@@ -31,10 +31,10 @@ class PhoneVerifiedBody extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 10),
-          const Text(
-            'Zovi’ye hoş geldin. Etrafındaki\ndünya seni bekliyor.',
+          Text(
+            'phone_verified_subtitle'.tr(),
             textAlign: TextAlign.center,
-            style: TextStyle(
+            style: const TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w500,
               height: 20 / 16,
@@ -48,7 +48,7 @@ class PhoneVerifiedBody extends StatelessWidget {
             child: _VerificationStampCard(),
           ),
           const Spacer(),
-          AppButton(label: 'Devam Et', onPressed: onContinue),
+          AppButton(label: 'continue'.tr(), onPressed: onContinue),
         ],
       ),
     );
@@ -87,14 +87,14 @@ class _VerificationStampCard extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 10),
-              const Expanded(
+              Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
-                      'İlk adım stamp’i kazandın:\nHesap Doğrulama',
-                      style: TextStyle(
+                      'first_stamp_title'.tr(),
+                      style: const TextStyle(
                         color: AppColors.white,
                         fontSize: 16,
                         fontWeight: FontWeight.w700,
@@ -102,10 +102,10 @@ class _VerificationStampCard extends StatelessWidget {
                         letterSpacing: -0.32,
                       ),
                     ),
-                    SizedBox(height: 4),
+                    const SizedBox(height: 4),
                     Text(
-                      'Telefon numarası ile hesabın doğrulandı',
-                      style: TextStyle(
+                      'first_stamp_subtitle'.tr(),
+                      style: const TextStyle(
                         color: Color(0xA6FFFFFF),
                         fontSize: 15,
                         fontWeight: FontWeight.w400,
@@ -119,7 +119,7 @@ class _VerificationStampCard extends StatelessWidget {
             ],
           ),
         ),
-        const Positioned(top: -14, right: 10, child: _NewBadge()),
+        Positioned(top: -14, right: 10, child: _NewBadge()),
       ],
     );
   }
@@ -142,9 +142,9 @@ class _NewBadge extends StatelessWidget {
           color: AppColors.zoviOrange,
           borderRadius: BorderRadius.circular(999),
         ),
-        child: const Text(
-          'New!',
-          style: TextStyle(
+        child: Text(
+          'badge_new'.tr(),
+          style: const TextStyle(
             color: AppColors.white,
             fontSize: 16,
             fontWeight: FontWeight.w700,

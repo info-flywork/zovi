@@ -8,12 +8,12 @@ class IntroPulsePage extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Padding(
-          padding: EdgeInsets.fromLTRB(16, 24, 16, 0),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 24, 16, 0),
           child: Text(
             textAlign: TextAlign.center,
-            'Capture the moment, keep it alive for 24 hours',
-            style: TextStyle(
+            'intro_pulse_title'.tr(),
+            style: const TextStyle(
               fontSize: 30,
               fontWeight: FontWeight.w600,
               height: 1.2,
@@ -23,12 +23,12 @@ class IntroPulsePage extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 12),
-        const Padding(
-          padding: EdgeInsets.symmetric(horizontal: 16),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
           child: Text(
             textAlign: TextAlign.center,
-            'Take a Pulse from wherever you are. Keep it temporary or pin it to a location—the choice is yours.',
-            style: TextStyle(
+            'intro_pulse_subtitle'.tr(),
+            style: const TextStyle(
               fontSize: 16,
               height: 1.35,
               color: AppColors.textSecondary,

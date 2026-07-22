@@ -35,9 +35,9 @@ class OtpLoadedBody extends StatelessWidget {
         children: [
           const AuthProgressBar(activeIndex: 1, stepCount: 4),
           const SizedBox(height: 20),
-          const Text(
-            'Kodu gir',
-            style: TextStyle(
+          Text(
+            'otp_title'.tr(),
+            style: const TextStyle(
               fontSize: 36,
               fontWeight: FontWeight.w500,
               height: 48 / 36,
@@ -47,7 +47,7 @@ class OtpLoadedBody extends StatelessWidget {
           ),
           const SizedBox(height: 10),
           Text(
-            '$formattedPhone numarasına 6 haneli doğrulama kodu gönderdik.',
+            'otp_subtitle'.tr(namedArgs: {'phone': formattedPhone}),
             style: const TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w500,
@@ -57,12 +57,9 @@ class OtpLoadedBody extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 20),
-          OtpInputField(
+          OtpCodeField(
             code: code,
             onChanged: onCodeChanged,
-          ),
-          const SizedBox(height: 16),
-          _ResendRow(
             canResend: canResend,
             resendSeconds: resendSeconds,
             isResending: isResending,
@@ -70,65 +67,8 @@ class OtpLoadedBody extends StatelessWidget {
           ),
           const Spacer(),
           AppButton(
-            label: isLoading ? 'Doğrulanıyor...' : 'Doğrula',
+            label: isLoading ? 'verifying'.tr() : 'verify'.tr(),
             onPressed: isVerifyEnabled ? onVerify : null,
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _ResendRow extends StatelessWidget {
-  const _ResendRow({
-    required this.canResend,
-    required this.resendSeconds,
-    required this.isResending,
-    required this.onResend,
-  });
-
-  final bool canResend;
-  final int resendSeconds;
-  final bool isResending;
-  final VoidCallback onResend;
-
-  @override
-  Widget build(BuildContext context) {
-    return Text.rich(
-      TextSpan(
-        style: const TextStyle(
-          fontSize: 16,
-          fontWeight: FontWeight.w500,
-          height: 20 / 16,
-          letterSpacing: -0.32,
-        ),
-        children: [
-          const TextSpan(
-            text: 'Kodu almadın mı? ',
-            style: TextStyle(color: AppColors.textSecondary),
-          ),
-          WidgetSpan(
-            alignment: PlaceholderAlignment.baseline,
-            baseline: TextBaseline.alphabetic,
-            child: GestureDetector(
-              onTap: canResend && !isResending ? onResend : null,
-              child: Text(
-                isResending
-                    ? 'Gönderiliyor...'
-                    : canResend
-                        ? 'Tekrar gönder'
-                        : 'Tekrar gönder (${resendSeconds}s)',
-                style: TextStyle(
-                  color: canResend && !isResending
-                      ? AppColors.zoviOrange
-                      : AppColors.zoviOrange.withValues(alpha: 0.65),
-                  fontSize: 16,
-                  fontWeight: FontWeight.w500,
-                  height: 20 / 16,
-                  letterSpacing: -0.32,
-                ),
-              ),
-            ),
           ),
         ],
       ),

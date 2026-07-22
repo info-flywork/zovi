@@ -18,7 +18,7 @@ class ProfileShareSheet extends StatelessWidget {
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
       builder: (_) => ProfileShareSheet(
-        profileLink: 'zovi.app/$handle',
+        profileLink: 'profile_link_format'.tr(namedArgs: {'handle': handle}),
         parentContext: context,
       ),
     );
@@ -43,8 +43,8 @@ class ProfileShareSheet extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               const SizedBox(height: 20),
-              const Text(
-                'Share with Friends',
+              Text(
+                'share_with_friends'.tr(),
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 20,
@@ -55,8 +55,8 @@ class ProfileShareSheet extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 10),
-              const Text(
-                'Everything is more fun when you connect with your friends!',
+              Text(
+                'share_sheet_subtitle'.tr(),
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 16,
@@ -67,10 +67,10 @@ class ProfileShareSheet extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 20),
-              const Align(
+              Align(
                 alignment: Alignment.centerLeft,
                 child: Text(
-                  'Share the profile',
+                  'share_the_profile'.tr(),
                   style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
@@ -115,7 +115,7 @@ class ProfileShareSheet extends StatelessWidget {
                           if (!parentContext.mounted) return;
                           AppSnackbar.instance.show(
                             parentContext,
-                            'Link copied!',
+                            'link_copied'.tr(),
                           );
                         });
                       },

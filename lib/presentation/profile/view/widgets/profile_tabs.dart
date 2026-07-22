@@ -17,17 +17,17 @@ class ProfileTabs extends StatelessWidget {
       child: Row(
         children: [
           _TabItem(
-            label: 'Pulse',
+            label: 'tab_pulse'.tr(),
             selected: selectedTab == ProfileContentTab.pulse,
             onTap: () => onTabSelected(ProfileContentTab.pulse),
           ),
           _TabItem(
-            label: 'Stamps',
+            label: 'tab_stamps'.tr(),
             selected: selectedTab == ProfileContentTab.stamps,
             onTap: () => onTabSelected(ProfileContentTab.stamps),
           ),
           _TabItem(
-            label: 'Check-in',
+            label: 'tab_check_in'.tr(),
             selected: selectedTab == ProfileContentTab.checkIn,
             onTap: () => onTabSelected(ProfileContentTab.checkIn),
           ),

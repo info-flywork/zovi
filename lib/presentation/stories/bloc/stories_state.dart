@@ -16,8 +16,10 @@ final class StoriesLoading extends StoriesState {
 }
 
 final class StoriesLoaded extends StoriesState {
-  const StoriesLoaded({required this.stories});
-  final List<StoryPreview> stories;
+  const StoriesLoaded({required this.items});
+
+  final List<StoryMediaItem> items;
+
   @override
-  List<Object?> get props => [stories];
+  List<Object?> get props => [items];
 }

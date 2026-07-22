@@ -23,15 +23,16 @@ class ProfileLoadedBody extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ListView(
-      physics: ClampingScrollPhysics(),
-      padding: const EdgeInsets.only(bottom: 24),
+      physics: const ClampingScrollPhysics(),
+      padding: EdgeInsets.only(
+        bottom:
+            MainWrapper.navBarHeight + MediaQuery.paddingOf(context).bottom + 16,
+      ),
       children: [
         ProfileHeader(
           user: user,
-          onShareTap: () => ProfileShareSheet.show(
-            context,
-            username: user.username,
-          ),
+          onShareTap: () =>
+              ProfileShareSheet.show(context, username: user.username),
         ),
         ProfileStats(user: user),
         Padding(
@@ -71,7 +72,7 @@ class ProfileLoadedBody extends StatelessWidget {
                 children: [
                   Expanded(
                     child: _ProfileActionButton(
-                      label: 'Edit Profile',
+                      label: 'edit_profile'.tr(),
                       backgroundColor: AppColors.zoviOrange,
                       foregroundColor: AppColors.white,
                       onTap: () async {
@@ -89,7 +90,7 @@ class ProfileLoadedBody extends StatelessWidget {
                   const SizedBox(width: 10),
                   Expanded(
                     child: _ProfileActionButton(
-                      label: 'Share Profile',
+                      label: 'share_profile'.tr(),
                       backgroundColor: AppColors.surfaceGray,
                       foregroundColor: AppColors.mutedGray,
                       onTap: () => ProfileShareSheet.show(
@@ -121,10 +122,7 @@ class ProfileLoadedBody extends StatelessWidget {
               return Stack(
                 alignment: Alignment.topCenter,
                 clipBehavior: Clip.none,
-                children: [
-                  ...previousChildren,
-                  if (currentChild != null) currentChild,
-                ],
+                children: [...previousChildren, ?currentChild],
               );
             },
             transitionBuilder: (child, animation) {
@@ -142,8 +140,9 @@ class ProfileLoadedBody extends StatelessWidget {
               child: switch (selectedTab) {
                 ProfileContentTab.pulse => ProfilePulses(pulses: pulses),
                 ProfileContentTab.stamps => ProfileStamps(stamps: stamps),
-                ProfileContentTab.checkIn =>
-                  ProfileCheckins(checkIns: checkIns),
+                ProfileContentTab.checkIn => ProfileCheckins(
+                  checkIns: checkIns,
+                ),
               },
             ),
           ),

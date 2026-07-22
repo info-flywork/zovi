@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:zovi/core/utils/enum/route_paths.dart';
 import 'package:zovi/presentation/auth/model/signup_flow.dart';
@@ -45,7 +46,7 @@ class CreateProfileBloc extends Bloc<CreateProfileEvent, CreateProfileState> {
     if (!state.isFormComplete) {
       emit(
         CreateProfileError(
-          message: 'Ad ve kullanıcı adı gir.',
+          message: 'error_enter_name_username'.tr(),
           fullName: state.fullName,
           username: state.username,
           signupFlow: state.signupFlow,

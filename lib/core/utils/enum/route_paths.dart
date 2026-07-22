@@ -9,8 +9,12 @@ enum RoutePaths {
   notificationPermission('/notification-permission'),
   locationPermission('/location-permission'),
   home('/home'),
+  notifications('/notifications'),
   stories('/stories'),
+  storyDetail('/stories/detail'),
   chat('/chat'),
+  chatDetail('/chat/detail'),
+  chatRequests('/chat/requests'),
   profile('/profile'),
   editProfile('/profile/edit'),
   editProfileField('/profile/edit/field'),
@@ -19,6 +23,15 @@ enum RoutePaths {
   addPlan('/profile/add-plan'),
   addPlanDetails('/profile/add-plan/details'),
   addPlanSuccess('/profile/add-plan/success'),
+  settings('/profile/settings'),
+  personalInfo('/profile/settings/personal-info'),
+  changePassword('/profile/settings/change-password'),
+  stickers('/profile/stickers'),
+  createSticker('/profile/stickers/create'),
+  createStickerSuccess('/profile/stickers/create/success'),
+  tribe('/tribe'),
+  groupInfo('/chat/group-info'),
+  groupGallery('/chat/group-info/gallery'),
   discover('/discover');
 
   const RoutePaths(this.path);

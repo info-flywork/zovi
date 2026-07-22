@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
@@ -123,13 +124,13 @@ class _EditProfileViewState extends State<EditProfileView> {
                       child: GestureDetector(
                         onTap: _changePhoto,
                         behavior: HitTestBehavior.opaque,
-                        child: const Padding(
-                          padding: EdgeInsets.symmetric(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
                             horizontal: 12,
                             vertical: 4,
                           ),
                           child: Text(
-                            'Change photo',
+                            'change_photo'.tr(),
                             style: TextStyle(
                               fontSize: 15,
                               fontWeight: FontWeight.w600,
@@ -143,17 +144,17 @@ class _EditProfileViewState extends State<EditProfileView> {
                     ),
                     const SizedBox(height: 32),
                     _EditProfileRow(
-                      label: 'Name',
+                      label: 'name'.tr(),
                       value: _name,
                       onTap: () => _editField(EditProfileFieldType.name),
                     ),
                     _EditProfileRow(
-                      label: 'Username',
+                      label: 'username'.tr(),
                       value: _username,
                       onTap: () => _editField(EditProfileFieldType.username),
                     ),
                     _EditProfileRow(
-                      label: 'Bio',
+                      label: 'bio'.tr(),
                       value: _bio,
                       onTap: () => _editField(EditProfileFieldType.bio),
                     ),
@@ -189,8 +190,8 @@ class _EditProfileHeader extends StatelessWidget {
             child: const AppIcon(AssetPaths.iconBack, size: 24),
           ),
           const SizedBox(width: 12),
-          const Text(
-            'Edit Profile',
+          Text(
+            'edit_profile_title'.tr(),
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w500,
@@ -285,8 +286,8 @@ class _EditProfileLinksRow extends StatelessWidget {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'Links',
+            Text(
+              'links'.tr(),
               style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w500,

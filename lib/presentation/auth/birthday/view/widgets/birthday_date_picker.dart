@@ -19,21 +19,6 @@ class BirthdayDatePicker extends StatefulWidget {
 }
 
 class _BirthdayDatePickerState extends State<BirthdayDatePicker> {
-  static const _months = [
-    'January',
-    'February',
-    'March',
-    'April',
-    'May',
-    'June',
-    'July',
-    'August',
-    'September',
-    'October',
-    'November',
-    'December',
-  ];
-
   late int _day;
   late int _month;
   late int _year;
@@ -151,7 +136,7 @@ class _BirthdayDatePickerState extends State<BirthdayDatePicker> {
                   controller: _monthController,
                   itemCount: 12,
                   selectedIndex: _month - 1,
-                  labelBuilder: (index) => _months[index],
+                  labelBuilder: (index) => _monthKeys[index].tr(),
                   onSelectedItemChanged: (index) {
                     setState(() => _month = index + 1);
                     _emitDate();

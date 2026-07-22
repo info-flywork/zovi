@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:zovi/core/theme/app_colors.dart';
@@ -11,7 +12,7 @@ class AddPlanSuccessView extends StatelessWidget {
       AssetPaths.avatarSona,
       AssetPaths.avatarJessica,
     ],
-    this.friendsLabel = '5+ friends\nare joining',
+    this.friendsLabel = '5',
     super.key,
   });
 
@@ -35,8 +36,8 @@ class AddPlanSuccessView extends StatelessWidget {
                 fit: BoxFit.contain,
               ),
               const SizedBox(height: 24),
-              const Text(
-                'Plan eklendi! 🎉',
+              Text(
+                'plan_added_title'.tr(),
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 36,
@@ -47,8 +48,8 @@ class AddPlanSuccessView extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 12),
-              const Text(
-                'Arkadaşların planını görebilir.\nYollar kesişirse seni haberdar\nedeceğiz.',
+              Text(
+                'plan_added_subtitle'.tr(),
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 16,
@@ -65,7 +66,7 @@ class AddPlanSuccessView extends StatelessWidget {
                   _AvatarPile(avatars: friendAvatars),
                   const SizedBox(width: 8),
                   Text(
-                    friendsLabel,
+                    'friends_are_joining'.tr(namedArgs: {'count': friendsLabel}),
                     textAlign: TextAlign.left,
                     style: const TextStyle(
                       fontSize: 12,
@@ -88,9 +89,9 @@ class AddPlanSuccessView extends StatelessWidget {
                       color: AppColors.deepRoast,
                       borderRadius: BorderRadius.circular(999),
                     ),
-                    child: const Center(
+                    child: Center(
                       child: Text(
-                        'Continue',
+                        'continue'.tr(),
                         style: TextStyle(
                           fontSize: 17,
                           fontWeight: FontWeight.w600,

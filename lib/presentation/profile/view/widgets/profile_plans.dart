@@ -5,6 +5,14 @@ class ProfilePlans extends StatelessWidget {
 
   final List<PlanItem> plans;
 
+  static String _localizedFriendsLabel(String friendsLabel) {
+    final match = RegExp(r'^(\d+)').firstMatch(friendsLabel.trim());
+    if (match != null) {
+      return 'friends_are_joining'.tr(namedArgs: {'count': match.group(1)!});
+    }
+    return friendsLabel;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Padding(
@@ -17,7 +25,7 @@ class ProfilePlans extends StatelessWidget {
               SizedBox(width: 6),
               Expanded(
                 child: Text(
-                  "Today Plan's",
+                  'today_plans'.tr(),
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
@@ -30,13 +38,13 @@ class ProfilePlans extends StatelessWidget {
               InkWell(
                 onTap: () => context.push(RoutePaths.addPlan.path),
                 borderRadius: BorderRadius.circular(8),
-                child: const Row(
+                child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(Icons.add, size: 24, color: AppColors.zoviOrange),
-                    SizedBox(width: 2),
+                    const Icon(Icons.add, size: 24, color: AppColors.zoviOrange),
+                    const SizedBox(width: 2),
                     Text(
-                      'Add Plan',
+                      'add_plan'.tr(),
                       style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w500,
@@ -127,7 +135,7 @@ class _PlanCard extends StatelessWidget {
           _OverlappingAvatars(avatars: plan.friendAvatars),
           const SizedBox(width: 6),
           Text(
-            plan.friendsLabel,
+            ProfilePlans._localizedFriendsLabel(plan.friendsLabel),
             textAlign: TextAlign.center,
             maxLines: 2,
             overflow: TextOverflow.ellipsis,

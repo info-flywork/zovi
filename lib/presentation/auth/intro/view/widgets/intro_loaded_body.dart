@@ -38,7 +38,7 @@ class IntroLoadedBody extends StatelessWidget {
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
           child: AppButton(
-            label: isLast ? 'Get Started' : 'Continue',
+            label: isLast ? 'get_started'.tr() : 'continue'.tr(),
             onPressed: isLast ? onGetStarted : onContinue,
           ),
         ),

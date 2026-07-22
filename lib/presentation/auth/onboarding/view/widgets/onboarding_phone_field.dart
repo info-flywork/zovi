@@ -80,9 +80,9 @@ class _OnboardingPhoneFieldState extends State<OnboardingPhoneField> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'Telefon numarası',
-          style: TextStyle(
+        Text(
+          'phone_number'.tr(),
+          style: const TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.w500,
             color: AppColors.textSecondary,
