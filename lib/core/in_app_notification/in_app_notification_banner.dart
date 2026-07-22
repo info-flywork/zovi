@@ -6,6 +6,7 @@ import 'package:zovi/core/in_app_notification/in_app_notification_data.dart';
 import 'package:zovi/core/theme/app_colors.dart';
 import 'package:zovi/core/utils/constants/asset_paths.dart';
 import 'package:zovi/core/widgets/app_icon.dart';
+import 'package:zovi/core/widgets/profile_avatar.dart';
 
 class InAppNotificationBanner extends StatefulWidget {
   const InAppNotificationBanner({
@@ -61,9 +62,11 @@ class _InAppNotificationBannerState extends State<InAppNotificationBanner> {
                   ),
                   child: Row(
                     children: [
-                      _Avatar(
+                      ProfileAvatar(
                         path: widget.data.avatarPath,
+                        size: 60,
                         showGradientRing: widget.data.showGradientRing,
+                        ringGapColor: const Color(0xFF262626),
                       ),
                       const SizedBox(width: 10),
                       Expanded(child: _MessageText(data: widget.data)),
@@ -98,52 +101,6 @@ class _InAppNotificationBannerState extends State<InAppNotificationBanner> {
         true,
       _ => false,
     };
-  }
-}
-
-class _Avatar extends StatelessWidget {
-  const _Avatar({required this.path, required this.showGradientRing});
-
-  final String path;
-  final bool showGradientRing;
-
-  static const _gradient = LinearGradient(
-    begin: Alignment.topLeft,
-    end: Alignment.bottomRight,
-    colors: [
-      Color(0xFFE8622A),
-      Color(0xFFF2A05A),
-      Color(0xFFDA87FD),
-    ],
-  );
-
-  @override
-  Widget build(BuildContext context) {
-    if (!showGradientRing) {
-      return ClipOval(
-        child: Image.asset(path, width: 60, height: 60, fit: BoxFit.cover),
-      );
-    }
-
-    return Container(
-      width: 60,
-      height: 60,
-      padding: const EdgeInsets.all(3),
-      decoration: const BoxDecoration(
-        shape: BoxShape.circle,
-        gradient: _gradient,
-      ),
-      child: Container(
-        decoration: const BoxDecoration(
-          shape: BoxShape.circle,
-          color: Color(0xFF262626),
-        ),
-        padding: const EdgeInsets.all(2),
-        child: ClipOval(
-          child: Image.asset(path, fit: BoxFit.cover),
-        ),
-      ),
-    );
   }
 }
 

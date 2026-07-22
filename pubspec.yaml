@@ -31,6 +31,10 @@ dependencies:
   record: ^7.1.1
   path_provider: ^2.1.6
   audioplayers: ^6.8.1
+  flutter_map: ^8.3.1
+  latlong2: ^0.10.1
+  geolocator: ^14.0.2
+  geocoding: ^5.0.0
 
 dev_dependencies:
   flutter_test:

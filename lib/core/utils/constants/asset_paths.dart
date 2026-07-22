@@ -9,6 +9,7 @@ abstract final class AssetPaths {
   static const String iconAddBlack = 'assets/icons/add-black.svg';
   static const String iconReelsSquare = 'assets/icons/reels_square.svg';
   static const String iconAddCircle = 'assets/icons/add_circle.svg';
+  static const String iconAddCircleBlack = 'assets/icons/add-circle_black.svg';
   static const String iconSettings = 'assets/icons/settings.svg';
   static const String iconLocation = 'assets/icons/location.svg';
   static const String iconCamera = 'assets/icons/camera.svg';
@@ -16,6 +17,7 @@ abstract final class AssetPaths {
   static const String iconChat = 'assets/icons/chat.svg';
   static const String iconNavigate = 'assets/icons/navigate.svg';
   static const String iconAdd = 'assets/icons/add.svg';
+  static const String iconAdd2 = 'assets/icons/add2.svg';
   static const String iconStreakFlame = 'assets/icons/streak_flame.svg';
   static const String iconClose = 'assets/icons/close.svg';
   static const String iconVerified = 'assets/icons/verified.svg';
@@ -34,6 +36,7 @@ abstract final class AssetPaths {
   static const String iconExportCircle = 'assets/icons/export_circle.svg';
   static const String iconSettingsProfile = 'assets/icons/settings_profile.svg';
   static const String iconSetting = 'assets/icons/setting.svg';
+  static const String iconSetting2 = 'assets/icons/setting_2.svg';
   static const String iconLocationSmall = 'assets/icons/location_small.svg';
   static const String iconLocationDark = 'assets/icons/location_dark.svg';
   static const String iconProfileClip = 'assets/icons/profile_clip.svg';

@@ -26,4 +26,14 @@ abstract final class AppColors {
   static const Color logoutRed = Color(0xFFE30A17);
   static const Color chatPurple = Color(0xFF7B2FFF);
   static const Color chatBubbleIncoming = Color(0xFFF4F4F9);
+  static const Color mintGreen = Color(0xFF00C896);
+
+  /// Story / profil halkası gradyanı (#E8622A → #F2A05A → #DA87FD).
+  static const Color storyRingStart = Color(0xFFE8622A);
+  static const Color storyRingEnd = Color(0xFFDA87FD);
+  static const LinearGradient storyRingGradient = LinearGradient(
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+    colors: [storyRingStart, warmAmber, storyRingEnd],
+  );
 }

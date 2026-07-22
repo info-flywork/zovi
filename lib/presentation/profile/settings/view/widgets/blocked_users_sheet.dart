@@ -47,11 +47,6 @@ class BlockedUsersSheet extends StatefulWidget {
 }
 
 class _BlockedUsersSheetState extends State<BlockedUsersSheet> {
-  static const _avatarGradient = [
-    Color(0xFFE8622A),
-    Color(0xFFF2A05A),
-    Color(0xFFDA87FD),
-  ];
   static const _removeDuration = Duration(milliseconds: 280);
 
   GlobalKey<AnimatedListState> _listKey = GlobalKey<AnimatedListState>();
@@ -95,7 +90,6 @@ class _BlockedUsersSheetState extends State<BlockedUsersSheet> {
       index,
       (context, animation) => _BlockedUserRemoveTile(
         user: removed,
-        gradientColors: _avatarGradient,
         animation: animation,
       ),
       duration: _removeDuration,
@@ -194,7 +188,6 @@ class _BlockedUsersSheetState extends State<BlockedUsersSheet> {
                           final user = _visibleUsers[index];
                           return _BlockedUserRemoveTile(
                             user: user,
-                            gradientColors: _avatarGradient,
                             animation: animation,
                             onUnblock: () => _unblock(user),
                           );
@@ -212,13 +205,11 @@ class _BlockedUsersSheetState extends State<BlockedUsersSheet> {
 class _BlockedUserRemoveTile extends StatelessWidget {
   const _BlockedUserRemoveTile({
     required this.user,
-    required this.gradientColors,
     required this.animation,
     this.onUnblock,
   });
 
   final BlockedUser user;
-  final List<Color> gradientColors;
   final Animation<double> animation;
   final VoidCallback? onUnblock;
 
@@ -241,7 +232,6 @@ class _BlockedUserRemoveTile extends StatelessWidget {
             padding: const EdgeInsets.only(bottom: 12),
             child: _BlockedUserRow(
               user: user,
-              gradientColors: gradientColors,
               onUnblock: onUnblock ?? () {},
             ),
           ),
@@ -288,34 +278,21 @@ class _BlockedEmptyState extends StatelessWidget {
 class _BlockedUserRow extends StatelessWidget {
   const _BlockedUserRow({
     required this.user,
-    required this.gradientColors,
     required this.onUnblock,
   });
 
   final BlockedUser user;
-  final List<Color> gradientColors;
   final VoidCallback onUnblock;
 
   @override
   Widget build(BuildContext context) {
     return Row(
       children: [
-        Container(
-          width: 48,
-          height: 48,
-          padding: const EdgeInsets.all(3),
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            gradient: LinearGradient(colors: gradientColors),
-          ),
-          child: Container(
-            decoration: const BoxDecoration(
-              shape: BoxShape.circle,
-              color: AppColors.white,
-            ),
-            padding: const EdgeInsets.all(1.5),
-            child: ProfileAvatar(path: user.avatarPath, size: 39),
-          ),
+        ProfileAvatar(
+          path: user.avatarPath,
+          size: 48,
+          showGradientRing: true,
+          ringGap: 1.5,
         ),
         const SizedBox(width: 12),
         Expanded(

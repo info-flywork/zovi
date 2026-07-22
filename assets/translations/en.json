@@ -98,6 +98,9 @@
   "camera_coming_soon": "Camera coming soon",
   "story_create_coming_soon": "Story creation coming soon",
   "check_in_coming_soon": "Check-in coming soon",
+  "location_service_disabled": "Location services are off. Please turn them on and try again.",
+  "location_permission_denied": "Location permission denied. Enable it in Settings and try again.",
+  "location_unavailable": "Couldn't get your location. Tap the green button to retry.",
 
   "stories_title": "Stories",
   "stories_empty": "No stories found",

@@ -98,6 +98,9 @@
   "camera_coming_soon": "Kamera yakında",
   "story_create_coming_soon": "Story oluşturma yakında",
   "check_in_coming_soon": "Check-in yakında",
+  "location_service_disabled": "Konum servisleri kapalı. Lütfen açıp tekrar dene.",
+  "location_permission_denied": "Konum izni yok. Ayarlardan izin verip tekrar dene.",
+  "location_unavailable": "Konum alınamadı. Yeşil butona basıp tekrar dene.",
 
   "stories_title": "Stories",
   "stories_empty": "Story bulunamadı",

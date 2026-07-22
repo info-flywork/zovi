@@ -15,6 +15,7 @@ class HomeStoriesRow extends StatelessWidget {
     return SizedBox(
       height: 110,
       child: ListView.separated(
+        physics: const ClampingScrollPhysics(),
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 16),
         itemCount: stories.length,
@@ -30,31 +31,19 @@ class HomeStoriesRow extends StatelessWidget {
                   Stack(
                     clipBehavior: Clip.none,
                     children: [
-                      Container(
-                        width: 68,
-                        height: 68,
-                        padding: const EdgeInsets.all(3),
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          border: story.hasStory
-                              ? Border.all(
-                                  color: AppColors.zoviOrange,
-                                  width: 3,
-                                )
-                              : null,
-                        ),
-                        child: ClipOval(
-                          child: Image.asset(
-                            story.avatarPath,
-                            fit: BoxFit.cover,
-                          ),
-                        ),
+                      ProfileAvatar(
+                        path: story.avatarPath,
+                        size: 68,
+                        showGradientRing: story.hasStory,
                       ),
                       if (story.isYou)
                         const Positioned(
-                          right: -2,
-                          bottom: -2,
-                          child: AppIcon(AssetPaths.iconAddCircle, size: 24),
+                          right: 0,
+                          bottom: -3,
+                          child: AppIcon(
+                            AssetPaths.iconAddCircleBlack,
+                            size: 24,
+                          ),
                         ),
                     ],
                   ),
