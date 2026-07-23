@@ -67,9 +67,6 @@ class _ProfileConnectionsViewState extends State<ProfileConnectionsView>
           ? 1
           : 0,
     );
-    _tabController.addListener(() {
-      if (!_tabController.indexIsChanging) setState(() {});
-    });
   }
 
   @override
@@ -217,26 +214,17 @@ class _ProfileConnectionsViewState extends State<ProfileConnectionsView>
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: AnimatedBuilder(
-              animation: _tabController,
+              animation: _tabController.animation!,
               builder: (context, _) {
-                return Row(
-                  children: [
-                    Expanded(
-                      child: _ConnectionsTab(
-                        label: followersLabel,
-                        selected: _tabController.index == 0,
-                        onTap: () => _tabController.animateTo(0),
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: _ConnectionsTab(
-                        label: friendsLabel,
-                        selected: _tabController.index == 1,
-                        onTap: () => _tabController.animateTo(1),
-                      ),
-                    ),
-                  ],
+                final progress = _tabController.animation!.value.clamp(
+                  0.0,
+                  1.0,
+                );
+                return _ConnectionsTabBar(
+                  followersLabel: followersLabel,
+                  friendsLabel: friendsLabel,
+                  progress: progress,
+                  onSelect: (index) => _tabController.animateTo(index),
                 );
               },
             ),
@@ -270,15 +258,80 @@ class _ProfileConnectionsViewState extends State<ProfileConnectionsView>
 
 enum _ConnectionListMode { followers, friends }
 
+class _ConnectionsTabBar extends StatelessWidget {
+  const _ConnectionsTabBar({
+    required this.followersLabel,
+    required this.friendsLabel,
+    required this.progress,
+    required this.onSelect,
+  });
+
+  final String followersLabel;
+  final String friendsLabel;
+  final double progress;
+  final ValueChanged<int> onSelect;
+
+  static const _gap = 10.0;
+  static const _inactive = Color(0x801A1714);
+
+  @override
+  Widget build(BuildContext context) {
+    final followersColor = Color.lerp(
+      AppColors.zoviOrange,
+      _inactive,
+      progress,
+    )!;
+    final friendsColor = Color.lerp(_inactive, AppColors.zoviOrange, progress)!;
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final tabWidth = (constraints.maxWidth - _gap) / 2;
+        return Stack(
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: _ConnectionsTab(
+                    label: followersLabel,
+                    color: followersColor,
+                    onTap: () => onSelect(0),
+                  ),
+                ),
+                const SizedBox(width: _gap),
+                Expanded(
+                  child: _ConnectionsTab(
+                    label: friendsLabel,
+                    color: friendsColor,
+                    onTap: () => onSelect(1),
+                  ),
+                ),
+              ],
+            ),
+            Positioned(
+              left: progress * (tabWidth + _gap),
+              bottom: 0,
+              width: tabWidth,
+              child: const ColoredBox(
+                color: AppColors.zoviOrange,
+                child: SizedBox(height: 1),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
+
 class _ConnectionsTab extends StatelessWidget {
   const _ConnectionsTab({
     required this.label,
-    required this.selected,
+    required this.color,
     required this.onTap,
   });
 
   final String label;
-  final bool selected;
+  final Color color;
   final VoidCallback onTap;
 
   @override
@@ -286,19 +339,8 @@ class _ConnectionsTab extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       behavior: HitTestBehavior.opaque,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 220),
-        curve: Curves.easeOutCubic,
-        width: double.infinity,
+      child: Padding(
         padding: const EdgeInsets.all(10),
-        decoration: BoxDecoration(
-          border: Border(
-            bottom: BorderSide(
-              color: selected ? AppColors.zoviOrange : Colors.transparent,
-              width: 1,
-            ),
-          ),
-        ),
         child: Text(
           label,
           textAlign: TextAlign.center,
@@ -309,9 +351,7 @@ class _ConnectionsTab extends StatelessWidget {
             fontWeight: FontWeight.w500,
             height: 1,
             letterSpacing: -0.32,
-            color: selected
-                ? AppColors.zoviOrange
-                : AppColors.deepRoast.withValues(alpha: 0.5),
+            color: color,
           ),
         ),
       ),
