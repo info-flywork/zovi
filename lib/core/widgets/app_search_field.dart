@@ -60,8 +60,9 @@ class _AppSearchFieldState extends State<AppSearchField> {
   Widget build(BuildContext context) {
     final isDark = widget.isDark;
     final fill = isDark ? const Color(0xFF2C2C2E) : const Color(0xFFF4F4F9);
-    final hintColor =
-        isDark ? const Color(0x99FFFFFF) : const Color(0xFFB9B9C6);
+    final hintColor = isDark
+        ? const Color(0x99FFFFFF)
+        : const Color(0xFFB9B9C6);
     final textColor = isDark ? AppColors.white : AppColors.deepRoast;
     final iconColor = isDark ? AppColors.white : null;
 

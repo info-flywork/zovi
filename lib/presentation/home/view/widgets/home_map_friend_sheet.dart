@@ -19,6 +19,9 @@ class HomeMapFriendSheet extends StatefulWidget {
 class _HomeMapFriendSheetState extends State<HomeMapFriendSheet> {
   late final TextEditingController _controller = TextEditingController();
 
+  static const _thumbSize = 68.0;
+  static const _stampSize = 32.0;
+
   @override
   void dispose() {
     _controller.dispose();
@@ -26,9 +29,7 @@ class _HomeMapFriendSheetState extends State<HomeMapFriendSheet> {
   }
 
   void _submit() {
-    final text = _controller.text.trim();
-    if (text.isEmpty) return;
-    widget.onSend(text);
+    widget.onSend(_controller.text.trim());
   }
 
   @override
@@ -36,6 +37,7 @@ class _HomeMapFriendSheetState extends State<HomeMapFriendSheet> {
     final friend = widget.friend;
     final minutes = friend.etaMinutes ?? 10;
     final distance = friend.distanceMeters ?? 50;
+    final checkIn = friend.checkIn;
 
     return Material(
       color: Colors.transparent,
@@ -60,12 +62,42 @@ class _HomeMapFriendSheetState extends State<HomeMapFriendSheet> {
               behavior: HitTestBehavior.opaque,
               child: Row(
                 children: [
-                  ProfileAvatar(
-                    path: friend.avatarPath,
-                    size: 68,
-                    showGradientRing: true,
-                    ringWidth: 3,
-                  ),
+                  if (checkIn != null)
+                    SizedBox(
+                      width: _thumbSize + 8,
+                      height: _thumbSize + 8,
+                      child: Stack(
+                        clipBehavior: Clip.none,
+                        children: [
+                          CheckInCyclingPhoto(
+                            paths: checkIn.photoPaths,
+                            size: _thumbSize,
+                            borderRadius: BorderRadius.circular(16),
+                            padding: const EdgeInsets.all(3),
+                            gradient: AppColors.storyRingGradient,
+                            indexListenable: getIt<UserRepository>()
+                                .friendCheckInPhotoIndexListenable(friend.name),
+                          ),
+                          Positioned(
+                            right: -2,
+                            bottom: -2,
+                            child: Image.asset(
+                              checkIn.stampImagePath,
+                              width: _stampSize,
+                              height: _stampSize,
+                              fit: BoxFit.contain,
+                            ),
+                          ),
+                        ],
+                      ),
+                    )
+                  else
+                    ProfileAvatar(
+                      path: friend.avatarPath,
+                      size: 68,
+                      showGradientRing: true,
+                      ringWidth: 3,
+                    ),
                   const SizedBox(width: 10),
                   Expanded(
                     child: Column(
@@ -93,7 +125,13 @@ class _HomeMapFriendSheetState extends State<HomeMapFriendSheet> {
                         if (friend.locationLabel != null) ...[
                           const SizedBox(height: 4),
                           Text(
-                            friend.locationLabel!,
+                            friend.hasCheckIn
+                                ? 'map_friend_check_in_location'.tr(
+                                    namedArgs: {
+                                      'location': friend.locationLabel!,
+                                    },
+                                  )
+                                : friend.locationLabel!,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: const TextStyle(

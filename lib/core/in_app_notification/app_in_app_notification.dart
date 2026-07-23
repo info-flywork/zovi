@@ -28,10 +28,16 @@ class AppInAppNotification {
     final context = AppRouter.rootKey.currentContext;
     if (context == null) return;
 
-    final overlay = Overlay.maybeOf(context, rootOverlay: true);
+    final overlay = Overlay.maybeOf(context, rootOverlay: true) ??
+        AppRouter.rootKey.currentState?.overlay;
     if (overlay == null) return;
 
-    hide(immediate: true);
+    // Önceki banner’ı senkron kaldır; async race olmasın.
+    _autoHide?.cancel();
+    _autoHide = null;
+    _entry?.remove();
+    _entry = null;
+    _host = null;
 
     _entry = OverlayEntry(
       builder: (context) {
@@ -46,7 +52,6 @@ class AppInAppNotification {
 
     overlay.insert(_entry!);
 
-    _autoHide?.cancel();
     _autoHide = Timer(displayDuration, hide);
   }
 
@@ -136,21 +141,39 @@ class _InAppNotificationHostState extends State<_InAppNotificationHost>
     with SingleTickerProviderStateMixin {
   late final AnimationController _controller = AnimationController(
     vsync: this,
-    duration: const Duration(milliseconds: 280),
-    reverseDuration: const Duration(milliseconds: 220),
+    duration: const Duration(milliseconds: 380),
+    reverseDuration: const Duration(milliseconds: 260),
   );
 
-  late final Animation<double> _animation = CurvedAnimation(
+  late final CurvedAnimation _curved = CurvedAnimation(
     parent: _controller,
     curve: Curves.easeOutCubic,
     reverseCurve: Curves.easeInCubic,
   );
 
+  late final Animation<Offset> _slide = Tween<Offset>(
+    begin: const Offset(0, -1.15),
+    end: Offset.zero,
+  ).animate(_curved);
+
+  late final Animation<double> _fade = Tween<double>(
+    begin: 0,
+    end: 1,
+  ).animate(_curved);
+
+  late final Animation<double> _scale = Tween<double>(
+    begin: 0.94,
+    end: 1,
+  ).animate(_curved);
+
   @override
   void initState() {
     super.initState();
     widget.onReady(this);
-    _controller.forward();
+    // İlk frame kapalı başlasın, sonra animasyonla açılsın.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _controller.forward();
+    });
   }
 
   Future<void> reverse() async {
@@ -162,27 +185,38 @@ class _InAppNotificationHostState extends State<_InAppNotificationHost>
 
   @override
   void dispose() {
+    _curved.dispose();
     _controller.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _animation,
-      builder: (context, child) {
-        return Opacity(
-          opacity: _animation.value,
-          child: Transform.translate(
-            offset: Offset(0, (1 - _animation.value) * -24),
-            child: child,
+    final top = MediaQuery.paddingOf(context).top + 8;
+
+    return Material(
+      type: MaterialType.transparency,
+      child: Align(
+        alignment: Alignment.topCenter,
+        child: Padding(
+          padding: EdgeInsets.fromLTRB(16, top, 16, 0),
+          child: SlideTransition(
+            position: _slide,
+            child: FadeTransition(
+              opacity: _fade,
+              child: ScaleTransition(
+                scale: _scale,
+                alignment: Alignment.topCenter,
+                child: InAppNotificationBanner(
+                  data: widget.data,
+                  onDismiss: widget.onDismiss,
+                  onAction: widget.onAction,
+                  embedInHost: true,
+                ),
+              ),
+            ),
           ),
-        );
-      },
-      child: InAppNotificationBanner(
-        data: widget.data,
-        onDismiss: widget.onDismiss,
-        onAction: widget.onAction,
+        ),
       ),
     );
   }

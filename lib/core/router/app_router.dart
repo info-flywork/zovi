@@ -38,10 +38,14 @@ import 'package:zovi/presentation/chat/view/group_info_view.dart';
 import 'package:zovi/presentation/discover/bloc/discover_bloc.dart';
 import 'package:zovi/presentation/discover/view/discover_view.dart';
 import 'package:zovi/presentation/home/bloc/home_bloc.dart';
+import 'package:zovi/presentation/home/model/check_in_success_route_args.dart';
+import 'package:zovi/presentation/home/view/check_in_success_view.dart';
 import 'package:zovi/presentation/home/view/home_view.dart';
 import 'package:zovi/presentation/home/view/tribe_view.dart';
 import 'package:zovi/presentation/notifications/view/notifications_view.dart';
 import 'package:zovi/presentation/profile/bloc/profile_bloc.dart';
+import 'package:zovi/presentation/profile/connections/model/profile_connections_route_args.dart';
+import 'package:zovi/presentation/profile/connections/view/profile_connections_view.dart';
 import 'package:zovi/presentation/profile/edit/model/edit_profile_field_route_args.dart';
 import 'package:zovi/presentation/profile/edit/model/edit_profile_links_route_args.dart';
 import 'package:zovi/presentation/profile/edit/model/edit_profile_route_args.dart';
@@ -184,6 +188,20 @@ abstract final class AppRouter {
           child: const LocationPermissionView(),
         ),
       ),
+      GoRoute(
+        path: RoutePaths.checkInSuccess.path,
+        name: RoutePaths.checkInSuccess.name,
+        redirect: (context, state) {
+          if (state.extra is! CheckInSuccessRouteArgs) {
+            return RoutePaths.home.path;
+          }
+          return null;
+        },
+        builder: (context, state) {
+          final args = state.extra! as CheckInSuccessRouteArgs;
+          return CheckInSuccessView(args: args);
+        },
+      ),
       ShellRoute(
         navigatorKey: shellKey,
         builder: (context, state, child) => MainWrapper(child: child),
@@ -234,6 +252,20 @@ abstract final class AppRouter {
         builder: (context, state) {
           final args = state.extra! as StoryDetailRouteArgs;
           return StoryDetailView(args: args);
+        },
+      ),
+      GoRoute(
+        path: RoutePaths.profileConnections.path,
+        name: RoutePaths.profileConnections.name,
+        redirect: (context, state) {
+          if (state.extra is! ProfileConnectionsRouteArgs) {
+            return RoutePaths.profile.path;
+          }
+          return null;
+        },
+        builder: (context, state) {
+          final args = state.extra! as ProfileConnectionsRouteArgs;
+          return ProfileConnectionsView(args: args);
         },
       ),
       GoRoute(

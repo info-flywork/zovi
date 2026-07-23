@@ -1,0 +1,112 @@
+part of '../home_view.dart';
+
+class HomeMapLastCheckInSheet extends StatelessWidget {
+  const HomeMapLastCheckInSheet({
+    required this.checkIn,
+    required this.onClose,
+    super.key,
+  });
+
+  final ActiveMapCheckIn checkIn;
+  final VoidCallback onClose;
+
+  static const _thumbSize = 68.0;
+  static const _stampSize = 32.0;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: Container(
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          color: AppColors.white,
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x1A000000),
+              blurRadius: 4,
+              offset: Offset(0, 2),
+            ),
+          ],
+        ),
+        child: GestureDetector(
+          onTap: onClose,
+          behavior: HitTestBehavior.opaque,
+          child: Row(
+            children: [
+              SizedBox(
+                width: _thumbSize + 8,
+                height: _thumbSize + 8,
+                child: Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    CheckInCyclingPhoto(
+                      paths: checkIn.photoPaths,
+                      size: _thumbSize,
+                      borderRadius: BorderRadius.circular(16),
+                      padding: const EdgeInsets.all(3),
+                      gradient: AppColors.storyRingGradient,
+                      indexListenable:
+                          getIt<UserRepository>().checkInPhotoIndexListenable,
+                    ),
+                    Positioned(
+                      right: -2,
+                      bottom: -2,
+                      child: Image.asset(
+                        checkIn.stampImagePath,
+                        width: _stampSize,
+                        height: _stampSize,
+                        fit: BoxFit.contain,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      'last_check_in_title'.tr(),
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        height: 18 / 16,
+                        color: AppColors.black,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      checkIn.placeName,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        height: 18 / 14,
+                        color: AppColors.zoviOrange,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'last_check_in_time'.tr(),
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                        height: 1,
+                        color: AppColors.deepRoast.withValues(alpha: 0.35),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}

@@ -675,6 +675,24 @@ class _MemberProfileSheet extends StatelessWidget {
                 );
               },
             ),
+            const SizedBox(height: 16),
+            GestureDetector(
+              onTap: () => Navigator.of(context).pop(),
+              behavior: HitTestBehavior.opaque,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 4),
+                child: Text(
+                  'group_info_view_profile'.tr(),
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    height: 20 / 16,
+                    color: AppColors.deepRoast,
+                  ),
+                ),
+              ),
+            ),
           ],
         ),
       ),

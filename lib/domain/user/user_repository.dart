@@ -1,4 +1,7 @@
+import 'dart:async';
+
 import 'package:equatable/equatable.dart';
+import 'package:flutter/foundation.dart';
 import 'package:zovi/core/utils/constants/asset_paths.dart';
 
 // Domain keeps map marker positions as normalized x/y (-1..1).
@@ -140,6 +143,7 @@ class MapFriend extends Equatable {
     this.distanceMeters,
     this.locationLabel,
     this.etaMinutes,
+    this.checkIn,
   });
 
   final String name;
@@ -151,6 +155,36 @@ class MapFriend extends Equatable {
   final int? distanceMeters;
   final String? locationLabel;
   final int? etaMinutes;
+  final FriendMapCheckIn? checkIn;
+
+  bool get hasCheckIn => checkIn != null;
+
+  MapFriend copyWith({
+    String? name,
+    String? avatarPath,
+    int? streak,
+    double? x,
+    double? y,
+    bool? isFriend,
+    int? distanceMeters,
+    String? locationLabel,
+    int? etaMinutes,
+    FriendMapCheckIn? checkIn,
+    bool clearCheckIn = false,
+  }) {
+    return MapFriend(
+      name: name ?? this.name,
+      avatarPath: avatarPath ?? this.avatarPath,
+      streak: streak ?? this.streak,
+      x: x ?? this.x,
+      y: y ?? this.y,
+      isFriend: isFriend ?? this.isFriend,
+      distanceMeters: distanceMeters ?? this.distanceMeters,
+      locationLabel: locationLabel ?? this.locationLabel,
+      etaMinutes: etaMinutes ?? this.etaMinutes,
+      checkIn: clearCheckIn ? null : (checkIn ?? this.checkIn),
+    );
+  }
 
   @override
   List<Object?> get props => [
@@ -163,7 +197,26 @@ class MapFriend extends Equatable {
         distanceMeters,
         locationLabel,
         etaMinutes,
+        checkIn,
       ];
+}
+
+/// Arkadaşın haritadaki aktif check-in’i.
+class FriendMapCheckIn extends Equatable {
+  const FriendMapCheckIn({
+    required this.photoPaths,
+    required this.stampImagePath,
+    required this.placeName,
+    this.checkedAt,
+  });
+
+  final List<String> photoPaths;
+  final String stampImagePath;
+  final String placeName;
+  final DateTime? checkedAt;
+
+  @override
+  List<Object?> get props => [photoPaths, stampImagePath, placeName, checkedAt];
 }
 
 class MapVenue extends Equatable {
@@ -236,6 +289,39 @@ class StampItem extends Equatable {
   List<Object?> get props => [imagePath, title];
 }
 
+class ActiveMapCheckIn extends Equatable {
+  const ActiveMapCheckIn({
+    required this.stampImagePath,
+    required this.photoPaths,
+    required this.placeName,
+    this.avatarPath = AssetPaths.avatarYou,
+    this.checkedAt,
+  });
+
+  final String stampImagePath;
+  final List<String> photoPaths;
+  final String placeName;
+  final String avatarPath;
+  final DateTime? checkedAt;
+
+  String get photoPath =>
+      photoPaths.isNotEmpty ? photoPaths.first : AssetPaths.mapSecondAvatar;
+
+  static bool isFilePath(String path) =>
+      path.isNotEmpty && !path.startsWith('assets/');
+
+  bool get isFilePhoto => isFilePath(photoPath);
+
+  @override
+  List<Object?> get props => [
+        stampImagePath,
+        photoPaths,
+        placeName,
+        avatarPath,
+        checkedAt,
+      ];
+}
+
 class PlanItem extends Equatable {
   const PlanItem({
     required this.time,
@@ -278,6 +364,81 @@ class UserRepository {
       ),
     ],
   );
+
+  ActiveMapCheckIn? _activeMapCheckIn;
+  final activeMapCheckInListenable = ValueNotifier<ActiveMapCheckIn?>(null);
+  final checkInPhotoIndexListenable = ValueNotifier<int>(0);
+  final mapFriendsListenable = ValueNotifier<List<MapFriend>>(const []);
+  Timer? _checkInPhotoTimer;
+  final _friendPhotoIndexes = <String, ValueNotifier<int>>{};
+  final _friendPhotoTimers = <String, Timer>{};
+
+  ActiveMapCheckIn? get activeMapCheckIn => _activeMapCheckIn;
+
+  /// Marker + sheet aynı indeksi paylaşsın diye arkadaş bazlı foto döngüsü.
+  ValueListenable<int> friendCheckInPhotoIndexListenable(String name) {
+    return _friendPhotoIndexes.putIfAbsent(
+      name,
+      () => ValueNotifier<int>(0),
+    );
+  }
+
+  void setActiveMapCheckIn(ActiveMapCheckIn? checkIn) {
+    _activeMapCheckIn = checkIn;
+    activeMapCheckInListenable.value = checkIn;
+    _restartCheckInPhotoCycle(checkIn);
+  }
+
+  void _restartCheckInPhotoCycle(ActiveMapCheckIn? checkIn) {
+    _checkInPhotoTimer?.cancel();
+    _checkInPhotoTimer = null;
+    checkInPhotoIndexListenable.value = 0;
+    final paths = checkIn?.photoPaths ?? const <String>[];
+    if (paths.length < 2) return;
+    _checkInPhotoTimer = Timer.periodic(const Duration(seconds: 5), (_) {
+      final len = _activeMapCheckIn?.photoPaths.length ?? 0;
+      if (len < 2) return;
+      checkInPhotoIndexListenable.value =
+          (checkInPhotoIndexListenable.value + 1) % len;
+    });
+  }
+
+  void _syncFriendPhotoCycles(List<MapFriend> friends) {
+    final activeNames = <String>{};
+    for (final friend in friends) {
+      final checkIn = friend.checkIn;
+      if (checkIn == null) continue;
+      activeNames.add(friend.name);
+      _restartFriendPhotoCycle(friend.name, checkIn.photoPaths);
+    }
+    for (final name in _friendPhotoTimers.keys.toList()) {
+      if (activeNames.contains(name)) continue;
+      _friendPhotoTimers.remove(name)?.cancel();
+      _friendPhotoIndexes[name]?.value = 0;
+    }
+  }
+
+  void _restartFriendPhotoCycle(String name, List<String> photoPaths) {
+    _friendPhotoTimers.remove(name)?.cancel();
+    final index = _friendPhotoIndexes.putIfAbsent(
+      name,
+      () => ValueNotifier<int>(0),
+    );
+    index.value = 0;
+    if (photoPaths.length < 2) return;
+    _friendPhotoTimers[name] = Timer.periodic(const Duration(seconds: 5), (_) {
+      MapFriend? friend;
+      for (final f in mapFriendsListenable.value) {
+        if (f.name == name) {
+          friend = f;
+          break;
+        }
+      }
+      final len = friend?.checkIn?.photoPaths.length ?? 0;
+      if (len < 2) return;
+      index.value = (index.value + 1) % len;
+    });
+  }
 
   Future<UserProfile> getCurrentUser() async {
     await Future<void>.delayed(const Duration(milliseconds: 300));
@@ -391,7 +552,7 @@ class UserRepository {
   }
 
   Future<List<MapFriend>> getMapFriends() async {
-    return const [
+    const friends = [
       MapFriend(
         name: 'Lyra',
         avatarPath: AssetPaths.avatarLyra,
@@ -401,6 +562,11 @@ class UserRepository {
         locationLabel: 'Silver Lake, Los Angeles',
         etaMinutes: 15,
         distanceMeters: 120,
+        checkIn: FriendMapCheckIn(
+          photoPaths: [AssetPaths.mapFirst, AssetPaths.pulse1],
+          stampImagePath: AssetPaths.stamp3,
+          placeName: 'Silver Lake, Los Angeles',
+        ),
       ),
       MapFriend(
         name: 'Sona',
@@ -413,6 +579,45 @@ class UserRepository {
         distanceMeters: 50,
       ),
     ];
+    mapFriendsListenable.value = friends;
+    _syncFriendPhotoCycles(friends);
+    return friends;
+  }
+
+  /// Arkadaş check-in’ini haritada anlık günceller.
+  MapFriend? applyFriendCheckIn({
+    required String name,
+    required FriendMapCheckIn checkIn,
+    double? x,
+    double? y,
+    int? distanceMeters,
+    int? etaMinutes,
+  }) {
+    final current = mapFriendsListenable.value;
+    if (current.isEmpty) return null;
+
+    MapFriend? updatedFriend;
+    final next = <MapFriend>[];
+    for (final friend in current) {
+      if (friend.name != name) {
+        next.add(friend);
+        continue;
+      }
+      updatedFriend = friend.copyWith(
+        checkIn: checkIn,
+        x: x,
+        y: y,
+        distanceMeters: distanceMeters,
+        etaMinutes: etaMinutes,
+        locationLabel: checkIn.placeName,
+      );
+      next.add(updatedFriend);
+    }
+
+    if (updatedFriend == null) return null;
+    mapFriendsListenable.value = next;
+    _restartFriendPhotoCycle(name, checkIn.photoPaths);
+    return updatedFriend;
   }
 
   Future<List<MapFriend>> getMapNearbyAnons() async {

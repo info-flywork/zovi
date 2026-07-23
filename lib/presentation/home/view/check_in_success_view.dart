@@ -1,0 +1,346 @@
+import 'dart:ui';
+
+import 'package:easy_localization/easy_localization.dart';
+import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+import 'package:zovi/core/di/injection.dart';
+import 'package:zovi/core/theme/app_colors.dart';
+import 'package:zovi/core/utils/constants/asset_paths.dart';
+import 'package:zovi/core/utils/enum/route_paths.dart';
+import 'package:zovi/core/widgets/app_icon.dart';
+import 'package:zovi/domain/user/user_repository.dart';
+import 'package:zovi/presentation/home/model/check_in_success_route_args.dart';
+import 'package:zovi/presentation/home/view/widgets/check_in_unlock_stamp_sheet.dart';
+
+class CheckInSuccessView extends StatelessWidget {
+  const CheckInSuccessView({required this.args, super.key});
+
+  final CheckInSuccessRouteArgs args;
+
+  static const _bg = Color(0xFF7B2FFF);
+
+  @override
+  Widget build(BuildContext context) {
+    final rewards = _buildRewards();
+
+    return Scaffold(
+      backgroundColor: _bg,
+      body: SafeArea(
+        bottom: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(
+            16,
+            8,
+            16,
+            kBottomNavigationBarHeight / 2,
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Align(
+                alignment: Alignment.centerRight,
+                child: GestureDetector(
+                  onTap: () {},
+                  behavior: HitTestBehavior.opaque,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        'check_in_success_share'.tr(),
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          height: 20 / 16,
+                          color: AppColors.white,
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      const AppIcon(
+                        AssetPaths.iconExportArrow,
+                        size: 22,
+                        color: AppColors.white,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 40),
+              Text(
+                'check_in_success_title'.tr(),
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  height: 20 / 16,
+                  color: AppColors.white,
+                ),
+              ),
+              const SizedBox(height: 10),
+              Text(
+                args.placeName,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 32,
+                  fontWeight: FontWeight.w700,
+                  height: 1.1,
+                  color: AppColors.white,
+                ),
+              ),
+              const SizedBox(height: 55),
+              Expanded(
+                child: SingleChildScrollView(
+                  physics: const ClampingScrollPhysics(),
+                  child: Column(
+                    children: [
+                      _GlassCard(
+                        child: Column(
+                          children: [
+                            for (var i = 0; i < rewards.length; i++) ...[
+                              if (i > 0) const SizedBox(height: 20),
+                              _RewardRow(reward: rewards[i]),
+                            ],
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 40),
+                      _GlassCard(
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                'check_in_success_coins_earned'.tr(),
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w500,
+                                  height: 20 / 16,
+                                  color: AppColors.white,
+                                ),
+                              ),
+                            ),
+                            SizedBox(
+                              width: 28,
+                              height: 28,
+                              child: Transform.scale(
+                                scale: 1.2,
+                                child: Image.asset(
+                                  AssetPaths.zoviCoin,
+                                  width: 28,
+                                  height: 28,
+                                  fit: BoxFit.contain,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              '${args.totalCoins}',
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w700,
+                                height: 20 / 16,
+                                color: AppColors.white,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              SizedBox(
+                width: double.infinity,
+                height: 50,
+                child: Material(
+                  color: AppColors.white,
+                  shape: const StadiumBorder(),
+                  child: InkWell(
+                    onTap: () => _onDone(context),
+                    customBorder: const StadiumBorder(),
+                    child: Center(
+                      child: Text(
+                        'done'.tr(),
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          height: 20 / 16,
+                          color: AppColors.black,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _onDone(BuildContext context) async {
+    final stamp = await showCheckInUnlockStampSheet(context);
+    if (!context.mounted) return;
+    if (stamp != null) {
+      getIt<UserRepository>().setActiveMapCheckIn(
+        ActiveMapCheckIn(
+          stampImagePath: stamp.imagePath,
+          photoPaths: args.photoPaths.isNotEmpty
+              ? args.photoPaths
+              : const [AssetPaths.mapSecondAvatar],
+          placeName: args.placeName,
+          checkedAt: DateTime.now(),
+        ),
+      );
+    }
+    context.go(RoutePaths.home.path);
+  }
+
+  List<_RewardItem> _buildRewards() {
+    final friendLabel = args.friendNames.isEmpty
+        ? 'Alex'
+        : args.friendNames.first;
+
+    return [
+      _RewardItem(
+        icon: AssetPaths.iconBalloon,
+        text: 'check_in_success_congrats'.tr(),
+        points: 100,
+        isPng: true,
+      ),
+      _RewardItem(
+        icon: AssetPaths.iconLocation,
+        text: 'check_in_success_first_at_place'.tr(
+          namedArgs: {'place': args.placeName},
+        ),
+        points: 5,
+      ),
+      _RewardItem(
+        icon: AssetPaths.iconAward,
+        text: 'check_in_success_first_friend'.tr(),
+        points: 5,
+      ),
+      if (args.hasPhoto)
+        _RewardItem(
+          icon: AssetPaths.iconChatCamera,
+          text: 'check_in_success_great_photo'.tr(),
+          points: 5,
+        ),
+      _RewardItem(
+        icon: AssetPaths.iconFlameAqua,
+        text: 'check_in_success_explore'.tr(),
+        points: 2,
+        isPng: true,
+      ),
+      _RewardItem(
+        icon: AssetPaths.iconAddUser,
+        text: 'check_in_success_with_friend'.tr(
+          namedArgs: {'name': friendLabel},
+        ),
+        points: 2,
+      ),
+    ];
+  }
+}
+
+class _RewardItem {
+  const _RewardItem({
+    required this.icon,
+    required this.text,
+    required this.points,
+    this.isPng = false,
+  });
+
+  final String icon;
+  final String text;
+  final int points;
+  final bool isPng;
+}
+
+class _GlassCard extends StatelessWidget {
+  const _GlassCard({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(20),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: AppColors.white),
+            gradient: LinearGradient(
+              end: Alignment.bottomLeft,
+              begin: Alignment.topRight,
+              colors: [
+                AppColors.white.withValues(alpha: 0.02),
+                AppColors.white.withValues(alpha: 0.14),
+                AppColors.white.withValues(alpha: 0.02),
+              ],
+              stops: const [0.0, 0.5, 1.0],
+            ),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+            child: child,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _RewardRow extends StatelessWidget {
+  const _RewardRow({required this.reward});
+
+  final _RewardItem reward;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        SizedBox(
+          width: 24,
+          height: 24,
+          child: reward.isPng
+              ? Transform.scale(
+                  scale: reward.icon == AssetPaths.iconBalloon ? 1.2 : 1.0,
+                  child: Image.asset(
+                    reward.icon,
+                    width: 24,
+                    height: 24,
+                    fit: BoxFit.contain,
+                  ),
+                )
+              : AppIcon(reward.icon, size: 24, color: AppColors.white),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Text(
+            reward.text,
+            style: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w500,
+              height: 20 / 16,
+              color: AppColors.white,
+            ),
+          ),
+        ),
+        const SizedBox(width: 10),
+        Text(
+          '+${reward.points}',
+          style: const TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w700,
+            height: 20 / 16,
+            color: AppColors.white,
+          ),
+        ),
+      ],
+    );
+  }
+}

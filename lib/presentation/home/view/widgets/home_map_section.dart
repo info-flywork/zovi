@@ -43,7 +43,13 @@ class _HomeMapSectionState extends State<HomeMapSection>
   List<MapVenue> _venues = const [];
   int? _expandedAnonIndex;
   MapFriend? _selectedFriend;
+  MapFriend? _friendSheetFriend;
+  ActiveMapCheckIn? _lastCheckInSheet;
+  int _sheetPresentGeneration = 0;
   AnimationController? _cameraAnimation;
+  late final AnimationController _friendSheetController;
+  late final Animation<Offset> _friendSheetSlide;
+  late final Animation<double> _friendSheetFade;
 
   @override
   void initState() {
@@ -53,6 +59,24 @@ class _HomeMapSectionState extends State<HomeMapSection>
     _filterMenuController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 280),
+    );
+    _friendSheetController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 280),
+      reverseDuration: const Duration(milliseconds: 220),
+    );
+    _friendSheetSlide =
+        Tween<Offset>(begin: const Offset(0, 0.45), end: Offset.zero).animate(
+          CurvedAnimation(
+            parent: _friendSheetController,
+            curve: Curves.easeOutCubic,
+            reverseCurve: Curves.easeInCubic,
+          ),
+        );
+    _friendSheetFade = CurvedAnimation(
+      parent: _friendSheetController,
+      curve: Curves.easeOut,
+      reverseCurve: Curves.easeIn,
     );
     _markersController = AnimationController(
       vsync: this,
@@ -76,6 +100,31 @@ class _HomeMapSectionState extends State<HomeMapSection>
     unawaited(_resolveUserLocation(animate: false));
     unawaited(_loadNearbyAnons());
     unawaited(_loadVenues());
+    getIt<UserRepository>().mapFriendsListenable.addListener(
+      _onMapFriendsChanged,
+    );
+  }
+
+  List<MapFriend> get _mapFriends {
+    final live = getIt<UserRepository>().mapFriendsListenable.value;
+    return live.isNotEmpty ? live : widget.mapFriends;
+  }
+
+  void _onMapFriendsChanged() {
+    if (!mounted) return;
+    final friends = _mapFriends;
+    final openFriend = _friendSheetFriend;
+    final selectedFriend = _selectedFriend;
+    setState(() {
+      if (openFriend != null) {
+        final match = friends.where((f) => f.name == openFriend.name);
+        _friendSheetFriend = match.isEmpty ? openFriend : match.first;
+      }
+      if (selectedFriend != null) {
+        final match = friends.where((f) => f.name == selectedFriend.name);
+        _selectedFriend = match.isEmpty ? selectedFriend : match.first;
+      }
+    });
   }
 
   Future<void> _loadNearbyAnons() async {
@@ -92,8 +141,12 @@ class _HomeMapSectionState extends State<HomeMapSection>
 
   @override
   void dispose() {
+    getIt<UserRepository>().mapFriendsListenable.removeListener(
+      _onMapFriendsChanged,
+    );
     WidgetsBinding.instance.removeObserver(this);
     _filterMenuController.dispose();
+    _friendSheetController.dispose();
     _markersFade.dispose();
     _markersScaleCurve.dispose();
     _markersController.dispose();
@@ -131,7 +184,9 @@ class _HomeMapSectionState extends State<HomeMapSection>
         _selectedFilter = filter;
         _expandedAnonIndex = null;
         _selectedFriend = null;
+        _friendSheetFriend = null;
       });
+      _friendSheetController.value = 0;
       unawaited(_pulseCameraForFilter());
       await _markersController.forward();
     } finally {
@@ -164,17 +219,18 @@ class _HomeMapSectionState extends State<HomeMapSection>
   }
 
   void _onAnonTap(int index) {
+    if (_friendSheetFriend != null) {
+      unawaited(_closeFriendSheet());
+    }
     if (_filterMenuOpen) {
       setState(() {
         _filterMenuOpen = false;
         _expandedAnonIndex = index;
-        _selectedFriend = null;
       });
       _filterMenuController.reverse();
       return;
     }
     setState(() {
-      _selectedFriend = null;
       _expandedAnonIndex = _expandedAnonIndex == index ? null : index;
     });
   }
@@ -183,28 +239,129 @@ class _HomeMapSectionState extends State<HomeMapSection>
     if (_filterMenuOpen) {
       _closeFilterMenu();
     }
-    setState(() {
-      _expandedAnonIndex = null;
-      _selectedFriend = friend;
-    });
+    // Aynı arkadaş zaten açıksa yeniden animasyonlama.
+    if (_friendSheetFriend == friend &&
+        _lastCheckInSheet == null &&
+        _friendSheetController.value > 0 &&
+        _friendSheetController.status != AnimationStatus.reverse) {
+      return;
+    }
+    unawaited(
+      _presentBottomSheet(
+        apply: () {
+          _expandedAnonIndex = null;
+          _lastCheckInSheet = null;
+          _selectedFriend = friend;
+          _friendSheetFriend = friend;
+        },
+      ),
+    );
   }
 
-  void _closeFriendSheet() {
-    if (_selectedFriend == null) return;
+  void _onSelfTap() {
+    final checkIn = getIt<UserRepository>().activeMapCheckIn;
+    if (checkIn == null) return;
+    if (_filterMenuOpen) {
+      _closeFilterMenu();
+    }
+    if (_lastCheckInSheet != null &&
+        _friendSheetFriend == null &&
+        _friendSheetController.value > 0 &&
+        _friendSheetController.status != AnimationStatus.reverse) {
+      return;
+    }
+    unawaited(
+      _presentBottomSheet(
+        apply: () {
+          _expandedAnonIndex = null;
+          _selectedFriend = null;
+          _friendSheetFriend = null;
+          _lastCheckInSheet = checkIn;
+        },
+      ),
+    );
+  }
+
+  /// Açık bir sheet varken geçişte önce kapatır, sonra yenisini açar.
+  Future<void> _presentBottomSheet({required VoidCallback apply}) async {
     FocusManager.instance.primaryFocus?.unfocus();
-    setState(() => _selectedFriend = null);
+    final generation = ++_sheetPresentGeneration;
+    final wasOpen =
+        _friendSheetController.value > 0 &&
+        (_friendSheetFriend != null || _lastCheckInSheet != null);
+
+    if (wasOpen) {
+      await _friendSheetController.reverse();
+      if (!mounted || generation != _sheetPresentGeneration) return;
+    }
+
+    setState(apply);
+    await _friendSheetController.forward(from: 0);
   }
 
-  void _sendFriendMessage(String message) {
-    _closeFriendSheet();
-    AppSnackbar.instance.show(context, 'map_friend_message_sent'.tr());
+  Future<void> _closeFriendSheet() async {
+    if (_friendSheetFriend == null && _lastCheckInSheet == null) return;
+    _sheetPresentGeneration++;
+    FocusManager.instance.primaryFocus?.unfocus();
+    if (_selectedFriend != null) {
+      setState(() => _selectedFriend = null);
+    }
+    await _friendSheetController.reverse();
+    if (!mounted) return;
+    if (_friendSheetFriend != null || _lastCheckInSheet != null) {
+      setState(() {
+        _friendSheetFriend = null;
+        _lastCheckInSheet = null;
+      });
+    }
+  }
+
+  void _onSheetVerticalDragUpdate(DragUpdateDetails details) {
+    final delta = details.primaryDelta ?? 0;
+    if (delta == 0) return;
+    // ~220px ≈ sheet yüksekliği; aşağı sürükleyince controller düşer.
+    const dismissDistance = 220.0;
+    final next = (_friendSheetController.value - (delta / dismissDistance))
+        .clamp(0.0, 1.0);
+    _friendSheetController.value = next;
+  }
+
+  void _onSheetVerticalDragEnd(DragEndDetails details) {
+    final velocity = details.primaryVelocity ?? 0;
+    final shouldDismiss = velocity > 500 || _friendSheetController.value < 0.7;
+    if (shouldDismiss) {
+      unawaited(_closeFriendSheet());
+    } else {
+      unawaited(_friendSheetController.forward());
+    }
+  }
+
+  Future<void> _sendFriendMessage(String message) async {
+    final friend = _friendSheetFriend ?? _selectedFriend;
+    if (friend == null) return;
+
+    await _closeFriendSheet();
+    if (!mounted) return;
+
+    // Kart kapandıktan sonra üst banner’ı göster.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      AppInAppNotification.instance.show(
+        InAppNotificationData(
+          username: friend.name,
+          messageKey: 'map_friend_message_sent',
+          avatarPath: friend.avatarPath,
+          displayName: friend.name,
+          showGradientRing: true,
+        ),
+      );
+    });
   }
 
   void _onMapBackgroundTap() {
     if (_expandedAnonIndex != null) {
       setState(() => _expandedAnonIndex = null);
     }
-    _closeFriendSheet();
+    unawaited(_closeFriendSheet());
     _closeFilterMenu();
   }
 
@@ -405,10 +562,10 @@ class _HomeMapSectionState extends State<HomeMapSection>
   Widget build(BuildContext context) {
     final viewPaddingBottom = MediaQuery.viewPaddingOf(context).bottom;
     final keyboardInset = MediaQuery.viewInsetsOf(context).bottom;
-    final mapActionsBottom = viewPaddingBottom + MainWrapper.navBarHeight + 20;
+    final mapActionsBottom = viewPaddingBottom + MainWrapper.navBarHeight - 4;
     final friendSheetBottom = keyboardInset > 0
         ? keyboardInset + 12
-        : mapActionsBottom;
+        : mapActionsBottom + 10;
 
     return Stack(
       fit: StackFit.expand,
@@ -456,17 +613,25 @@ class _HomeMapSectionState extends State<HomeMapSection>
             MarkerLayer(
               markers: [
                 if (_selectedFilter == _MapFilter.friends)
-                  for (final friend in widget.mapFriends)
+                  for (final friend in _mapFriends)
                     Marker(
                       point: _friendPoint(friend),
-                      width: 96,
-                      height: 100,
-                      alignment: Alignment.topCenter,
+                      width: friend.hasCheckIn
+                          ? HomeMapCheckInMarker.width
+                          : 96,
+                      height: friend.hasCheckIn
+                          ? HomeMapCheckInMarker.height
+                          : 100,
+                      alignment: friend.hasCheckIn
+                          ? Alignment.center
+                          : Alignment.topCenter,
                       child: _animatedMarker(
                         GestureDetector(
                           onTap: () => _onFriendTap(friend),
                           behavior: HitTestBehavior.opaque,
-                          child: HomeMapMarker(friend: friend),
+                          child: friend.hasCheckIn
+                              ? HomeMapCheckInMarker.fromFriend(friend)
+                              : HomeMapMarker(friend: friend),
                         ),
                       ),
                     ),
@@ -504,31 +669,50 @@ class _HomeMapSectionState extends State<HomeMapSection>
                     ),
                 Marker(
                   point: _userLocation,
-                  width: 48,
-                  height: 48,
-                  child: IgnorePointer(
-                    child: Container(
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: AppColors.zoviOrange,
-                          width: 3,
-                        ),
-                        boxShadow: const [
-                          BoxShadow(
-                            color: Color(0x33000000),
-                            blurRadius: 6,
-                            offset: Offset(0, 2),
-                          ),
-                        ],
-                      ),
-                      child: ClipOval(
-                        child: Image.asset(
-                          AssetPaths.avatarYou,
-                          fit: BoxFit.cover,
-                        ),
-                      ),
-                    ),
+                  width: HomeMapCheckInMarker.width,
+                  height: HomeMapCheckInMarker.height,
+                  alignment: Alignment.center,
+                  child: ValueListenableBuilder<ActiveMapCheckIn?>(
+                    valueListenable:
+                        getIt<UserRepository>().activeMapCheckInListenable,
+                    builder: (context, activeCheckIn, _) {
+                      final marker = activeCheckIn != null
+                          ? HomeMapCheckInMarker.fromActive(activeCheckIn)
+                          : Center(
+                              child: Container(
+                                width: HomeMapCheckInMarker.avatarSize,
+                                height: HomeMapCheckInMarker.avatarSize,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  border: Border.all(
+                                    color: AppColors.zoviOrange,
+                                    width: HomeMapCheckInMarker.border,
+                                  ),
+                                  boxShadow: const [
+                                    BoxShadow(
+                                      color: Color(0x33000000),
+                                      blurRadius: 6,
+                                      offset: Offset(0, 2),
+                                    ),
+                                  ],
+                                ),
+                                child: ClipOval(
+                                  child: Image.asset(
+                                    AssetPaths.avatarYou,
+                                    fit: BoxFit.cover,
+                                  ),
+                                ),
+                              ),
+                            );
+                      if (activeCheckIn == null) {
+                        return IgnorePointer(child: marker);
+                      }
+                      return GestureDetector(
+                        onTap: _onSelfTap,
+                        behavior: HitTestBehavior.opaque,
+                        child: marker,
+                      );
+                    },
                   ),
                 ),
               ],
@@ -608,25 +792,34 @@ class _HomeMapSectionState extends State<HomeMapSection>
             onSelect: _selectFilter,
           ),
         ),
-        if (_selectedFriend != null) ...[
-          Positioned.fill(
-            child: GestureDetector(
-              onTap: _closeFriendSheet,
-              behavior: HitTestBehavior.translucent,
-              child: const SizedBox.expand(),
-            ),
-          ),
+        if (_friendSheetFriend != null || _lastCheckInSheet != null)
           Positioned(
             left: 16,
             right: 16,
             bottom: friendSheetBottom,
-            child: HomeMapFriendSheet(
-              friend: _selectedFriend!,
-              onClose: _closeFriendSheet,
-              onSend: _sendFriendMessage,
+            child: GestureDetector(
+              onVerticalDragUpdate: _onSheetVerticalDragUpdate,
+              onVerticalDragEnd: _onSheetVerticalDragEnd,
+              behavior: HitTestBehavior.opaque,
+              child: SlideTransition(
+                position: _friendSheetSlide,
+                child: FadeTransition(
+                  opacity: _friendSheetFade,
+                  child: _friendSheetFriend != null
+                      ? HomeMapFriendSheet(
+                          friend: _friendSheetFriend!,
+                          onClose: () => unawaited(_closeFriendSheet()),
+                          onSend: (text) => unawaited(_sendFriendMessage(text)),
+                        )
+                      : HomeMapLastCheckInSheet(
+                          checkIn: _lastCheckInSheet!,
+                          onClose: () => unawaited(_closeFriendSheet()),
+                        ),
+                ),
+              ),
             ),
-          ),
-        ] else ...[
+          )
+        else ...[
           Positioned(
             left: 20,
             bottom: mapActionsBottom,

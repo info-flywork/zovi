@@ -5,57 +5,38 @@ import 'package:zovi/core/utils/constants/asset_paths.dart';
 import 'package:zovi/core/widgets/app_button.dart';
 import 'package:zovi/core/widgets/app_icon.dart';
 
-enum AccountPrivacy { public, friends }
+enum CheckInPhotoSource { camera, gallery }
 
-Future<AccountPrivacy?> showAccountPrivacySheet(
+Future<CheckInPhotoSource?> showCheckInAddPhotoSheet(
   BuildContext context, {
-  required AccountPrivacy initial,
-  bool useRootNavigator = false,
-  String titleKey = 'privacy_sheet_title',
-  String subtitleKey = 'privacy_sheet_subtitle',
-  String publicSubtitleKey = 'privacy_public_subtitle',
-  String friendsSubtitleKey = 'privacy_friends_subtitle',
+  CheckInPhotoSource initial = CheckInPhotoSource.camera,
 }) {
-  return showModalBottomSheet<AccountPrivacy>(
+  return showModalBottomSheet<CheckInPhotoSource>(
     context: context,
     isScrollControlled: true,
-    useRootNavigator: useRootNavigator,
+    useRootNavigator: true,
     backgroundColor: AppColors.white,
     shape: const RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
     ),
-    builder: (context) => AccountPrivacySheet(
-      initial: initial,
-      titleKey: titleKey,
-      subtitleKey: subtitleKey,
-      publicSubtitleKey: publicSubtitleKey,
-      friendsSubtitleKey: friendsSubtitleKey,
-    ),
+    builder: (context) => CheckInAddPhotoSheet(initial: initial),
   );
 }
 
-class AccountPrivacySheet extends StatefulWidget {
-  const AccountPrivacySheet({
-    required this.initial,
-    this.titleKey = 'privacy_sheet_title',
-    this.subtitleKey = 'privacy_sheet_subtitle',
-    this.publicSubtitleKey = 'privacy_public_subtitle',
-    this.friendsSubtitleKey = 'privacy_friends_subtitle',
+class CheckInAddPhotoSheet extends StatefulWidget {
+  const CheckInAddPhotoSheet({
+    this.initial = CheckInPhotoSource.camera,
     super.key,
   });
 
-  final AccountPrivacy initial;
-  final String titleKey;
-  final String subtitleKey;
-  final String publicSubtitleKey;
-  final String friendsSubtitleKey;
+  final CheckInPhotoSource initial;
 
   @override
-  State<AccountPrivacySheet> createState() => _AccountPrivacySheetState();
+  State<CheckInAddPhotoSheet> createState() => _CheckInAddPhotoSheetState();
 }
 
-class _AccountPrivacySheetState extends State<AccountPrivacySheet> {
-  late AccountPrivacy _selected;
+class _CheckInAddPhotoSheetState extends State<CheckInAddPhotoSheet> {
+  late CheckInPhotoSource _selected;
 
   static const _selectedBg = Color(0xFFF4F4F9);
 
@@ -83,7 +64,7 @@ class _AccountPrivacySheetState extends State<AccountPrivacySheet> {
             ),
             const SizedBox(height: 24),
             Text(
-              widget.titleKey.tr(),
+              'check_in_add_photo'.tr(),
               textAlign: TextAlign.center,
               style: const TextStyle(
                 fontSize: 20,
@@ -93,37 +74,27 @@ class _AccountPrivacySheetState extends State<AccountPrivacySheet> {
                 color: AppColors.black,
               ),
             ),
-            const SizedBox(height: 10),
-            Text(
-              widget.subtitleKey.tr(),
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w400,
-                height: 20 / 16,
-                letterSpacing: -0.32,
-                color: AppColors.textSecondary,
-              ),
-            ),
             const SizedBox(height: 20),
-            _PrivacyOption(
-              key: const ValueKey('privacy_public'),
-              icon: AssetPaths.iconPublic,
-              title: 'privacy_public'.tr(),
-              subtitle: widget.publicSubtitleKey.tr(),
-              selected: _selected == AccountPrivacy.public,
+            _PhotoSourceOption(
+              key: const ValueKey('photo_source_camera'),
+              icon: AssetPaths.iconChatCamera,
+              title: 'check_in_photo_camera'.tr(),
+              subtitle: 'check_in_photo_camera_subtitle'.tr(),
+              selected: _selected == CheckInPhotoSource.camera,
               selectedBg: _selectedBg,
-              onTap: () => setState(() => _selected = AccountPrivacy.public),
+              onTap: () =>
+                  setState(() => _selected = CheckInPhotoSource.camera),
             ),
             const SizedBox(height: 10),
-            _PrivacyOption(
-              key: const ValueKey('privacy_friends'),
-              icon: AssetPaths.iconFriends,
-              title: 'privacy_friends'.tr(),
-              subtitle: widget.friendsSubtitleKey.tr(),
-              selected: _selected == AccountPrivacy.friends,
+            _PhotoSourceOption(
+              key: const ValueKey('photo_source_gallery'),
+              icon: AssetPaths.iconPhotoGallery,
+              title: 'check_in_photo_gallery'.tr(),
+              subtitle: 'check_in_photo_gallery_subtitle'.tr(),
+              selected: _selected == CheckInPhotoSource.gallery,
               selectedBg: _selectedBg,
-              onTap: () => setState(() => _selected = AccountPrivacy.friends),
+              onTap: () =>
+                  setState(() => _selected = CheckInPhotoSource.gallery),
             ),
             const SizedBox(height: 30),
             AppButton(
@@ -137,8 +108,8 @@ class _AccountPrivacySheetState extends State<AccountPrivacySheet> {
   }
 }
 
-class _PrivacyOption extends StatelessWidget {
-  const _PrivacyOption({
+class _PhotoSourceOption extends StatelessWidget {
+  const _PhotoSourceOption({
     required this.icon,
     required this.title,
     required this.subtitle,
@@ -177,7 +148,7 @@ class _PrivacyOption extends StatelessWidget {
                 color: selected ? AppColors.white : const Color(0xFFF4F4F9),
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: AppIcon(icon, size: 24),
+              child: AppIcon(icon, size: 24, color: AppColors.deepRoast),
             ),
             const SizedBox(width: 10),
             Expanded(

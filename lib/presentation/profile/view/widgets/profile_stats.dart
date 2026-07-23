@@ -5,41 +5,64 @@ class ProfileStats extends StatelessWidget {
 
   final UserProfile user;
 
+  void _openConnections(BuildContext context, ProfileConnectionsTab tab) {
+    context.push(
+      RoutePaths.profileConnections.path,
+      extra: ProfileConnectionsRouteArgs(
+        username: user.usernameHandle,
+        followersCount: user.followers,
+        friendsCount: user.friends,
+        initialTab: tab,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    Widget card(String value, String label) {
+    Widget card({
+      required String value,
+      required String label,
+      VoidCallback? onTap,
+    }) {
+      final child = Container(
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          color: AppColors.surfaceGray,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Column(
+          children: [
+            Text(
+              value,
+              style: const TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.w700,
+                height: 1,
+                letterSpacing: -0.48,
+                color: AppColors.deepRoast,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              label,
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+                height: 1,
+                letterSpacing: -0.28,
+                color: Color(0x73000000),
+              ),
+            ),
+          ],
+        ),
+      );
+
+      if (onTap == null) return Expanded(child: child);
       return Expanded(
-        child: Container(
-          padding: const EdgeInsets.all(10),
-          decoration: BoxDecoration(
-            color: AppColors.surfaceGray,
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Column(
-            children: [
-              Text(
-                value,
-                style: const TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.w700,
-                  height: 1,
-                  letterSpacing: -0.48,
-                  color: AppColors.deepRoast,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                label,
-                style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                  height: 1,
-                  letterSpacing: -0.28,
-                  color: Color(0x73000000),
-                ),
-              ),
-            ],
-          ),
+        child: GestureDetector(
+          onTap: onTap,
+          behavior: HitTestBehavior.opaque,
+          child: child,
         ),
       );
     }
@@ -48,11 +71,21 @@ class ProfileStats extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       child: Row(
         children: [
-          card('${user.checkIns}', 'stat_check_in'.tr()),
+          card(value: '${user.checkIns}', label: 'stat_check_in'.tr()),
           const SizedBox(width: 10),
-          card('${user.followers}', 'stat_follower'.tr()),
+          card(
+            value: '${user.followers}',
+            label: 'stat_follower'.tr(),
+            onTap: () =>
+                _openConnections(context, ProfileConnectionsTab.followers),
+          ),
           const SizedBox(width: 10),
-          card('${user.friends}', 'stat_friends'.tr()),
+          card(
+            value: '${user.friends}',
+            label: 'stat_friends'.tr(),
+            onTap: () =>
+                _openConnections(context, ProfileConnectionsTab.friends),
+          ),
         ],
       ),
     );

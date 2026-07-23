@@ -13,6 +13,7 @@ import 'package:zovi/core/widgets/bottom_navigation_bar/main_wrapper.dart';
 import 'package:zovi/core/widgets/profile_avatar.dart';
 import 'package:zovi/domain/user/user_repository.dart';
 import 'package:zovi/presentation/profile/bloc/profile_bloc.dart';
+import 'package:zovi/presentation/profile/connections/model/profile_connections_route_args.dart';
 import 'package:zovi/presentation/profile/edit/model/edit_profile_route_args.dart';
 
 part 'mixin/profile_view_mixin.dart';

@@ -1,26 +1,43 @@
 part of '../home_view.dart';
 
 mixin HomeViewMixin on State<HomeView> {
-  static bool _didShowDemoInAppNotification = false;
+  static bool _didShowDemoFriendCheckIn = false;
 
   void showErrorSnackbar(String message) {
     AppSnackbar.instance.show(context, message, isError: true);
   }
 
-  void maybeShowDemoInAppNotification() {
-    if (_didShowDemoInAppNotification) return;
-    _didShowDemoInAppNotification = true;
+  void maybeShowDemoFriendCheckIn() {
+    if (_didShowDemoFriendCheckIn) return;
+    _didShowDemoFriendCheckIn = true;
 
-    Future<void>.delayed(const Duration(milliseconds: 1200), () {
+    Future<void>.delayed(const Duration(seconds: 4), () {
       if (!mounted) return;
+      final repo = getIt<UserRepository>();
+      final updated = repo.applyFriendCheckIn(
+        name: 'Sona',
+        checkIn: const FriendMapCheckIn(
+          photoPaths: [AssetPaths.mapSecond, AssetPaths.pulse2],
+          stampImagePath: AssetPaths.stamp7,
+          placeName: 'Babylon Istanbul',
+        ),
+        distanceMeters: 800,
+        etaMinutes: 12,
+      );
+      if (updated == null) return;
+
       AppInAppNotification.instance.show(
-        const InAppNotificationData(
-          username: 'juliaivanova',
-          displayName: 'Julia Ivanova',
-          messageKey: 'notifications_friend_request',
-          avatarPath: AssetPaths.avatarJulia,
+        InAppNotificationData(
+          username: updated.name,
+          displayName: updated.name,
+          messageKey: 'in_app_checked_in_at',
+          messageNamedArgs: {'place': updated.checkIn!.placeName},
+          subtitleKey: 'in_app_meters_away',
+          subtitleNamedArgs: {
+            'meters': '${updated.distanceMeters ?? 800}',
+          },
+          avatarPath: updated.avatarPath,
           showGradientRing: true,
-          action: InAppNotificationAction.friendRequest,
         ),
       );
     });
@@ -63,7 +80,10 @@ mixin HomeViewMixin on State<HomeView> {
     );
   }
 
-  void onAddTap() {
-    AppSnackbar.instance.show(context, 'check_in_coming_soon'.tr());
+  void onAddTap() async {
+    final continued = await showFirstCheckInSheet(context);
+    if (continued != true || !mounted) return;
+
+    await showCheckInCreateSheet(context);
   }
 }

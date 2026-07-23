@@ -1,6 +1,8 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:easy_localization/easy_localization.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_map/flutter_map.dart';
@@ -25,6 +27,8 @@ import 'package:zovi/presentation/home/bloc/home_bloc.dart';
 import 'package:zovi/presentation/home/bloc/home_event.dart';
 import 'package:zovi/presentation/home/bloc/home_state.dart';
 import 'package:zovi/presentation/stories/model/story_detail_route_args.dart';
+import 'package:zovi/presentation/home/view/widgets/check_in_create_sheet.dart';
+import 'package:zovi/presentation/home/view/widgets/first_check_in_sheet.dart';
 
 part 'mixin/home_view_mixin.dart';
 part 'widgets/home_error_body.dart';
@@ -33,6 +37,8 @@ part 'widgets/home_loaded_body.dart';
 part 'widgets/home_loading_body.dart';
 part 'widgets/home_map_marker.dart';
 part 'widgets/home_map_anon_marker.dart';
+part 'widgets/home_map_check_in_marker.dart';
+part 'widgets/home_map_last_check_in_sheet.dart';
 part 'widgets/home_map_venue_marker.dart';
 part 'widgets/home_map_friend_sheet.dart';
 part 'widgets/home_map_section.dart';
@@ -60,7 +66,7 @@ class _HomeViewState extends State<HomeView> with HomeViewMixin {
       body: BlocConsumer<HomeBloc, HomeState>(
         listener: (context, state) {
           if (state is HomeError) showErrorSnackbar(state.message);
-          if (state is HomeLoaded) maybeShowDemoInAppNotification();
+          if (state is HomeLoaded) maybeShowDemoFriendCheckIn();
         },
         builder: (context, state) {
           return switch (state) {
