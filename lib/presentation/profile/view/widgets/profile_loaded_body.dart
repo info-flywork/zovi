@@ -7,7 +7,7 @@ class ProfileLoadedBody extends StatelessWidget {
     required this.pulses,
     required this.stamps,
     required this.plans,
-    required this.selectedTab,
+    required this.tabController,
     required this.onTabSelected,
     super.key,
   });
@@ -17,11 +17,34 @@ class ProfileLoadedBody extends StatelessWidget {
   final List<PulseItem> pulses;
   final List<StampItem> stamps;
   final List<PlanItem> plans;
-  final ProfileContentTab selectedTab;
+  final TabController tabController;
   final ValueChanged<ProfileContentTab> onTabSelected;
+
+  static double _tabHeight({
+    required int index,
+    required double width,
+    required int stampCount,
+    required int checkInCount,
+  }) {
+    switch (index) {
+      case 0:
+        return 216;
+      case 1:
+        const spacing = 10.0;
+        final itemWidth = (width - 32 - spacing * 2) / 3;
+        final cardHeight = itemWidth + 20;
+        final rows = (stampCount / 3).ceil().clamp(1, 100);
+        return 16 + rows * cardHeight + (rows - 1) * spacing;
+      case 2:
+      default:
+        return 16 + checkInCount * 80.0;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
+    final width = MediaQuery.sizeOf(context).width;
+
     return ListView(
       physics: const ClampingScrollPhysics(),
       padding: EdgeInsets.only(
@@ -109,42 +132,50 @@ class ProfileLoadedBody extends StatelessWidget {
         const SizedBox(height: 16),
         ProfilePlans(plans: plans),
         const SizedBox(height: 16),
-        ProfileTabs(selectedTab: selectedTab, onTabSelected: onTabSelected),
-        AnimatedSize(
-          duration: const Duration(milliseconds: 280),
-          curve: Curves.easeOutCubic,
-          alignment: Alignment.topCenter,
-          child: AnimatedSwitcher(
-            duration: const Duration(milliseconds: 280),
-            switchInCurve: Curves.easeOutCubic,
-            switchOutCurve: Curves.easeInCubic,
-            layoutBuilder: (currentChild, previousChildren) {
-              return Stack(
+        ProfileTabs(
+          controller: tabController,
+          onTabSelected: onTabSelected,
+        ),
+        AnimatedBuilder(
+          animation: tabController.animation!,
+          builder: (context, child) {
+            final value = tabController.animation!.value.clamp(0.0, 2.0);
+            final lower = value.floor().clamp(0, 2);
+            final upper = value.ceil().clamp(0, 2);
+            final t = value - lower;
+            final height = lerpDouble(
+              _tabHeight(
+                index: lower,
+                width: width,
+                stampCount: stamps.length,
+                checkInCount: checkIns.length,
+              ),
+              _tabHeight(
+                index: upper,
+                width: width,
+                stampCount: stamps.length,
+                checkInCount: checkIns.length,
+              ),
+              t,
+            )!;
+            return SizedBox(height: height, child: child);
+          },
+          child: TabBarView(
+            controller: tabController,
+            children: [
+              Align(
                 alignment: Alignment.topCenter,
-                clipBehavior: Clip.none,
-                children: [...previousChildren, ?currentChild],
-              );
-            },
-            transitionBuilder: (child, animation) {
-              final offset = Tween<Offset>(
-                begin: const Offset(0, 0.04),
-                end: Offset.zero,
-              ).animate(animation);
-              return FadeTransition(
-                opacity: animation,
-                child: SlideTransition(position: offset, child: child),
-              );
-            },
-            child: KeyedSubtree(
-              key: ValueKey(selectedTab),
-              child: switch (selectedTab) {
-                ProfileContentTab.pulse => ProfilePulses(pulses: pulses),
-                ProfileContentTab.stamps => ProfileStamps(stamps: stamps),
-                ProfileContentTab.checkIn => ProfileCheckins(
-                  checkIns: checkIns,
-                ),
-              },
-            ),
+                child: ProfilePulses(pulses: pulses),
+              ),
+              Align(
+                alignment: Alignment.topCenter,
+                child: ProfileStamps(stamps: stamps),
+              ),
+              Align(
+                alignment: Alignment.topCenter,
+                child: ProfileCheckins(checkIns: checkIns),
+              ),
+            ],
           ),
         ),
       ],

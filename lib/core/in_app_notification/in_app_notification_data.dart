@@ -19,6 +19,8 @@ class InAppNotificationData {
     this.showGradientRing = false,
     this.action = InAppNotificationAction.none,
     this.storyImagePath,
+    this.leadingIconPath,
+    this.useFullTitle = false,
   });
 
   final String username;
@@ -32,4 +34,10 @@ class InAppNotificationData {
   final bool showGradientRing;
   final InAppNotificationAction action;
   final String? storyImagePath;
+
+  /// Verilirse avatar yerine bu ikon gösterilir.
+  final String? leadingIconPath;
+
+  /// `true` ise başlık olarak `messageKey` (username namedArg ile) kullanılır.
+  final bool useFullTitle;
 }

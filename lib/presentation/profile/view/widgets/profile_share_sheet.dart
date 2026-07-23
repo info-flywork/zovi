@@ -1,4 +1,10 @@
-part of '../profile_view.dart';
+import 'package:easy_localization/easy_localization.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:zovi/core/snackbar/app_snackbar.dart';
+import 'package:zovi/core/theme/app_colors.dart';
+import 'package:zovi/core/utils/constants/asset_paths.dart';
+import 'package:zovi/core/widgets/app_icon.dart';
 
 class ProfileShareSheet extends StatelessWidget {
   const ProfileShareSheet({
@@ -46,7 +52,7 @@ class ProfileShareSheet extends StatelessWidget {
               Text(
                 'share_with_friends'.tr(),
                 textAlign: TextAlign.center,
-                style: TextStyle(
+                style: const TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.w600,
                   height: 1,
@@ -58,7 +64,7 @@ class ProfileShareSheet extends StatelessWidget {
               Text(
                 'share_sheet_subtitle'.tr(),
                 textAlign: TextAlign.center,
-                style: TextStyle(
+                style: const TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w400,
                   height: 20 / 16,
@@ -71,7 +77,7 @@ class ProfileShareSheet extends StatelessWidget {
                 alignment: Alignment.centerLeft,
                 child: Text(
                   'share_the_profile'.tr(),
-                  style: TextStyle(
+                  style: const TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
                     height: 1,

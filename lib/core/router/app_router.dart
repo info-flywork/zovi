@@ -46,6 +46,8 @@ import 'package:zovi/presentation/notifications/view/notifications_view.dart';
 import 'package:zovi/presentation/profile/bloc/profile_bloc.dart';
 import 'package:zovi/presentation/profile/connections/model/profile_connections_route_args.dart';
 import 'package:zovi/presentation/profile/connections/view/profile_connections_view.dart';
+import 'package:zovi/presentation/profile/user_profile/model/user_profile_route_args.dart';
+import 'package:zovi/presentation/profile/user_profile/view/user_profile_view.dart';
 import 'package:zovi/presentation/profile/edit/model/edit_profile_field_route_args.dart';
 import 'package:zovi/presentation/profile/edit/model/edit_profile_links_route_args.dart';
 import 'package:zovi/presentation/profile/edit/model/edit_profile_route_args.dart';
@@ -266,6 +268,20 @@ abstract final class AppRouter {
         builder: (context, state) {
           final args = state.extra! as ProfileConnectionsRouteArgs;
           return ProfileConnectionsView(args: args);
+        },
+      ),
+      GoRoute(
+        path: RoutePaths.userProfile.path,
+        name: RoutePaths.userProfile.name,
+        redirect: (context, state) {
+          if (state.extra is! UserProfileRouteArgs) {
+            return RoutePaths.profile.path;
+          }
+          return null;
+        },
+        builder: (context, state) {
+          final args = state.extra! as UserProfileRouteArgs;
+          return UserProfileView(args: args);
         },
       ),
       GoRoute(

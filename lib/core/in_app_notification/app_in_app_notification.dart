@@ -24,6 +24,7 @@ class AppInAppNotification {
   void show(
     InAppNotificationData data, {
     Duration displayDuration = const Duration(seconds: 4),
+    Alignment alignment = Alignment.topCenter,
   }) {
     final context = AppRouter.rootKey.currentContext;
     if (context == null) return;
@@ -43,6 +44,7 @@ class AppInAppNotification {
       builder: (context) {
         return _InAppNotificationHost(
           data: data,
+          alignment: alignment,
           onReady: (host) => _host = host,
           onDismiss: () => hide(),
           onAction: () => _handleAction(data),
@@ -123,12 +125,14 @@ class AppInAppNotification {
 class _InAppNotificationHost extends StatefulWidget {
   const _InAppNotificationHost({
     required this.data,
+    required this.alignment,
     required this.onReady,
     required this.onDismiss,
     required this.onAction,
   });
 
   final InAppNotificationData data;
+  final Alignment alignment;
   final ValueChanged<_InAppNotificationHostState> onReady;
   final VoidCallback onDismiss;
   final VoidCallback onAction;
@@ -151,8 +155,10 @@ class _InAppNotificationHostState extends State<_InAppNotificationHost>
     reverseCurve: Curves.easeInCubic,
   );
 
+  bool get _isBottom => widget.alignment == Alignment.bottomCenter;
+
   late final Animation<Offset> _slide = Tween<Offset>(
-    begin: const Offset(0, -1.15),
+    begin: Offset(0, _isBottom ? 1.15 : -1.15),
     end: Offset.zero,
   ).animate(_curved);
 
@@ -192,26 +198,31 @@ class _InAppNotificationHostState extends State<_InAppNotificationHost>
 
   @override
   Widget build(BuildContext context) {
-    final top = MediaQuery.paddingOf(context).top + 8;
+    final padding = MediaQuery.paddingOf(context);
+    final edge = _isBottom ? padding.bottom + 16 : padding.top + 8;
 
     return Material(
       type: MaterialType.transparency,
       child: Align(
-        alignment: Alignment.topCenter,
+        alignment: widget.alignment,
         child: Padding(
-          padding: EdgeInsets.fromLTRB(16, top, 16, 0),
+          padding: _isBottom
+              ? EdgeInsets.fromLTRB(16, 0, 16, edge)
+              : EdgeInsets.fromLTRB(16, edge, 16, 0),
           child: SlideTransition(
             position: _slide,
             child: FadeTransition(
               opacity: _fade,
               child: ScaleTransition(
                 scale: _scale,
-                alignment: Alignment.topCenter,
+                alignment:
+                    _isBottom ? Alignment.bottomCenter : Alignment.topCenter,
                 child: InAppNotificationBanner(
                   data: widget.data,
                   onDismiss: widget.onDismiss,
                   onAction: widget.onAction,
                   embedInHost: true,
+                  dismissOnSwipeDown: _isBottom,
                 ),
               ),
             ),

@@ -55,7 +55,9 @@ abstract final class AssetPaths {
   static const String iconCloseCircle = 'assets/icons/close_circle.svg';
   static const String iconLocationProfile = 'assets/icons/location_profile.svg';
   static const String iconAddUser = 'assets/icons/add_user.svg';
+  static const String iconUserCircleAdd = 'assets/icons/user-circle-add.svg';
   static const String iconTickCircleOrange = 'assets/icons/tick-circle-orange.svg';
+  static const String iconWhiteTick = 'assets/icons/white-tick.svg';
   static const String iconExportArrow = 'assets/icons/export-arrow.svg';
   static const String iconBalloon = 'assets/images/ballon.png';
   static const String iconAward = 'assets/icons/award.svg';

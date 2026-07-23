@@ -14,6 +14,7 @@ class InAppNotificationBanner extends StatefulWidget {
     required this.onDismiss,
     required this.onAction,
     this.embedInHost = false,
+    this.dismissOnSwipeDown = false,
     super.key,
   });
 
@@ -23,6 +24,9 @@ class InAppNotificationBanner extends StatefulWidget {
 
   /// Host zaten konumlandırıyorsa dış Align/padding atlanır (slide animasyonu için).
   final bool embedInHost;
+
+  /// Alt banner için aşağı kaydırarak kapatma.
+  final bool dismissOnSwipeDown;
 
   @override
   State<InAppNotificationBanner> createState() =>
@@ -41,30 +45,46 @@ class _InAppNotificationBannerState extends State<InAppNotificationBanner> {
           ? widget.onAction
           : null,
       onVerticalDragEnd: (details) {
-        if ((details.primaryVelocity ?? 0) < -200) {
+        final velocity = details.primaryVelocity ?? 0;
+        if (widget.dismissOnSwipeDown) {
+          if (velocity > 200) widget.onDismiss();
+        } else if (velocity < -200) {
           widget.onDismiss();
         }
       },
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(
+          widget.data.leadingIconPath != null ? 12 : 8,
+        ),
         child: BackdropFilter(
           filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
           child: Container(
             width: double.infinity,
-            constraints: const BoxConstraints(minHeight: 80),
+            constraints: BoxConstraints(
+              minHeight: widget.data.leadingIconPath != null ? 0 : 80,
+            ),
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
               color: const Color(0x80262626),
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(
+                widget.data.leadingIconPath != null ? 12 : 8,
+              ),
             ),
             child: Row(
               children: [
-                ProfileAvatar(
-                  path: widget.data.avatarPath,
-                  size: 60,
-                  showGradientRing: widget.data.showGradientRing,
-                  ringGapColor: const Color(0xFF262626),
-                ),
+                if (widget.data.leadingIconPath != null)
+                  AppIcon(
+                    widget.data.leadingIconPath!,
+                    size: 26,
+                    color: AppColors.white,
+                  )
+                else
+                  ProfileAvatar(
+                    path: widget.data.avatarPath,
+                    size: 60,
+                    showGradientRing: widget.data.showGradientRing,
+                    ringGapColor: const Color(0xFF262626),
+                  ),
                 const SizedBox(width: 10),
                 Expanded(child: _MessageText(data: widget.data)),
                 if (_hasTrailing) ...[
@@ -133,6 +153,42 @@ class _MessageText extends StatelessWidget {
                   context: context,
                   namedArgs: data.subtitleNamedArgs,
                 ));
+
+    if (data.useFullTitle) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            message,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              height: 1,
+              letterSpacing: -0.28,
+              color: AppColors.white,
+            ),
+          ),
+          if (subtitle != null) ...[
+            const SizedBox(height: 6),
+            Text(
+              subtitle,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w400,
+                height: 1.2,
+                letterSpacing: -0.28,
+                color: AppColors.white.withValues(alpha: 0.65),
+              ),
+            ),
+          ],
+        ],
+      );
+    }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,

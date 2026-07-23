@@ -18,6 +18,7 @@ enum RoutePaths {
   chatRequests('/chat/requests'),
   profile('/profile'),
   profileConnections('/profile/connections'),
+  userProfile('/profile/user'),
   editProfile('/profile/edit'),
   editProfileField('/profile/edit/field'),
   editProfileLinks('/profile/edit/links'),

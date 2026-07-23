@@ -1,9 +1,9 @@
+import 'dart:ui' show lerpDouble;
+
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import 'package:zovi/core/snackbar/app_snackbar.dart';
 import 'package:zovi/core/theme/app_colors.dart';
 import 'package:zovi/core/utils/constants/asset_paths.dart';
 import 'package:zovi/core/utils/enum/route_paths.dart';
@@ -15,6 +15,7 @@ import 'package:zovi/domain/user/user_repository.dart';
 import 'package:zovi/presentation/profile/bloc/profile_bloc.dart';
 import 'package:zovi/presentation/profile/connections/model/profile_connections_route_args.dart';
 import 'package:zovi/presentation/profile/edit/model/edit_profile_route_args.dart';
+import 'package:zovi/presentation/profile/view/widgets/profile_share_sheet.dart';
 
 part 'mixin/profile_view_mixin.dart';
 part 'widgets/profile_loaded_body.dart';
@@ -26,7 +27,6 @@ part 'widgets/profile_tabs.dart';
 part 'widgets/profile_pulses.dart';
 part 'widgets/profile_stamps.dart';
 part 'widgets/profile_checkins.dart';
-part 'widgets/profile_share_sheet.dart';
 
 class ProfileView extends StatefulWidget {
   const ProfileView({super.key});
@@ -35,11 +35,19 @@ class ProfileView extends StatefulWidget {
   State<ProfileView> createState() => _ProfileViewState();
 }
 
-class _ProfileViewState extends State<ProfileView> with ProfileViewMixin {
+class _ProfileViewState extends State<ProfileView>
+    with TickerProviderStateMixin, ProfileViewMixin {
   @override
   void initState() {
     super.initState();
+    initProfileTabs();
     context.read<ProfileBloc>().add(const ProfileStarted());
+  }
+
+  @override
+  void dispose() {
+    disposeProfileTabs();
+    super.dispose();
   }
 
   @override
@@ -64,7 +72,7 @@ class _ProfileViewState extends State<ProfileView> with ProfileViewMixin {
                   pulses: pulses,
                   stamps: stamps,
                   plans: plans,
-                  selectedTab: selectedTab,
+                  tabController: tabController,
                   onTabSelected: onTabSelected,
                 ),
               ProfileError(:final message) => Center(child: Text(message)),

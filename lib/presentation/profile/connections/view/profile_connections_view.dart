@@ -1,6 +1,7 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:zovi/core/di/injection.dart';
 import 'package:zovi/core/in_app_notification/app_in_app_notification.dart';
 import 'package:zovi/core/in_app_notification/in_app_notification_data.dart';
 import 'package:zovi/core/theme/app_colors.dart';
@@ -8,10 +9,12 @@ import 'package:zovi/core/utils/constants/asset_paths.dart';
 import 'package:zovi/core/utils/enum/route_paths.dart';
 import 'package:zovi/core/widgets/app_icon.dart';
 import 'package:zovi/core/widgets/profile_avatar.dart';
+import 'package:zovi/domain/user/user_repository.dart';
 import 'package:zovi/presentation/chat/model/chat_detail_route_args.dart';
 import 'package:zovi/presentation/profile/connections/model/profile_connection_user.dart';
 import 'package:zovi/presentation/profile/connections/model/profile_connections_route_args.dart';
 import 'package:zovi/presentation/profile/connections/view/widgets/profile_connection_confirm_sheet.dart';
+import 'package:zovi/presentation/profile/user_profile/model/user_profile_route_args.dart';
 
 class ProfileConnectionsView extends StatefulWidget {
   const ProfileConnectionsView({required this.args, super.key});
@@ -33,6 +36,11 @@ class _ProfileConnectionsViewState extends State<ProfileConnectionsView>
   final _friendsListKey = GlobalKey<AnimatedListState>();
 
   static const _demoUsers = [
+    ProfileConnectionUser(
+      username: 'juliaivanova',
+      displayName: 'Julia Ivanova',
+      avatarPath: AssetPaths.avatarJulia,
+    ),
     ProfileConnectionUser(
       username: 'jessica.3712',
       displayName: 'Jessica Black',
@@ -161,6 +169,17 @@ class _ProfileConnectionsViewState extends State<ProfileConnectionsView>
     );
   }
 
+  Future<void> _openProfile(ProfileConnectionUser user) async {
+    final profile = await getIt<UserRepository>().getPublicUserProfile(
+      user.username,
+    );
+    if (!mounted) return;
+    context.push(
+      RoutePaths.userProfile.path,
+      extra: UserProfileRouteArgs(user: profile),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final top = MediaQuery.paddingOf(context).top;
@@ -189,7 +208,7 @@ class _ProfileConnectionsViewState extends State<ProfileConnectionsView>
                       minWidth: 44,
                       minHeight: 44,
                     ),
-                    icon: const AppIcon(AssetPaths.iconBack, size: 24),
+                    icon: const AppIcon(AssetPaths.iconArrowLeft, size: 24),
                   ),
                   Expanded(
                     child: Text(
@@ -239,6 +258,7 @@ class _ProfileConnectionsViewState extends State<ProfileConnectionsView>
                   mode: _ConnectionListMode.followers,
                   onSendMessage: _openChat,
                   onRemove: _confirmRemoveFollower,
+                  onProfileTap: _openProfile,
                 ),
                 _ConnectionsList(
                   listKey: _friendsListKey,
@@ -246,6 +266,7 @@ class _ProfileConnectionsViewState extends State<ProfileConnectionsView>
                   mode: _ConnectionListMode.friends,
                   onSendMessage: _openChat,
                   onRemove: _confirmUnfollow,
+                  onProfileTap: _openProfile,
                 ),
               ],
             ),
@@ -366,6 +387,7 @@ class _ConnectionsList extends StatelessWidget {
     required this.mode,
     required this.onSendMessage,
     required this.onRemove,
+    required this.onProfileTap,
   });
 
   final GlobalKey<AnimatedListState> listKey;
@@ -373,6 +395,7 @@ class _ConnectionsList extends StatelessWidget {
   final _ConnectionListMode mode;
   final ValueChanged<ProfileConnectionUser> onSendMessage;
   final ValueChanged<ProfileConnectionUser> onRemove;
+  final ValueChanged<ProfileConnectionUser> onProfileTap;
 
   @override
   Widget build(BuildContext context) {
@@ -408,6 +431,7 @@ class _ConnectionsList extends StatelessWidget {
                 mode: mode,
                 onSendMessage: () => onSendMessage(user),
                 onRemove: () => onRemove(user),
+                onProfileTap: () => onProfileTap(user),
               ),
             ),
           ),
@@ -441,6 +465,7 @@ class _ConnectionRemoveTile extends StatelessWidget {
             mode: mode,
             onSendMessage: () {},
             onRemove: () {},
+            onProfileTap: () {},
           ),
         ),
       ),
@@ -454,49 +479,61 @@ class _ConnectionTile extends StatelessWidget {
     required this.mode,
     required this.onSendMessage,
     required this.onRemove,
+    required this.onProfileTap,
   });
 
   final ProfileConnectionUser user;
   final _ConnectionListMode mode;
   final VoidCallback onSendMessage;
   final VoidCallback onRemove;
+  final VoidCallback onProfileTap;
 
   @override
   Widget build(BuildContext context) {
     return Row(
       children: [
-        ProfileAvatar(path: user.avatarPath, size: 60),
-        const SizedBox(width: 10),
         Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                user.username,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                  height: 1,
-                  letterSpacing: -0.32,
-                  color: AppColors.black,
+          child: GestureDetector(
+            onTap: onProfileTap,
+            behavior: HitTestBehavior.opaque,
+            child: Row(
+              children: [
+                ProfileAvatar(path: user.avatarPath, size: 60),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        user.username,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          height: 1,
+                          letterSpacing: -0.32,
+                          color: AppColors.black,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        user.displayName,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w400,
+                          height: 1,
+                          letterSpacing: -0.28,
+                          color: AppColors.black.withValues(alpha: 0.65),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                user.displayName,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w400,
-                  height: 1,
-                  letterSpacing: -0.28,
-                  color: AppColors.black.withValues(alpha: 0.65),
-                ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
         const SizedBox(width: 10),

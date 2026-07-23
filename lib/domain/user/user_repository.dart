@@ -74,16 +74,102 @@ class UserProfile extends Equatable {
 
   @override
   List<Object?> get props => [
-    name,
-    username,
-    avatarPath,
-    location,
-    bio,
-    checkIns,
-    followers,
-    friends,
-    links,
-  ];
+        name,
+        username,
+        avatarPath,
+        location,
+        bio,
+        checkIns,
+        followers,
+        friends,
+        links,
+      ];
+}
+
+/// Başka kullanıcının profil ekranı için genişletilmiş profil.
+class PublicUserProfile extends Equatable {
+  const PublicUserProfile({
+    required this.name,
+    required this.username,
+    required this.avatarPath,
+    required this.location,
+    required this.bio,
+    required this.checkIns,
+    required this.followers,
+    required this.friends,
+    this.isVerified = false,
+    this.streak = 0,
+    this.explorerTitle = '',
+    this.mapPlaceName = '',
+    this.mapDistanceKm = '',
+    this.mutualFriendsCount = 0,
+    this.mutualFriendAvatars = const [],
+    this.isFollowing = false,
+  });
+
+  final String name;
+  final String username;
+  final String avatarPath;
+  final String location;
+  final String bio;
+  final int checkIns;
+  final int followers;
+  final int friends;
+  final bool isVerified;
+  final int streak;
+  final String explorerTitle;
+  final String mapPlaceName;
+  final String mapDistanceKm;
+  final int mutualFriendsCount;
+  final List<String> mutualFriendAvatars;
+  final bool isFollowing;
+
+  String get usernameHandle =>
+      username.startsWith('@') ? username.substring(1) : username;
+
+  String get usernameWithAt =>
+      username.startsWith('@') ? username : '@$username';
+
+  PublicUserProfile copyWith({bool? isFollowing}) {
+    return PublicUserProfile(
+      name: name,
+      username: username,
+      avatarPath: avatarPath,
+      location: location,
+      bio: bio,
+      checkIns: checkIns,
+      followers: followers,
+      friends: friends,
+      isVerified: isVerified,
+      streak: streak,
+      explorerTitle: explorerTitle,
+      mapPlaceName: mapPlaceName,
+      mapDistanceKm: mapDistanceKm,
+      mutualFriendsCount: mutualFriendsCount,
+      mutualFriendAvatars: mutualFriendAvatars,
+      isFollowing: isFollowing ?? this.isFollowing,
+    );
+  }
+
+  @override
+  List<Object?> get props => [
+        name,
+        username,
+        avatarPath,
+        location,
+        bio,
+        checkIns,
+        followers,
+        friends,
+        isVerified,
+        streak,
+        explorerTitle,
+        mapPlaceName,
+        mapDistanceKm,
+        mutualFriendsCount,
+        mutualFriendAvatars,
+        isFollowing,
+      ];
 }
 
 class StoryPreview extends Equatable {
@@ -444,6 +530,142 @@ class UserRepository {
     await Future<void>.delayed(const Duration(milliseconds: 300));
     return _currentUser;
   }
+
+  Future<PublicUserProfile> getPublicUserProfile(String username) async {
+    await Future<void>.delayed(const Duration(milliseconds: 200));
+    final handle = username.startsWith('@') ? username.substring(1) : username;
+    final known = _publicProfiles[handle.toLowerCase()];
+    if (known != null) return known;
+    return PublicUserProfile(
+      name: handle,
+      username: '@$handle',
+      avatarPath: AssetPaths.avatarJulia,
+      location: 'Los Angeles, CA',
+      bio:
+          "Someone who loves getting lost in the streets at midnight. There's a story around every corner.",
+      checkIns: 124,
+      followers: 1252,
+      friends: 102,
+      isVerified: true,
+      streak: 5,
+      explorerTitle: 'City Explorer',
+      mapPlaceName: 'New York, Times Square',
+      mapDistanceKm: '210km',
+      mutualFriendsCount: 13,
+      mutualFriendAvatars: const [
+        AssetPaths.avatarLyra,
+        AssetPaths.avatarJessica,
+        AssetPaths.avatarSona,
+      ],
+    );
+  }
+
+  static final _publicProfiles = <String, PublicUserProfile>{
+    'juliaivanova': const PublicUserProfile(
+      name: 'Julia Ivanova',
+      username: '@juliaivanova',
+      avatarPath: AssetPaths.avatarJulia,
+      location: 'Los Angeles, CA',
+      bio:
+          "Someone who loves getting lost in the streets at midnight. There's a story around every corner.",
+      checkIns: 124,
+      followers: 1252,
+      friends: 102,
+      isVerified: true,
+      streak: 5,
+      explorerTitle: 'City Explorer',
+      mapPlaceName: 'New York, Times Square',
+      mapDistanceKm: '210km',
+      mutualFriendsCount: 13,
+      mutualFriendAvatars: [
+        AssetPaths.avatarLyra,
+        AssetPaths.avatarJessica,
+        AssetPaths.avatarSona,
+      ],
+    ),
+    'jessica.3712': const PublicUserProfile(
+      name: 'Jessica Black',
+      username: '@jessica.3712',
+      avatarPath: AssetPaths.avatarJessica,
+      location: 'Los Angeles, CA',
+      bio: 'Coffee, sunsets, and late-night walks.',
+      checkIns: 48,
+      followers: 820,
+      friends: 64,
+      isVerified: true,
+      streak: 12,
+      explorerTitle: 'City Explorer',
+      mapPlaceName: 'Echo Park, Los Angeles',
+      mapDistanceKm: '4km',
+      mutualFriendsCount: 8,
+      mutualFriendAvatars: [
+        AssetPaths.avatarLyra,
+        AssetPaths.avatarSona,
+        AssetPaths.avatarNova,
+      ],
+    ),
+    'jonathanjnt': const PublicUserProfile(
+      name: 'Jonathan Sam',
+      username: '@jonathanjnt',
+      avatarPath: AssetPaths.avatarAlex,
+      location: 'Los Angeles, CA',
+      bio: 'Always chasing the next check-in.',
+      checkIns: 31,
+      followers: 410,
+      friends: 40,
+      streak: 3,
+      explorerTitle: 'Night Owl',
+      mapPlaceName: 'Santa Monica Pier',
+      mapDistanceKm: '18km',
+      mutualFriendsCount: 5,
+      mutualFriendAvatars: [
+        AssetPaths.avatarJessica,
+        AssetPaths.avatarLyra,
+        AssetPaths.avatarNova,
+      ],
+    ),
+    'hannahfood': const PublicUserProfile(
+      name: 'Just Hannah',
+      username: '@hannahfood',
+      avatarPath: AssetPaths.avatarSona,
+      location: 'Los Angeles, CA',
+      bio: 'Food first, everything else later.',
+      checkIns: 77,
+      followers: 1503,
+      friends: 88,
+      isVerified: true,
+      streak: 9,
+      explorerTitle: 'Foodie',
+      mapPlaceName: 'Downtown LA',
+      mapDistanceKm: '12km',
+      mutualFriendsCount: 11,
+      mutualFriendAvatars: [
+        AssetPaths.avatarJessica,
+        AssetPaths.avatarLyra,
+        AssetPaths.avatarAlex,
+      ],
+    ),
+    'clara.smith': const PublicUserProfile(
+      name: 'Make With Clara',
+      username: '@clara.smith',
+      avatarPath: AssetPaths.avatarNova,
+      location: 'Los Angeles, CA',
+      bio: 'Making things and meeting people.',
+      checkIns: 22,
+      followers: 290,
+      friends: 35,
+      streak: 2,
+      explorerTitle: 'Creator',
+      mapPlaceName: 'Silver Lake, Los Angeles',
+      mapDistanceKm: '7km',
+      mutualFriendsCount: 4,
+      mutualFriendAvatars: [
+        AssetPaths.avatarJessica,
+        AssetPaths.avatarSona,
+        AssetPaths.avatarLyra,
+      ],
+    ),
+  };
 
   Future<void> updateCurrentUser(UserProfile user) async {
     await Future<void>.delayed(const Duration(milliseconds: 150));
