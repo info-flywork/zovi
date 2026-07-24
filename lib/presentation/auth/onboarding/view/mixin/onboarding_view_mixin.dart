@@ -13,12 +13,22 @@ mixin OnboardingViewMixin on State<OnboardingView> {
     context.read<OnboardingBloc>().add(const OnboardingSendCodeTapped());
   }
 
-  void onGoogle() {
-    context.read<OnboardingBloc>().add(const OnboardingGoogleTapped());
+  Future<void> onGoogle() async {
+    await context.read<OnboardingBloc>().signInWithGoogle().withLoading(context);
+    if (!mounted) return;
+    context.go(
+      RoutePaths.createProfile.path,
+      extra: const CreateProfileRouteArgs(signupFlow: SignupFlow.social),
+    );
   }
 
-  void onApple() {
-    context.read<OnboardingBloc>().add(const OnboardingAppleTapped());
+  Future<void> onApple() async {
+    await context.read<OnboardingBloc>().signInWithApple().withLoading(context);
+    if (!mounted) return;
+    context.go(
+      RoutePaths.createProfile.path,
+      extra: const CreateProfileRouteArgs(signupFlow: SignupFlow.social),
+    );
   }
 
   Future<void> onCountryTap(Country selectedCountry) async {

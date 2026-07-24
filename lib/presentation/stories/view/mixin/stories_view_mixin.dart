@@ -16,7 +16,7 @@ mixin StoriesViewMixin on State<StoriesView> {
   }
 
   void onAddTap() {
-    // Story create flow — placeholder
+    context.push(RoutePaths.camera.path);
   }
 
   void onSendTap() {

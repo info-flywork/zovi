@@ -26,6 +26,14 @@ class AuthRepository {
     await Future<void>.delayed(const Duration(milliseconds: 600));
   }
 
+  Future<void> signInWithGoogle() async {
+    await Future<void>.delayed(const Duration(milliseconds: 600));
+  }
+
+  Future<void> signInWithApple() async {
+    await Future<void>.delayed(const Duration(milliseconds: 600));
+  }
+
   Future<bool> verifyCode(String phone, String code) async {
     await Future<void>.delayed(const Duration(milliseconds: 600));
     return code.length == 6;

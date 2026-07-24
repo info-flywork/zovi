@@ -21,14 +21,6 @@ final class OnboardingSendCodeTapped extends OnboardingEvent {
   const OnboardingSendCodeTapped();
 }
 
-final class OnboardingGoogleTapped extends OnboardingEvent {
-  const OnboardingGoogleTapped();
-}
-
-final class OnboardingAppleTapped extends OnboardingEvent {
-  const OnboardingAppleTapped();
-}
-
 final class OnboardingCountryChanged extends OnboardingEvent {
   const OnboardingCountryChanged(this.country);
 

@@ -11,11 +11,13 @@ class OnboardingBloc extends Bloc<OnboardingEvent, OnboardingState> {
     on<OnboardingPhoneChanged>(_onPhoneChanged);
     on<OnboardingCountryChanged>(_onCountryChanged);
     on<OnboardingSendCodeTapped>(_onSendCode);
-    on<OnboardingGoogleTapped>(_onSocial);
-    on<OnboardingAppleTapped>(_onSocial);
   }
 
   final AuthRepository _authRepository;
+
+  Future<void> signInWithGoogle() => _authRepository.signInWithGoogle();
+
+  Future<void> signInWithApple() => _authRepository.signInWithApple();
 
   void _onPhoneChanged(
     OnboardingPhoneChanged event,
@@ -69,26 +71,6 @@ class OnboardingBloc extends Bloc<OnboardingEvent, OnboardingState> {
       OnboardingSuccess(
         navigateTo: RoutePaths.otp.path,
         phone: phone,
-        selectedCountry: state.selectedCountry,
-      ),
-    );
-  }
-
-  Future<void> _onSocial(
-    OnboardingEvent event,
-    Emitter<OnboardingState> emit,
-  ) async {
-    emit(
-      OnboardingLoading(
-        phone: state.phone,
-        selectedCountry: state.selectedCountry,
-      ),
-    );
-    await Future<void>.delayed(const Duration(milliseconds: 600));
-    emit(
-      OnboardingSuccess(
-        navigateTo: RoutePaths.createProfile.path,
-        phone: state.phone,
         selectedCountry: state.selectedCountry,
       ),
     );

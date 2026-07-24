@@ -41,17 +41,20 @@ class HomeStoriesRow extends StatelessWidget {
                           showSeenRing: story.hasStory && story.isViewed,
                         ),
                         if (story.isYou)
-                          const Positioned(
+                          Positioned(
                             right: 0,
                             bottom: -3,
-                            child: AppIcon(
-                              AssetPaths.iconAddCircleBlack,
-                              size: 24,
+                            child: GestureDetector(
+                              onTap: () => context.push(RoutePaths.camera.path),
+                              child: AppIcon(
+                                AssetPaths.iconAddCircleBlack,
+                                size: 24,
+                              ),
                             ),
                           ),
                       ],
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 4),
                     Text(
                       story.name,
                       maxLines: 1,

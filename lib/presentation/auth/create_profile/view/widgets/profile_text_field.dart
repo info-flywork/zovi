@@ -8,6 +8,9 @@ class ProfileTextField extends StatefulWidget {
     required this.iconBackgroundColor,
     required this.value,
     required this.onChanged,
+    this.inputFormatters,
+    this.keyboardType,
+    this.textCapitalization = TextCapitalization.none,
     super.key,
   });
 
@@ -17,6 +20,9 @@ class ProfileTextField extends StatefulWidget {
   final Color iconBackgroundColor;
   final String value;
   final ValueChanged<String> onChanged;
+  final List<TextInputFormatter>? inputFormatters;
+  final TextInputType? keyboardType;
+  final TextCapitalization textCapitalization;
 
   @override
   State<ProfileTextField> createState() => _ProfileTextFieldState();
@@ -35,7 +41,13 @@ class _ProfileTextFieldState extends State<ProfileTextField> {
   void didUpdateWidget(ProfileTextField oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.value != widget.value && widget.value != _controller.text) {
-      _controller.text = widget.value;
+      final selection = _controller.selection;
+      _controller.value = TextEditingValue(
+        text: widget.value,
+        selection: TextSelection.collapsed(
+          offset: selection.baseOffset.clamp(0, widget.value.length),
+        ),
+      );
     }
   }
 
@@ -86,6 +98,9 @@ class _ProfileTextFieldState extends State<ProfileTextField> {
                 child: TextField(
                   controller: _controller,
                   onChanged: widget.onChanged,
+                  inputFormatters: widget.inputFormatters,
+                  keyboardType: widget.keyboardType,
+                  textCapitalization: widget.textCapitalization,
                   style: const TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w500,
@@ -112,6 +127,30 @@ class _ProfileTextFieldState extends State<ProfileTextField> {
           ),
         ),
       ],
+    );
+  }
+}
+
+/// Tek isim: 25, isim + soyisim (boşluk varsa): 50.
+class FullNameLengthLimitingFormatter extends TextInputFormatter {
+  const FullNameLengthLimitingFormatter();
+
+  static const singleNameMax = 25;
+  static const fullNameMax = 50;
+  static const usernameMax = 15;
+
+  @override
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
+    final text = newValue.text;
+    final maxLen = text.contains(RegExp(r'\s')) ? fullNameMax : singleNameMax;
+    if (text.length <= maxLen) return newValue;
+    final limited = text.substring(0, maxLen);
+    return TextEditingValue(
+      text: limited,
+      selection: TextSelection.collapsed(offset: limited.length),
     );
   }
 }

@@ -28,10 +28,10 @@ class IntroLoadedBody extends StatelessWidget {
             controller: pageController,
             onPageChanged: onPageChanged,
             clipBehavior: Clip.hardEdge,
-            children: const [
+            children: [
               _IntroPageClip(child: IntroAroundPage()),
-              _IntroPageClip(child: IntroPulsePage()),
-              _IntroPageClip(child: IntroStampsPage()),
+              _IntroPageClip(child: IntroPulsePage(isActive: pageIndex == 1)),
+              _IntroPageClip(child: IntroStampsPage(isActive: pageIndex == 2)),
             ],
           ),
         ),

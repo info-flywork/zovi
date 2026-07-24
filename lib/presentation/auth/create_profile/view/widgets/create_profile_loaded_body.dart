@@ -66,6 +66,8 @@ class CreateProfileLoadedBody extends StatelessWidget {
             iconBackgroundColor: const Color(0x337B2FFF),
             value: fullName,
             onChanged: onFullNameChanged,
+            textCapitalization: TextCapitalization.words,
+            inputFormatters: const [FullNameLengthLimitingFormatter()],
           ),
           const SizedBox(height: 20),
           ProfileTextField(
@@ -75,6 +77,11 @@ class CreateProfileLoadedBody extends StatelessWidget {
             iconBackgroundColor: const Color(0x3300C896),
             value: username,
             onChanged: onUsernameChanged,
+            inputFormatters: [
+              LengthLimitingTextInputFormatter(
+                FullNameLengthLimitingFormatter.usernameMax,
+              ),
+            ],
           ),
           const Spacer(),
           AppButton(

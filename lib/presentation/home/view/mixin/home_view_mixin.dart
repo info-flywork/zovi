@@ -44,8 +44,8 @@ mixin HomeViewMixin on State<HomeView> {
   }
 
   Future<void> onStoryTap(StoryPreview story) async {
-    if (story.isYou && !story.hasStory) {
-      AppSnackbar.instance.show(context, 'story_create_coming_soon'.tr());
+    if (story.isYou) {
+      context.push(RoutePaths.camera.path);
       return;
     }
 

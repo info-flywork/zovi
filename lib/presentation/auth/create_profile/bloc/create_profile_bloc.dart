@@ -13,13 +13,28 @@ class CreateProfileBloc extends Bloc<CreateProfileEvent, CreateProfileState> {
     on<CreateProfileContinueTapped>(_onContinue);
   }
 
+  static const _singleNameMax = 25;
+  static const _fullNameMax = 50;
+  static const _usernameMax = 15;
+
+  static String _limitFullName(String text) {
+    final maxLen = text.contains(RegExp(r'\s')) ? _fullNameMax : _singleNameMax;
+    if (text.length <= maxLen) return text;
+    return text.substring(0, maxLen);
+  }
+
+  static String _limitUsername(String text) {
+    if (text.length <= _usernameMax) return text;
+    return text.substring(0, _usernameMax);
+  }
+
   void _onFullNameChanged(
     CreateProfileFullNameChanged event,
     Emitter<CreateProfileState> emit,
   ) {
     emit(
       CreateProfileInitial(
-        fullName: event.fullName,
+        fullName: _limitFullName(event.fullName),
         username: state.username,
         signupFlow: state.signupFlow,
       ),
@@ -33,7 +48,7 @@ class CreateProfileBloc extends Bloc<CreateProfileEvent, CreateProfileState> {
     emit(
       CreateProfileInitial(
         fullName: state.fullName,
-        username: event.username,
+        username: _limitUsername(event.username),
         signupFlow: state.signupFlow,
       ),
     );

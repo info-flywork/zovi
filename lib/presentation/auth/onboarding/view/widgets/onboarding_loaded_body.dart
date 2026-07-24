@@ -19,8 +19,8 @@ class OnboardingLoadedBody extends StatelessWidget {
   final ValueChanged<String> onPhoneChanged;
   final Future<void> Function(Country selectedCountry) onCountryTap;
   final VoidCallback onSendCode;
-  final VoidCallback onGoogle;
-  final VoidCallback onApple;
+  final Future<void> Function() onGoogle;
+  final Future<void> Function() onApple;
 
   @override
   Widget build(BuildContext context) {
@@ -95,13 +95,17 @@ class OnboardingLoadedBody extends StatelessWidget {
           SocialLoginButton(
             label: 'continue_with_google'.tr(),
             iconPath: AssetPaths.iconGoogle,
-            onTap: onGoogle,
+            onTap: () {
+              onGoogle();
+            },
           ),
           const SizedBox(height: 10),
           SocialLoginButton(
             label: 'continue_with_apple'.tr(),
             iconPath: AssetPaths.iconApple,
-            onTap: onApple,
+            onTap: () {
+              onApple();
+            },
           ),
           const Spacer(),
           Text.rich(
