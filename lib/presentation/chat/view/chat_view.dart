@@ -9,6 +9,7 @@ import 'package:zovi/core/widgets/app_confirm_dialog.dart';
 import 'package:zovi/core/widgets/app_icon.dart';
 import 'package:zovi/core/widgets/app_search_field.dart';
 import 'package:zovi/core/widgets/bottom_navigation_bar/main_wrapper.dart';
+import 'package:zovi/core/utils/navigation/open_user_profile.dart';
 import 'package:zovi/presentation/chat/bloc/chat_bloc.dart';
 import 'package:zovi/presentation/chat/model/chat_detail_route_args.dart';
 import 'package:zovi/presentation/chat/model/chat_request_item.dart';

@@ -1,10 +1,7 @@
 part of '../home_view.dart';
 
 class HomeHeaderSection extends StatelessWidget {
-  const HomeHeaderSection({
-    required this.hasUnreadMessages,
-    super.key,
-  });
+  const HomeHeaderSection({required this.hasUnreadMessages, super.key});
 
   final bool hasUnreadMessages;
 
@@ -28,7 +25,11 @@ class HomeHeaderSection extends StatelessWidget {
           const Spacer(),
           Text('app_name'.tr(), style: AppTheme.brandWordmarkSmall),
           const Spacer(),
-          const AppIcon(AssetPaths.iconFlame, size: 32),
+          GestureDetector(
+            onTap: () => context.push(RoutePaths.lifestyleStreak.path),
+            behavior: HitTestBehavior.opaque,
+            child: const AppIcon(AssetPaths.iconFlame, size: 32),
+          ),
           const SizedBox(width: 10),
           GestureDetector(
             onTap: () => context.go(RoutePaths.chat.path),
@@ -50,10 +51,7 @@ class HomeHeaderSection extends StatelessWidget {
                         decoration: BoxDecoration(
                           color: AppColors.logoutRed,
                           shape: BoxShape.circle,
-                          border: Border.all(
-                            color: AppColors.white,
-                            width: 1,
-                          ),
+                          border: Border.all(color: AppColors.white, width: 1),
                         ),
                       ),
                     ),

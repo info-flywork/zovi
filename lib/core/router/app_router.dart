@@ -26,6 +26,9 @@ import 'package:zovi/presentation/auth/notification_permission/view/notification
 import 'package:zovi/presentation/auth/phone_verified/view/phone_verified_view.dart';
 import 'package:zovi/presentation/auth/splash/bloc/splash_bloc.dart';
 import 'package:zovi/presentation/auth/splash/view/splash_view.dart';
+import 'package:zovi/presentation/camera/model/camera_compose_route_args.dart';
+import 'package:zovi/presentation/camera/view/camera_compose_view.dart';
+import 'package:zovi/presentation/camera/view/camera_view.dart';
 import 'package:zovi/presentation/chat/bloc/chat_bloc.dart';
 import 'package:zovi/presentation/chat/model/chat_detail_route_args.dart';
 import 'package:zovi/presentation/chat/model/chat_request_item.dart';
@@ -41,6 +44,7 @@ import 'package:zovi/presentation/home/bloc/home_bloc.dart';
 import 'package:zovi/presentation/home/model/check_in_success_route_args.dart';
 import 'package:zovi/presentation/home/view/check_in_success_view.dart';
 import 'package:zovi/presentation/home/view/home_view.dart';
+import 'package:zovi/presentation/home/view/lifestyle_streak_view.dart';
 import 'package:zovi/presentation/home/view/tribe_view.dart';
 import 'package:zovi/presentation/notifications/view/notifications_view.dart';
 import 'package:zovi/presentation/profile/bloc/profile_bloc.dart';
@@ -202,6 +206,30 @@ abstract final class AppRouter {
         builder: (context, state) {
           final args = state.extra! as CheckInSuccessRouteArgs;
           return CheckInSuccessView(args: args);
+        },
+      ),
+      GoRoute(
+        path: RoutePaths.lifestyleStreak.path,
+        name: RoutePaths.lifestyleStreak.name,
+        builder: (context, state) => const LifestyleStreakView(),
+      ),
+      GoRoute(
+        path: RoutePaths.camera.path,
+        name: RoutePaths.camera.name,
+        builder: (context, state) => const CameraView(),
+      ),
+      GoRoute(
+        path: RoutePaths.cameraCompose.path,
+        name: RoutePaths.cameraCompose.name,
+        redirect: (context, state) {
+          if (state.extra is! CameraComposeRouteArgs) {
+            return RoutePaths.camera.path;
+          }
+          return null;
+        },
+        builder: (context, state) {
+          final args = state.extra! as CameraComposeRouteArgs;
+          return CameraComposeView(args: args);
         },
       ),
       ShellRoute(

@@ -71,13 +71,15 @@ mixin HomeViewMixin on State<HomeView> {
     );
 
     if (!mounted) return;
-    context.push(
+    await context.push(
       RoutePaths.storyDetail.path,
       extra: StoryDetailRouteArgs(
         items: items,
         initialIndex: initialIndex < 0 ? 0 : initialIndex,
       ),
     );
+    if (!mounted) return;
+    context.read<HomeBloc>().add(const HomeStoriesRefreshRequested());
   }
 
   void onAddTap() async {

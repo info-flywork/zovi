@@ -669,41 +669,54 @@ class _HomeMapSectionState extends State<HomeMapSection>
                     ),
                 Marker(
                   point: _userLocation,
-                  width: HomeMapCheckInMarker.width,
-                  height: HomeMapCheckInMarker.height,
+                  width: HomeMapTitleMarker.width,
+                  height: HomeMapTitleMarker.height,
                   alignment: Alignment.center,
                   child: ValueListenableBuilder<ActiveMapCheckIn?>(
                     valueListenable:
                         getIt<UserRepository>().activeMapCheckInListenable,
                     builder: (context, activeCheckIn, _) {
-                      final marker = activeCheckIn != null
-                          ? HomeMapCheckInMarker.fromActive(activeCheckIn)
-                          : Center(
-                              child: Container(
-                                width: HomeMapCheckInMarker.avatarSize,
-                                height: HomeMapCheckInMarker.avatarSize,
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  border: Border.all(
-                                    color: AppColors.zoviOrange,
-                                    width: HomeMapCheckInMarker.border,
-                                  ),
-                                  boxShadow: const [
-                                    BoxShadow(
-                                      color: Color(0x33000000),
-                                      blurRadius: 6,
-                                      offset: Offset(0, 2),
-                                    ),
-                                  ],
-                                ),
-                                child: ClipOval(
-                                  child: Image.asset(
-                                    AssetPaths.avatarYou,
-                                    fit: BoxFit.cover,
-                                  ),
-                                ),
+                      final Widget marker;
+                      if (activeCheckIn == null) {
+                        marker = Center(
+                          child: Container(
+                            width: HomeMapCheckInMarker.avatarSize,
+                            height: HomeMapCheckInMarker.avatarSize,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: AppColors.zoviOrange,
+                                width: HomeMapCheckInMarker.border,
                               ),
-                            );
+                              boxShadow: const [
+                                BoxShadow(
+                                  color: Color(0x33000000),
+                                  blurRadius: 6,
+                                  offset: Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                            child: ClipOval(
+                              child: Image.asset(
+                                AssetPaths.avatarYou,
+                                fit: BoxFit.cover,
+                              ),
+                            ),
+                          ),
+                        );
+                      } else if (activeCheckIn.hasTitle) {
+                        marker = HomeMapTitleMarker.fromActive(activeCheckIn);
+                      } else {
+                        marker = Center(
+                          child: SizedBox(
+                            width: HomeMapCheckInMarker.width,
+                            height: HomeMapCheckInMarker.height,
+                            child: HomeMapCheckInMarker.fromActive(
+                              activeCheckIn,
+                            ),
+                          ),
+                        );
+                      }
                       if (activeCheckIn == null) {
                         return IgnorePointer(child: marker);
                       }
@@ -810,6 +823,12 @@ class _HomeMapSectionState extends State<HomeMapSection>
                           friend: _friendSheetFriend!,
                           onClose: () => unawaited(_closeFriendSheet()),
                           onSend: (text) => unawaited(_sendFriendMessage(text)),
+                          onOpenProfile: () => unawaited(
+                            openUserProfile(
+                              context,
+                              _friendSheetFriend!.name,
+                            ),
+                          ),
                         )
                       : HomeMapLastCheckInSheet(
                           checkIn: _lastCheckInSheet!,

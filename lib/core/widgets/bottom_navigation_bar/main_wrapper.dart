@@ -26,9 +26,7 @@ class MainWrapper extends StatelessWidget {
       case 0:
         context.go(RoutePaths.home.path);
       case 1:
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('camera_coming_soon'.tr())));
+        context.push(RoutePaths.camera.path);
       case 2:
         context.go(RoutePaths.stories.path);
       case 3:

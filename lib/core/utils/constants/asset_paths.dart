@@ -5,6 +5,7 @@ abstract final class AssetPaths {
   static const String iconVerify = 'assets/icons/verify.svg';
   static const String iconFormatCircle = 'assets/icons/format-circle.svg';
   static const String iconFlame = 'assets/icons/flame2.svg';
+  static const String iconFlame3 = 'assets/icons/flame-3.png';
   static const String iconSend = 'assets/icons/send_outlined.svg';
   static const String iconAddBlack = 'assets/icons/add-black.svg';
   static const String iconReelsSquare = 'assets/icons/reels_square.svg';
@@ -13,6 +14,8 @@ abstract final class AssetPaths {
   static const String iconSettings = 'assets/icons/settings.svg';
   static const String iconLocation = 'assets/icons/location.svg';
   static const String iconCamera = 'assets/icons/camera.svg';
+  static const String iconFlashSlash = 'assets/icons/flash-slash.svg';
+  static const String iconRepeatArrow = 'assets/icons/repeat-arrow.svg';
   static const String iconStories = 'assets/icons/stories.svg';
   static const String iconChat = 'assets/icons/chat.svg';
   static const String iconNavigate = 'assets/icons/navigate.svg';
@@ -20,7 +23,14 @@ abstract final class AssetPaths {
   static const String iconAdd2 = 'assets/icons/add2.svg';
   static const String iconStreakFlame = 'assets/icons/streak_flame.svg';
   static const String iconClose = 'assets/icons/close.svg';
+  static const String iconCloose = 'assets/icons/cloose.svg';
   static const String iconClosee = 'assets/icons/closee.svg';
+  static const String iconTextAa = 'assets/icons/Isolation_Mode.svg';
+  static const String iconMusicNote = 'assets/icons/music (1) 1.svg';
+  static const String iconSticker = 'assets/icons/sticker 1.svg';
+  static const String iconAiUsers = 'assets/icons/ai-users (2) 1.svg';
+  static const String iconImportArrow = 'assets/icons/import-arrow 1.svg';
+  static const String iconSendPlane = 'assets/icons/send (8) 1.svg';
   static const String iconVerified = 'assets/icons/verified.svg';
   static const String iconVerifiedOrange = 'assets/icons/verified_orange.svg';
   static const String iconHeartCircle = 'assets/icons/heart_circle.svg';

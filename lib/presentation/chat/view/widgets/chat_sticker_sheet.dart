@@ -28,18 +28,36 @@ const _stamps = [
   StampItem(imagePath: AssetPaths.stamp17, title: 'Peekaboo'),
 ];
 
-Future<StampItem?> showChatStickerSheet(BuildContext context) {
+Future<StampItem?> showChatStickerSheet(
+  BuildContext context, {
+  double initialChildSize = 0.62,
+  double minChildSize = 0.4,
+  double maxChildSize = 0.8,
+}) {
   return showModalBottomSheet<StampItem>(
     context: context,
     isScrollControlled: true,
     backgroundColor: Colors.transparent,
     barrierColor: Colors.black26,
-    builder: (context) => const ChatStickerSheet(),
+    builder: (context) => ChatStickerSheet(
+      initialChildSize: initialChildSize,
+      minChildSize: minChildSize,
+      maxChildSize: maxChildSize,
+    ),
   );
 }
 
 class ChatStickerSheet extends StatefulWidget {
-  const ChatStickerSheet({super.key});
+  const ChatStickerSheet({
+    this.initialChildSize = 0.62,
+    this.minChildSize = 0.4,
+    this.maxChildSize = 0.8,
+    super.key,
+  });
+
+  final double initialChildSize;
+  final double minChildSize;
+  final double maxChildSize;
 
   @override
   State<ChatStickerSheet> createState() => _ChatStickerSheetState();
@@ -64,9 +82,9 @@ class _ChatStickerSheetState extends State<ChatStickerSheet> {
     return Padding(
       padding: EdgeInsets.only(bottom: bottomInset),
       child: DraggableScrollableSheet(
-        initialChildSize: 0.62,
-        minChildSize: 0.4,
-        maxChildSize: 0.8,
+        initialChildSize: widget.initialChildSize,
+        minChildSize: widget.minChildSize,
+        maxChildSize: widget.maxChildSize,
         expand: false,
         builder: (context, scrollController) {
           return ClipRRect(

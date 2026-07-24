@@ -14,6 +14,7 @@ import 'package:zovi/core/theme/app_colors.dart';
 import 'package:zovi/core/utils/constants/asset_paths.dart';
 import 'package:zovi/core/utils/enum/route_paths.dart';
 import 'package:zovi/core/utils/extensions/future_extensions.dart';
+import 'package:zovi/core/utils/navigation/open_user_profile.dart';
 import 'package:zovi/core/widgets/app_icon.dart';
 import 'package:zovi/presentation/chat/model/chat_detail_route_args.dart';
 import 'package:zovi/presentation/chat/model/group_info_route_args.dart';
@@ -362,6 +363,7 @@ class _ChatDetailViewState extends State<ChatDetailView> {
                     child: _MessageBubble(
                       message: message,
                       avatarPath: widget.args.avatarPath,
+                      username: widget.args.username,
                       isGroup: widget.args.isGroup,
                     ),
                   );
@@ -446,45 +448,57 @@ class _ChatDetailHeader extends StatelessWidget {
             child: const AppIcon(AssetPaths.iconArrowLeft),
           ),
           const SizedBox(width: 12),
-          ClipOval(
-            child: Image.asset(
-              args.avatarPath,
-              width: 40,
-              height: 40,
-              fit: BoxFit.cover,
-            ),
-          ),
-          const SizedBox(width: 10),
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  args.headerTitle,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w500,
-                    height: 1,
-                    letterSpacing: -0.32,
-                    color: AppColors.black,
+            child: GestureDetector(
+              onTap: args.isGroup
+                  ? null
+                  : () => openUserProfile(context, args.username),
+              behavior: HitTestBehavior.opaque,
+              child: Row(
+                children: [
+                  ClipOval(
+                    child: Image.asset(
+                      args.avatarPath,
+                      width: 40,
+                      height: 40,
+                      fit: BoxFit.cover,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  subtitle,
-                  style: TextStyle(
-                    fontSize: args.isGroup ? 14 : 12,
-                    fontWeight: FontWeight.w500,
-                    height: 1,
-                    letterSpacing: args.isGroup ? -0.28 : -0.24,
-                    color: args.isGroup
-                        ? AppColors.deepRoast.withValues(alpha: 0.65)
-                        : AppColors.textSecondary,
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          args.headerTitle,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w500,
+                            height: 1,
+                            letterSpacing: -0.32,
+                            color: AppColors.black,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          subtitle,
+                          style: TextStyle(
+                            fontSize: args.isGroup ? 14 : 12,
+                            fontWeight: FontWeight.w500,
+                            height: 1,
+                            letterSpacing: args.isGroup ? -0.28 : -0.24,
+                            color: args.isGroup
+                                ? AppColors.deepRoast.withValues(alpha: 0.65)
+                                : AppColors.textSecondary,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
           if (args.isGroup) ...[
@@ -518,11 +532,13 @@ class _MessageBubble extends StatelessWidget {
   const _MessageBubble({
     required this.message,
     required this.avatarPath,
+    required this.username,
     required this.isGroup,
   });
 
   final _ChatMessage message;
   final String avatarPath;
+  final String username;
   final bool isGroup;
 
   void _openMedia(
@@ -539,22 +555,31 @@ class _MessageBubble extends StatelessWidget {
     );
   }
 
-  Widget _wrapIncoming({required Widget child}) {
+  Widget _wrapIncoming({required BuildContext context, required Widget child}) {
     final senderAvatar = message.senderAvatarPath ?? avatarPath;
     final senderName = message.senderName;
+
+    final avatar = GestureDetector(
+      onTap: () => openUserProfile(
+        context,
+        isGroup ? (senderName ?? username) : username,
+      ),
+      behavior: HitTestBehavior.opaque,
+      child: ClipOval(
+        child: Image.asset(
+          senderAvatar,
+          width: 32,
+          height: 32,
+          fit: BoxFit.cover,
+        ),
+      ),
+    );
 
     if (!isGroup) {
       return Row(
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
-          ClipOval(
-            child: Image.asset(
-              senderAvatar,
-              width: 32,
-              height: 32,
-              fit: BoxFit.cover,
-            ),
-          ),
+          avatar,
           const SizedBox(width: 8),
           Flexible(child: child),
         ],
@@ -564,28 +589,25 @@ class _MessageBubble extends StatelessWidget {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.end,
       children: [
-        ClipOval(
-          child: Image.asset(
-            senderAvatar,
-            width: 32,
-            height: 32,
-            fit: BoxFit.cover,
-          ),
-        ),
+        avatar,
         const SizedBox(width: 8),
         Flexible(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               if (senderName != null && senderName.isNotEmpty) ...[
-                Text(
-                  senderName,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                    height: 1,
-                    letterSpacing: -0.28,
-                    color: AppColors.zoviOrange,
+                GestureDetector(
+                  onTap: () => openUserProfile(context, senderName),
+                  behavior: HitTestBehavior.opaque,
+                  child: Text(
+                    senderName,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                      height: 1,
+                      letterSpacing: -0.28,
+                      color: AppColors.zoviOrange,
+                    ),
                   ),
                 ),
                 const SizedBox(height: 6),
@@ -618,7 +640,7 @@ class _MessageBubble extends StatelessWidget {
       if (message.isMine) {
         return Align(alignment: Alignment.centerRight, child: stamp);
       }
-      return _wrapIncoming(child: stamp);
+      return _wrapIncoming(context: context, child: stamp);
     }
 
     if (message.isImage) {
@@ -642,7 +664,7 @@ class _MessageBubble extends StatelessWidget {
       if (message.isMine) {
         return Align(alignment: Alignment.centerRight, child: image);
       }
-      return _wrapIncoming(child: image);
+      return _wrapIncoming(context: context, child: image);
     }
 
     if (message.isVoice) {
@@ -654,7 +676,7 @@ class _MessageBubble extends StatelessWidget {
       if (message.isMine) {
         return Align(alignment: Alignment.centerRight, child: voice);
       }
-      return _wrapIncoming(child: voice);
+      return _wrapIncoming(context: context, child: voice);
     }
 
     if (message.isMine) {
@@ -717,7 +739,7 @@ class _MessageBubble extends StatelessWidget {
       ),
     );
 
-    return _wrapIncoming(child: bubble);
+    return _wrapIncoming(context: context, child: bubble);
   }
 }
 

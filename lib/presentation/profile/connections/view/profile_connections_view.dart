@@ -1,20 +1,18 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:zovi/core/di/injection.dart';
 import 'package:zovi/core/in_app_notification/app_in_app_notification.dart';
 import 'package:zovi/core/in_app_notification/in_app_notification_data.dart';
 import 'package:zovi/core/theme/app_colors.dart';
 import 'package:zovi/core/utils/constants/asset_paths.dart';
 import 'package:zovi/core/utils/enum/route_paths.dart';
+import 'package:zovi/core/utils/navigation/open_user_profile.dart';
 import 'package:zovi/core/widgets/app_icon.dart';
 import 'package:zovi/core/widgets/profile_avatar.dart';
-import 'package:zovi/domain/user/user_repository.dart';
 import 'package:zovi/presentation/chat/model/chat_detail_route_args.dart';
 import 'package:zovi/presentation/profile/connections/model/profile_connection_user.dart';
 import 'package:zovi/presentation/profile/connections/model/profile_connections_route_args.dart';
 import 'package:zovi/presentation/profile/connections/view/widgets/profile_connection_confirm_sheet.dart';
-import 'package:zovi/presentation/profile/user_profile/model/user_profile_route_args.dart';
 
 class ProfileConnectionsView extends StatefulWidget {
   const ProfileConnectionsView({required this.args, super.key});
@@ -170,14 +168,7 @@ class _ProfileConnectionsViewState extends State<ProfileConnectionsView>
   }
 
   Future<void> _openProfile(ProfileConnectionUser user) async {
-    final profile = await getIt<UserRepository>().getPublicUserProfile(
-      user.username,
-    );
-    if (!mounted) return;
-    context.push(
-      RoutePaths.userProfile.path,
-      extra: UserProfileRouteArgs(user: profile),
-    );
+    await openUserProfile(context, user.username);
   }
 
   @override

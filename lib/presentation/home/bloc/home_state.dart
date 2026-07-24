@@ -27,6 +27,18 @@ final class HomeLoaded extends HomeState {
   final List<MapFriend> mapFriends;
   final bool hasUnreadMessages;
 
+  HomeLoaded copyWith({
+    List<StoryPreview>? stories,
+    List<MapFriend>? mapFriends,
+    bool? hasUnreadMessages,
+  }) {
+    return HomeLoaded(
+      stories: stories ?? this.stories,
+      mapFriends: mapFriends ?? this.mapFriends,
+      hasUnreadMessages: hasUnreadMessages ?? this.hasUnreadMessages,
+    );
+  }
+
   @override
   List<Object?> get props => [stories, mapFriends, hasUnreadMessages];
 }

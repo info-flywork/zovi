@@ -29,11 +29,91 @@ const _unlockStamps = [
   StampItem(imagePath: AssetPaths.stamp17, title: 'Peekaboo'),
 ];
 
-/// Returns the unlocked stamp when user taps "Add to my check-in",
-/// or `null` when they tap "Not now" / dismiss.
-Future<StampItem?> showCheckInUnlockStampSheet(BuildContext context) {
+const _unlockTitles = [
+  TitleUnlockItem(
+    emoji: '👑',
+    title: 'Kurucu Kral',
+    imagePath: AssetPaths.stamp16,
+  ),
+  TitleUnlockItem(
+    emoji: '👑',
+    title: 'Gece Kralı',
+    imagePath: AssetPaths.stickerNightFlame,
+  ),
+  TitleUnlockItem(
+    emoji: '👑',
+    title: 'Keşif Ustası',
+    imagePath: AssetPaths.stickerExplorer,
+  ),
+  TitleUnlockItem(
+    emoji: '👑',
+    title: 'VIP Efsane',
+    imagePath: AssetPaths.stamp2,
+  ),
+];
+
+class TitleUnlockItem {
+  const TitleUnlockItem({
+    required this.emoji,
+    required this.title,
+    required this.imagePath,
+  });
+
+  final String emoji;
+  final String title;
+  final String imagePath;
+
+  String get label => '$emoji $title';
+}
+
+/// Stamp veya unvan; "kaydet" / "add" ile seçilirse dolu, aksi halde `null`.
+class CheckInUnlockResult {
+  const CheckInUnlockResult.stamp(this.stamp)
+    : titleLabel = null,
+      titleImagePath = null;
+
+  const CheckInUnlockResult.title({
+    required this.titleLabel,
+    required this.titleImagePath,
+  }) : stamp = null;
+
+  final StampItem? stamp;
+  final String? titleLabel;
+  final String? titleImagePath;
+
+  bool get isTitle => titleLabel != null;
+}
+
+/// Rastgele stamp veya unvan sheet'i açar.
+Future<CheckInUnlockResult?> showCheckInUnlockRewardSheet(
+  BuildContext context, {
+  required String placeName,
+}) {
+  final isTitle = Random().nextBool();
+  if (isTitle) {
+    final title = _unlockTitles[Random().nextInt(_unlockTitles.length)];
+    return showModalBottomSheet<CheckInUnlockResult>(
+      context: context,
+      isScrollControlled: true,
+      useRootNavigator: true,
+      backgroundColor: AppColors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) =>
+          CheckInUnlockTitleSheet(title: title, placeName: placeName),
+    );
+  }
+
+  return showCheckInUnlockStampSheet(context);
+}
+
+/// Sadece stamp unlock sheet'i açar.
+Future<CheckInUnlockResult?> showCheckInUnlockStampSheet(
+  BuildContext context,
+) {
   final stamp = _unlockStamps[Random().nextInt(_unlockStamps.length)];
-  return showModalBottomSheet<StampItem>(
+  return showModalBottomSheet<CheckInUnlockResult>(
     context: context,
     isScrollControlled: true,
     useRootNavigator: true,
@@ -107,7 +187,122 @@ class CheckInUnlockStampSheet extends StatelessWidget {
             AppButton(
               label: 'check_in_unlock_add'.tr(),
               height: 50,
-              onPressed: () => Navigator.of(context).pop(stamp),
+              onPressed: () =>
+                  Navigator.of(context).pop(CheckInUnlockResult.stamp(stamp)),
+            ),
+            const SizedBox(height: 12),
+            GestureDetector(
+              onTap: () => Navigator.of(context).pop(),
+              behavior: HitTestBehavior.opaque,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 10),
+                child: Text(
+                  'check_in_unlock_not_now'.tr(),
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    height: 20 / 16,
+                    color: AppColors.black,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class CheckInUnlockTitleSheet extends StatelessWidget {
+  const CheckInUnlockTitleSheet({
+    required this.title,
+    required this.placeName,
+    super.key,
+  });
+
+  final TitleUnlockItem title;
+  final String placeName;
+
+  @override
+  Widget build(BuildContext context) {
+    final place = placeName.trim().isEmpty ? 'Babylon İstanbul' : placeName;
+
+    return SafeArea(
+      bottom: false,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(
+          16,
+          16,
+          16,
+          kBottomNavigationBarHeight / 2,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 46,
+              height: 4,
+              decoration: BoxDecoration(
+                color: AppColors.progressInactive,
+                borderRadius: BorderRadius.circular(9999),
+              ),
+            ),
+            const SizedBox(height: 24),
+            Text(
+              'check_in_unlock_title_earned'.tr(),
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+                height: 1,
+                letterSpacing: -0.32,
+                color: AppColors.zoviOrange,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              title.label,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.w600,
+                height: 1,
+                letterSpacing: -0.4,
+                color: AppColors.black,
+              ),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              'check_in_unlock_title_description'.tr(
+                namedArgs: {'place': place},
+              ),
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w400,
+                height: 1.35,
+                color: AppColors.black.withValues(alpha: 0.55),
+              ),
+            ),
+            const SizedBox(height: 10),
+            Image.asset(
+              title.imagePath,
+              width: 180,
+              height: 180,
+              fit: BoxFit.contain,
+            ),
+            const SizedBox(height: 10),
+            AppButton(
+              label: 'check_in_unlock_save_and_use'.tr(),
+              height: 50,
+              onPressed: () => Navigator.of(context).pop(
+                CheckInUnlockResult.title(
+                  titleLabel: title.label,
+                  titleImagePath: title.imagePath,
+                ),
+              ),
             ),
             const SizedBox(height: 12),
             GestureDetector(

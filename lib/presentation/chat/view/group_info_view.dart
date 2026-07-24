@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:zovi/core/theme/app_colors.dart';
 import 'package:zovi/core/utils/constants/asset_paths.dart';
 import 'package:zovi/core/utils/enum/route_paths.dart';
+import 'package:zovi/core/utils/navigation/open_user_profile.dart';
 import 'package:zovi/core/widgets/app_button.dart';
 import 'package:zovi/core/widgets/app_icon.dart';
 import 'package:zovi/presentation/chat/model/chat_detail_route_args.dart';
@@ -608,14 +609,21 @@ Future<void> _showMemberProfileSheet(
     shape: const RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
     ),
-    builder: (context) => _MemberProfileSheet(member: member),
+    builder: (sheetContext) => _MemberProfileSheet(
+      member: member,
+      parentContext: context,
+    ),
   );
 }
 
 class _MemberProfileSheet extends StatelessWidget {
-  const _MemberProfileSheet({required this.member});
+  const _MemberProfileSheet({
+    required this.member,
+    required this.parentContext,
+  });
 
   final _GroupMember member;
+  final BuildContext parentContext;
 
   @override
   Widget build(BuildContext context) {
@@ -665,7 +673,7 @@ class _MemberProfileSheet extends StatelessWidget {
               label: 'group_info_send_message'.tr(),
               onPressed: () {
                 Navigator.of(context).pop();
-                context.push(
+                parentContext.push(
                   RoutePaths.chatDetail.path,
                   extra: ChatDetailRouteArgs(
                     name: member.profileName,
@@ -677,7 +685,13 @@ class _MemberProfileSheet extends StatelessWidget {
             ),
             const SizedBox(height: 16),
             GestureDetector(
-              onTap: () => Navigator.of(context).pop(),
+              onTap: () async {
+                Navigator.of(context).pop();
+                await openUserProfile(
+                  parentContext,
+                  member.name ?? member.profileName,
+                );
+              },
               behavior: HitTestBehavior.opaque,
               child: Padding(
                 padding: const EdgeInsets.symmetric(vertical: 4),

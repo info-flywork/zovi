@@ -269,6 +269,8 @@ class _ChatLoadedBodyState extends State<ChatLoadedBody> {
                             child: _ChatTile(
                               chat: chat,
                               onTap: () => _openChat(chat),
+                              onAvatarTap: () =>
+                                  openUserProfile(context, chat.username),
                             ),
                           ),
                         ),
@@ -302,7 +304,7 @@ class _ChatRemoveTile extends StatelessWidget {
           ).animate(animation),
           child: Padding(
             padding: const EdgeInsets.only(bottom: 16),
-            child: _ChatTile(chat: chat, onTap: () {}),
+            child: _ChatTile(chat: chat, onTap: () {}, onAvatarTap: () {}),
           ),
         ),
       ),
@@ -348,10 +350,15 @@ class _ChatEmptyState extends StatelessWidget {
 }
 
 class _ChatTile extends StatelessWidget {
-  const _ChatTile({required this.chat, required this.onTap});
+  const _ChatTile({
+    required this.chat,
+    required this.onTap,
+    required this.onAvatarTap,
+  });
 
   final _ChatPreview chat;
   final VoidCallback onTap;
+  final VoidCallback onAvatarTap;
 
   @override
   Widget build(BuildContext context) {
@@ -361,12 +368,16 @@ class _ChatTile extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          ClipOval(
-            child: Image.asset(
-              chat.avatarPath,
-              width: 58,
-              height: 58,
-              fit: BoxFit.cover,
+          GestureDetector(
+            onTap: onAvatarTap,
+            behavior: HitTestBehavior.opaque,
+            child: ClipOval(
+              child: Image.asset(
+                chat.avatarPath,
+                width: 58,
+                height: 58,
+                fit: BoxFit.cover,
+              ),
             ),
           ),
           const SizedBox(width: 12),

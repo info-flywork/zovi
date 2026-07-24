@@ -14,3 +14,7 @@ final class HomeStarted extends HomeEvent {
 final class HomeRefreshRequested extends HomeEvent {
   const HomeRefreshRequested();
 }
+
+final class HomeStoriesRefreshRequested extends HomeEvent {
+  const HomeStoriesRefreshRequested();
+}

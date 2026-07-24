@@ -53,12 +53,42 @@ class HomeMapLastCheckInSheet extends StatelessWidget {
                     Positioned(
                       right: -2,
                       bottom: -2,
-                      child: Image.asset(
-                        checkIn.stampImagePath,
-                        width: _stampSize,
-                        height: _stampSize,
-                        fit: BoxFit.contain,
-                      ),
+                      child: checkIn.hasTitle
+                          ? Container(
+                              height: 24,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 6,
+                              ),
+                              decoration: BoxDecoration(
+                                color: AppColors.white,
+                                borderRadius: BorderRadius.circular(999),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: AppColors.black.withValues(
+                                      alpha: 0.2,
+                                    ),
+                                    blurRadius: 3,
+                                    offset: const Offset(0, 1),
+                                  ),
+                                ],
+                              ),
+                              alignment: Alignment.center,
+                              child: Text(
+                                checkIn.titleLabel!,
+                                style: const TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w600,
+                                  height: 1,
+                                  color: AppColors.black,
+                                ),
+                              ),
+                            )
+                          : Image.asset(
+                              checkIn.stampImagePath,
+                              width: _stampSize,
+                              height: _stampSize,
+                              fit: BoxFit.contain,
+                            ),
                     ),
                   ],
                 ),

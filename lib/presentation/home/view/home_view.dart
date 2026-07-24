@@ -18,6 +18,7 @@ import 'package:zovi/core/theme/app_colors.dart';
 import 'package:zovi/core/theme/app_theme.dart';
 import 'package:zovi/core/utils/constants/asset_paths.dart';
 import 'package:zovi/core/utils/enum/route_paths.dart';
+import 'package:zovi/core/utils/navigation/open_user_profile.dart';
 import 'package:zovi/core/widgets/app_icon.dart';
 import 'package:zovi/core/widgets/app_loading.dart';
 import 'package:zovi/core/widgets/bottom_navigation_bar/main_wrapper.dart';

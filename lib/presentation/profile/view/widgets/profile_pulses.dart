@@ -7,15 +7,26 @@ class ProfilePulses extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      height: 216,
-      child: ListView.separated(
-        padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-        scrollDirection: Axis.horizontal,
-        itemCount: pulses.length,
-        separatorBuilder: (_, _) => const SizedBox(width: 10),
-        itemBuilder: (context, index) {
-          return _PulseCard(imagePath: pulses[index].imagePath);
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          const spacing = 10.0;
+          final itemWidth = (constraints.maxWidth - spacing * 2) / 3;
+          final itemHeight = itemWidth * (200 / 126);
+
+          return Wrap(
+            spacing: spacing,
+            runSpacing: spacing,
+            children: [
+              for (final pulse in pulses)
+                SizedBox(
+                  width: itemWidth,
+                  height: itemHeight,
+                  child: _PulseCard(imagePath: pulse.imagePath),
+                ),
+            ],
+          );
         },
       ),
     );
@@ -31,11 +42,7 @@ class _PulseCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return ClipRRect(
       borderRadius: BorderRadius.circular(12),
-      child: SizedBox(
-        width: 126,
-        height: 200,
-        child: Image.asset(imagePath, fit: BoxFit.cover),
-      ),
+      child: Image.asset(imagePath, fit: BoxFit.cover),
     );
   }
 }

@@ -87,6 +87,108 @@ class HomeMapCheckInMarker extends StatelessWidget {
   }
 }
 
+/// Unvan kazanıldığında map'te foto + avatar + unvan pill.
+class HomeMapTitleMarker extends StatelessWidget {
+  const HomeMapTitleMarker({
+    required this.avatarPath,
+    required this.photoPaths,
+    required this.titleLabel,
+    this.photoIndexListenable,
+    super.key,
+  });
+
+  HomeMapTitleMarker.fromActive(ActiveMapCheckIn checkIn, {super.key})
+    : avatarPath = checkIn.avatarPath,
+      photoPaths = checkIn.photoPaths,
+      titleLabel = checkIn.titleLabel ?? '',
+      photoIndexListenable =
+          getIt<UserRepository>().checkInPhotoIndexListenable;
+
+  final String avatarPath;
+  final List<String> photoPaths;
+  final String titleLabel;
+  final ValueListenable<int>? photoIndexListenable;
+
+  static const avatarSize = HomeMapCheckInMarker.avatarSize;
+  static const photoSize = HomeMapCheckInMarker.photoSize;
+  static const border = HomeMapCheckInMarker.border;
+  static const photoLeft = HomeMapCheckInMarker.photoLeft;
+  static const avatarLeft = HomeMapCheckInMarker.avatarLeft;
+  static const pillHeight = 30.0;
+  static const pillOverlap = 14.0;
+
+  static double get width =>
+      HomeMapCheckInMarker.width < 130 ? 130 : HomeMapCheckInMarker.width;
+  static double get height => avatarSize + pillHeight - pillOverlap;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: width,
+      height: height,
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          Positioned(
+            left: photoLeft + 7,
+            top: (avatarSize - photoSize) / 2,
+            child: CheckInCyclingPhoto(
+              paths: photoPaths,
+              size: photoSize,
+              shape: BoxShape.circle,
+              border: Border.all(color: AppColors.zoviOrange, width: border),
+              indexListenable: photoIndexListenable,
+            ),
+          ),
+          Positioned(
+            left: avatarLeft,
+            top: 0,
+            child: _CircleImage(
+              path: avatarPath,
+              isFile: false,
+              size: avatarSize,
+            ),
+          ),
+          Positioned(
+            left: 0,
+            right: 0,
+            top: avatarSize - pillOverlap,
+            child: Center(
+              child: Container(
+                height: pillHeight,
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                decoration: BoxDecoration(
+                  color: AppColors.white,
+                  borderRadius: BorderRadius.circular(999),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.black.withValues(alpha: 0.25),
+                      blurRadius: 4,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                alignment: Alignment.center,
+                child: Text(
+                  titleLabel,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    height: 14 / 12,
+                    color: AppColors.black,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _CircleImage extends StatelessWidget {
   const _CircleImage({
     required this.path,

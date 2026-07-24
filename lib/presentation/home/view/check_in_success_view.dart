@@ -179,17 +179,24 @@ class CheckInSuccessView extends StatelessWidget {
   }
 
   Future<void> _onDone(BuildContext context) async {
-    final stamp = await showCheckInUnlockStampSheet(context);
+    final reward = await showCheckInUnlockRewardSheet(
+      context,
+      placeName: args.placeName,
+    );
     if (!context.mounted) return;
-    if (stamp != null) {
+    if (reward != null) {
       getIt<UserRepository>().setActiveMapCheckIn(
         ActiveMapCheckIn(
-          stampImagePath: stamp.imagePath,
+          stampImagePath:
+              reward.stamp?.imagePath ??
+              reward.titleImagePath ??
+              AssetPaths.stamp16,
           photoPaths: args.photoPaths.isNotEmpty
               ? args.photoPaths
               : const [AssetPaths.mapSecondAvatar],
           placeName: args.placeName,
           checkedAt: DateTime.now(),
+          titleLabel: reward.titleLabel,
         ),
       );
     }

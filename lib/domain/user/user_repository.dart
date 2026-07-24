@@ -178,15 +178,33 @@ class StoryPreview extends Equatable {
     required this.avatarPath,
     this.isYou = false,
     this.hasStory = true,
+    this.isViewed = false,
   });
 
   final String name;
   final String avatarPath;
   final bool isYou;
   final bool hasStory;
+  final bool isViewed;
+
+  StoryPreview copyWith({
+    String? name,
+    String? avatarPath,
+    bool? isYou,
+    bool? hasStory,
+    bool? isViewed,
+  }) {
+    return StoryPreview(
+      name: name ?? this.name,
+      avatarPath: avatarPath ?? this.avatarPath,
+      isYou: isYou ?? this.isYou,
+      hasStory: hasStory ?? this.hasStory,
+      isViewed: isViewed ?? this.isViewed,
+    );
+  }
 
   @override
-  List<Object?> get props => [name, avatarPath, isYou, hasStory];
+  List<Object?> get props => [name, avatarPath, isYou, hasStory, isViewed];
 }
 
 class StoryMediaItem extends Equatable {
@@ -382,6 +400,7 @@ class ActiveMapCheckIn extends Equatable {
     required this.placeName,
     this.avatarPath = AssetPaths.avatarYou,
     this.checkedAt,
+    this.titleLabel,
   });
 
   final String stampImagePath;
@@ -389,6 +408,11 @@ class ActiveMapCheckIn extends Equatable {
   final String placeName;
   final String avatarPath;
   final DateTime? checkedAt;
+
+  /// Doluysa map'te stamp yerine unvan kartı gösterilir (örn. "👑 Kurucu Kral").
+  final String? titleLabel;
+
+  bool get hasTitle => titleLabel != null && titleLabel!.trim().isNotEmpty;
 
   String get photoPath =>
       photoPaths.isNotEmpty ? photoPaths.first : AssetPaths.mapSecondAvatar;
@@ -405,6 +429,7 @@ class ActiveMapCheckIn extends Equatable {
         placeName,
         avatarPath,
         checkedAt,
+        titleLabel,
       ];
 }
 
@@ -455,6 +480,7 @@ class UserRepository {
   final activeMapCheckInListenable = ValueNotifier<ActiveMapCheckIn?>(null);
   final checkInPhotoIndexListenable = ValueNotifier<int>(0);
   final mapFriendsListenable = ValueNotifier<List<MapFriend>>(const []);
+  final _viewedStoryAvatarPaths = <String>{};
   Timer? _checkInPhotoTimer;
   final _friendPhotoIndexes = <String, ValueNotifier<int>>{};
   final _friendPhotoTimers = <String, Timer>{};
@@ -534,8 +560,22 @@ class UserRepository {
   Future<PublicUserProfile> getPublicUserProfile(String username) async {
     await Future<void>.delayed(const Duration(milliseconds: 200));
     final handle = username.startsWith('@') ? username.substring(1) : username;
-    final known = _publicProfiles[handle.toLowerCase()];
-    if (known != null) return known;
+    final key = handle.toLowerCase().trim();
+    final byKey = _publicProfiles[key];
+    if (byKey != null) return byKey;
+
+    for (final profile in _publicProfiles.values) {
+      final profileHandle = profile.usernameHandle.toLowerCase();
+      final fullName = profile.name.toLowerCase();
+      final firstName = fullName.split(RegExp(r'\s+')).first;
+      if (profileHandle == key ||
+          fullName == key ||
+          firstName == key ||
+          fullName.startsWith(key)) {
+        return profile;
+      }
+    }
+
     return PublicUserProfile(
       name: handle,
       username: '@$handle',
@@ -581,6 +621,113 @@ class UserRepository {
         AssetPaths.avatarLyra,
         AssetPaths.avatarJessica,
         AssetPaths.avatarSona,
+      ],
+    ),
+    'lyra': const PublicUserProfile(
+      name: 'Lyra Jhonson',
+      username: '@lyrajhonson',
+      avatarPath: AssetPaths.avatarLyra,
+      location: 'Silver Lake, Los Angeles',
+      bio: 'Midnight walks, vinyl nights, and collecting stamps around the city.',
+      checkIns: 86,
+      followers: 940,
+      friends: 71,
+      isVerified: true,
+      streak: 12,
+      explorerTitle: 'Night Explorer',
+      mapPlaceName: 'Silver Lake, Los Angeles',
+      mapDistanceKm: '120m',
+      mutualFriendsCount: 9,
+      mutualFriendAvatars: [
+        AssetPaths.avatarJessica,
+        AssetPaths.avatarSona,
+        AssetPaths.avatarJulia,
+      ],
+      isFollowing: true,
+    ),
+    'lyrajhonson': const PublicUserProfile(
+      name: 'Lyra Jhonson',
+      username: '@lyrajhonson',
+      avatarPath: AssetPaths.avatarLyra,
+      location: 'Silver Lake, Los Angeles',
+      bio: 'Midnight walks, vinyl nights, and collecting stamps around the city.',
+      checkIns: 86,
+      followers: 940,
+      friends: 71,
+      isVerified: true,
+      streak: 12,
+      explorerTitle: 'Night Explorer',
+      mapPlaceName: 'Silver Lake, Los Angeles',
+      mapDistanceKm: '120m',
+      mutualFriendsCount: 9,
+      mutualFriendAvatars: [
+        AssetPaths.avatarJessica,
+        AssetPaths.avatarSona,
+        AssetPaths.avatarJulia,
+      ],
+      isFollowing: true,
+    ),
+    'sona': const PublicUserProfile(
+      name: 'Sona Black',
+      username: '@sonablack',
+      avatarPath: AssetPaths.avatarSona,
+      location: 'Echo Park, Los Angeles',
+      bio: 'Always nearby for coffee, concerts, and spontaneous check-ins.',
+      checkIns: 53,
+      followers: 612,
+      friends: 44,
+      isVerified: true,
+      streak: 5,
+      explorerTitle: 'City Hopper',
+      mapPlaceName: 'Echo Park, Los Angeles',
+      mapDistanceKm: '50m',
+      mutualFriendsCount: 6,
+      mutualFriendAvatars: [
+        AssetPaths.avatarLyra,
+        AssetPaths.avatarJessica,
+        AssetPaths.avatarNova,
+      ],
+    ),
+    'sonablack': const PublicUserProfile(
+      name: 'Sona Black',
+      username: '@sonablack',
+      avatarPath: AssetPaths.avatarSona,
+      location: 'Echo Park, Los Angeles',
+      bio: 'Always nearby for coffee, concerts, and spontaneous check-ins.',
+      checkIns: 53,
+      followers: 612,
+      friends: 44,
+      isVerified: true,
+      streak: 5,
+      explorerTitle: 'City Hopper',
+      mapPlaceName: 'Echo Park, Los Angeles',
+      mapDistanceKm: '50m',
+      mutualFriendsCount: 6,
+      mutualFriendAvatars: [
+        AssetPaths.avatarLyra,
+        AssetPaths.avatarJessica,
+        AssetPaths.avatarNova,
+      ],
+    ),
+    'jessica': const PublicUserProfile(
+      name: 'Jessica Black',
+      username: '@jessica.3712',
+      avatarPath: AssetPaths.avatarJessica,
+      location: 'Los Angeles, CA',
+      bio: 'Coffee, sunsets, and late-night walks.',
+      checkIns: 48,
+      followers: 820,
+      friends: 64,
+      isVerified: true,
+      streak: 12,
+      explorerTitle: 'City Explorer',
+      mapPlaceName: 'Echo Park, Los Angeles',
+      mapDistanceKm: '4km',
+      mutualFriendsCount: 8,
+      mutualFriendAvatars: [
+        AssetPaths.avatarLyra,
+        AssetPaths.avatarSona,
+        AssetPaths.avatarNova,
       ],
     ),
     'jessica.3712': const PublicUserProfile(
@@ -645,6 +792,26 @@ class UserRepository {
         AssetPaths.avatarAlex,
       ],
     ),
+    'nova': const PublicUserProfile(
+      name: 'Nova',
+      username: '@nova',
+      avatarPath: AssetPaths.avatarNova,
+      location: 'Los Angeles, CA',
+      bio: 'Making things and meeting people.',
+      checkIns: 22,
+      followers: 290,
+      friends: 35,
+      streak: 2,
+      explorerTitle: 'Creator',
+      mapPlaceName: 'Silver Lake, Los Angeles',
+      mapDistanceKm: '7km',
+      mutualFriendsCount: 4,
+      mutualFriendAvatars: [
+        AssetPaths.avatarJessica,
+        AssetPaths.avatarSona,
+        AssetPaths.avatarLyra,
+      ],
+    ),
     'clara.smith': const PublicUserProfile(
       name: 'Make With Clara',
       username: '@clara.smith',
@@ -673,7 +840,7 @@ class UserRepository {
   }
 
   Future<List<StoryPreview>> getStories() async {
-    return const [
+    const base = [
       StoryPreview(
         name: 'Your story',
         avatarPath: AssetPaths.avatarYou,
@@ -685,7 +852,30 @@ class UserRepository {
       StoryPreview(name: 'Sona', avatarPath: AssetPaths.avatarSona),
       StoryPreview(name: 'Nova', avatarPath: AssetPaths.avatarNova),
     ];
+
+    final withViewed = [
+      for (final story in base)
+        story.copyWith(
+          isViewed: !story.isYou &&
+              _viewedStoryAvatarPaths.contains(story.avatarPath),
+        ),
+    ];
+
+    withViewed.sort((a, b) {
+      if (a.isYou != b.isYou) return a.isYou ? -1 : 1;
+      if (a.isViewed != b.isViewed) return a.isViewed ? 1 : -1;
+      return 0;
+    });
+    return withViewed;
   }
+
+  void markStoryViewed(String avatarPath) {
+    if (avatarPath.isEmpty) return;
+    _viewedStoryAvatarPaths.add(avatarPath);
+  }
+
+  bool isStoryViewed(String avatarPath) =>
+      _viewedStoryAvatarPaths.contains(avatarPath);
 
   Future<List<StoryMediaItem>> getStoryFeed() async {
     return const [
@@ -886,8 +1076,9 @@ class UserRepository {
     return true;
   }
 
-  Future<List<CheckInItem>> getCheckIns() async {
-    return const [
+  Future<List<CheckInItem>> getCheckIns({String? forUsername}) async {
+    final key = _profileKey(forUsername);
+    final all = const [
       CheckInItem(
         placeName: 'Babylon İstanbul',
         when: 'Today · 11:14pm',
@@ -903,16 +1094,36 @@ class UserRepository {
         when: '2 days ago · 04:45 pm',
         imagePath: AssetPaths.blueLocation,
       ),
+      CheckInItem(
+        placeName: 'Silver Lake Reservoir',
+        when: 'Today · 02:10pm',
+        imagePath: AssetPaths.mapFirst,
+      ),
+      CheckInItem(
+        placeName: 'Echo Park Lake',
+        when: 'Yesterday · 07:40 pm',
+        imagePath: AssetPaths.pulse1,
+      ),
     ];
+    if (key.contains('lyra')) {
+      return [all[3], all[0], all[1]];
+    }
+    if (key.contains('sona')) {
+      return [all[4], all[2]];
+    }
+    if (key.contains('jessica')) {
+      return [all[1], all[4], all[2]];
+    }
+    return all.take(3).toList();
   }
 
-  Future<List<PulseItem>> getPulses() async {
+  Future<List<PulseItem>> getPulses({String? forUsername}) async {
     const friends = [
       AssetPaths.avatarLyra,
       AssetPaths.avatarJessica,
       AssetPaths.avatarSona,
     ];
-    return const [
+    final all = const [
       PulseItem(
         imagePath: AssetPaths.pulse1,
         time: '08:00 PM',
@@ -937,11 +1148,32 @@ class UserRepository {
         friendAvatars: friends,
         friendsLabel: '8+ friends are joining',
       ),
+      PulseItem(
+        imagePath: AssetPaths.mapFirst,
+        time: '04:00 PM',
+        placeName: 'Silver Lake',
+        subtitle: 'Walk · LA',
+        friendAvatars: friends,
+        friendsLabel: '2+ friends\nare joining',
+      ),
+      PulseItem(
+        imagePath: AssetPaths.pulseJessica,
+        time: '06:15 PM',
+        placeName: 'Echo Park',
+        subtitle: 'Hangout · LA',
+        friendAvatars: friends,
+        friendsLabel: '4+ friends\nare joining',
+      ),
     ];
+    final key = _profileKey(forUsername);
+    if (key.contains('lyra')) return [all[3], all[0], all[1]];
+    if (key.contains('sona')) return [all[4], all[2]];
+    if (key.contains('jessica')) return [all[1], all[4], all[0]];
+    return all.take(3).toList();
   }
 
-  Future<List<StampItem>> getStamps() async {
-    return const [
+  Future<List<StampItem>> getStamps({String? forUsername}) async {
+    final all = const [
       StampItem(imagePath: AssetPaths.stamp1, title: 'After Hours'),
       StampItem(imagePath: AssetPaths.stamp2, title: 'VIP Pass'),
       StampItem(imagePath: AssetPaths.stamp3, title: 'DJ Booth'),
@@ -960,15 +1192,20 @@ class UserRepository {
       StampItem(imagePath: AssetPaths.stamp16, title: 'Founder'),
       StampItem(imagePath: AssetPaths.stamp17, title: 'Peekaboo'),
     ];
+    final key = _profileKey(forUsername);
+    if (key.contains('lyra')) return all.take(9).toList();
+    if (key.contains('sona')) return all.skip(4).take(8).toList();
+    if (key.contains('jessica')) return all.skip(2).take(10).toList();
+    return all;
   }
 
-  Future<List<PlanItem>> getTodayPlans() async {
+  Future<List<PlanItem>> getTodayPlans({String? forUsername}) async {
     const friends = [
       AssetPaths.avatarLyra,
       AssetPaths.avatarJessica,
       AssetPaths.avatarSona,
     ];
-    return const [
+    final all = const [
       PlanItem(
         time: '08:00 PM',
         placeName: 'Babylon İstanbul',
@@ -983,6 +1220,31 @@ class UserRepository {
         friendAvatars: friends,
         friendsLabel: '5+ friends\nare joining',
       ),
+      PlanItem(
+        time: '05:30 PM',
+        placeName: 'Silver Lake Coffee',
+        subtitle: 'Cafe · LA',
+        friendAvatars: friends,
+        friendsLabel: '2+ friends\nare joining',
+      ),
+      PlanItem(
+        time: '07:00 PM',
+        placeName: 'Echo Park Hangout',
+        subtitle: 'Meetup · LA',
+        friendAvatars: friends,
+        friendsLabel: '3+ friends\nare joining',
+      ),
     ];
+    final key = _profileKey(forUsername);
+    if (key.contains('lyra')) return [all[2], all[0]];
+    if (key.contains('sona')) return [all[3]];
+    if (key.contains('jessica')) return [all[1], all[3]];
+    return all.take(2).toList();
+  }
+
+  String _profileKey(String? forUsername) {
+    if (forUsername == null || forUsername.trim().isEmpty) return '';
+    final value = forUsername.trim();
+    return (value.startsWith('@') ? value.substring(1) : value).toLowerCase();
   }
 }

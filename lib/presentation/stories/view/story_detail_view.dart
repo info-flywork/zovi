@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
+import 'package:zovi/core/di/injection.dart';
 import 'package:zovi/core/theme/app_colors.dart';
 import 'package:zovi/core/utils/constants/asset_paths.dart';
+import 'package:zovi/core/utils/navigation/open_user_profile.dart';
 import 'package:zovi/core/widgets/app_icon.dart';
 import 'package:zovi/domain/user/user_repository.dart';
 import 'package:zovi/presentation/stories/model/story_detail_route_args.dart';
@@ -39,7 +41,12 @@ class _StoryDetailViewState extends State<StoryDetailView>
       vsync: this,
       duration: _storyDuration,
     )..addStatusListener(_onProgressStatus);
+    _markCurrentViewed();
     _startProgress();
+  }
+
+  void _markCurrentViewed() {
+    getIt<UserRepository>().markStoryViewed(_current.avatarPath);
   }
 
   @override
@@ -91,6 +98,7 @@ class _StoryDetailViewState extends State<StoryDetailView>
       return;
     }
     setState(() => _index = index);
+    _markCurrentViewed();
     await _pageController.animateToPage(
       index,
       duration: const Duration(milliseconds: 240),
@@ -112,6 +120,7 @@ class _StoryDetailViewState extends State<StoryDetailView>
   void _onPageChanged(int index) {
     if (index == _index) return;
     setState(() => _index = index);
+    _markCurrentViewed();
     _startProgress();
   }
 
@@ -121,6 +130,12 @@ class _StoryDetailViewState extends State<StoryDetailView>
         _liked.remove(_index);
       }
     });
+  }
+
+  Future<void> _openProfile() async {
+    _pause();
+    await openUserProfile(context, _current.label);
+    if (mounted) _resume();
   }
 
   void _onTapUp(TapUpDetails details) {
@@ -207,6 +222,7 @@ class _StoryDetailViewState extends State<StoryDetailView>
                 item: _current,
                 liked: _liked.contains(_index),
                 onLike: _toggleLike,
+                onProfileTap: _openProfile,
               ),
             ),
           ],
@@ -248,11 +264,13 @@ class _BottomOverlay extends StatelessWidget {
     required this.item,
     required this.liked,
     required this.onLike,
+    required this.onProfileTap,
   });
 
   final StoryMediaItem item;
   final bool liked;
   final VoidCallback onLike;
+  final VoidCallback onProfileTap;
 
   @override
   Widget build(BuildContext context) {
@@ -276,45 +294,49 @@ class _BottomOverlay extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
-                    children: [
-                      Container(
-                        width: 34,
-                        height: 34,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          border: Border.all(
-                            color: const Color(0xFFB6B6B6),
-                            width: 2,
+                  GestureDetector(
+                    onTap: onProfileTap,
+                    behavior: HitTestBehavior.opaque,
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 34,
+                          height: 34,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: const Color(0xFFB6B6B6),
+                              width: 2,
+                            ),
+                          ),
+                          child: ClipOval(
+                            child: Image.asset(
+                              item.avatarPath,
+                              fit: BoxFit.cover,
+                            ),
                           ),
                         ),
-                        child: ClipOval(
-                          child: Image.asset(
-                            item.avatarPath,
-                            fit: BoxFit.cover,
+                        const SizedBox(width: 10),
+                        Flexible(
+                          child: Text(
+                            item.label,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w500,
+                              height: 1,
+                              letterSpacing: -0.32,
+                              color: AppColors.white,
+                            ),
                           ),
                         ),
-                      ),
-                      const SizedBox(width: 10),
-                      Flexible(
-                        child: Text(
-                          item.label,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w500,
-                            height: 1,
-                            letterSpacing: -0.32,
-                            color: AppColors.white,
-                          ),
-                        ),
-                      ),
-                      if (item.isVerified) ...[
-                        const SizedBox(width: 6),
-                        const AppIcon(AssetPaths.iconVerify, size: 18),
+                        if (item.isVerified) ...[
+                          const SizedBox(width: 6),
+                          const AppIcon(AssetPaths.iconVerify, size: 18),
+                        ],
                       ],
-                    ],
+                    ),
                   ),
                   const SizedBox(height: 10),
                   Text(

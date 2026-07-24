@@ -7,6 +7,7 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
   HomeBloc(this._userRepository) : super(const HomeInitial()) {
     on<HomeStarted>(_onStarted);
     on<HomeRefreshRequested>(_onRefresh);
+    on<HomeStoriesRefreshRequested>(_onStoriesRefresh);
   }
 
   final UserRepository _userRepository;
@@ -37,5 +38,15 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
     Emitter<HomeState> emit,
   ) async {
     add(const HomeStarted());
+  }
+
+  Future<void> _onStoriesRefresh(
+    HomeStoriesRefreshRequested event,
+    Emitter<HomeState> emit,
+  ) async {
+    final current = state;
+    if (current is! HomeLoaded) return;
+    final stories = await _userRepository.getStories();
+    emit(current.copyWith(stories: stories));
   }
 }

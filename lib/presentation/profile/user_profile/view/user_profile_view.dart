@@ -63,11 +63,12 @@ class _UserProfileViewState extends State<UserProfileView>
 
   Future<void> _load() async {
     final repo = getIt<UserRepository>();
+    final username = _user.usernameHandle;
     final results = await Future.wait([
-      repo.getPulses(),
-      repo.getStamps(),
-      repo.getCheckIns(),
-      repo.getTodayPlans(),
+      repo.getPulses(forUsername: username),
+      repo.getStamps(forUsername: username),
+      repo.getCheckIns(forUsername: username),
+      repo.getTodayPlans(forUsername: username),
     ]);
     if (!mounted) return;
     setState(() {
@@ -226,12 +227,17 @@ class _UserProfileViewState extends State<UserProfileView>
   static double _tabHeight({
     required int index,
     required double width,
+    required int pulseCount,
     required int stampCount,
     required int checkInCount,
   }) {
     switch (index) {
       case 0:
-        return 216;
+        const spacing = 10.0;
+        final itemWidth = (width - 32 - spacing * 2) / 3;
+        final cardHeight = itemWidth * (200 / 126);
+        final rows = (pulseCount / 3).ceil().clamp(1, 100);
+        return 16 + rows * cardHeight + (rows - 1) * spacing;
       case 1:
         const spacing = 10.0;
         final itemWidth = (width - 32 - spacing * 2) / 3;
@@ -408,12 +414,14 @@ class _UserProfileViewState extends State<UserProfileView>
                         _tabHeight(
                           index: lower,
                           width: width,
+                          pulseCount: _pulses.length,
                           stampCount: _stamps.length,
                           checkInCount: _checkIns.length,
                         ),
                         _tabHeight(
                           index: upper,
                           width: width,
+                          pulseCount: _pulses.length,
                           stampCount: _stamps.length,
                           checkInCount: _checkIns.length,
                         ),
@@ -1109,21 +1117,28 @@ class _PulseStrip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      height: 216,
-      child: ListView.separated(
-        padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-        scrollDirection: Axis.horizontal,
-        itemCount: pulses.length,
-        separatorBuilder: (_, _) => const SizedBox(width: 10),
-        itemBuilder: (context, index) {
-          return ClipRRect(
-            borderRadius: BorderRadius.circular(12),
-            child: SizedBox(
-              width: 126,
-              height: 200,
-              child: Image.asset(pulses[index].imagePath, fit: BoxFit.cover),
-            ),
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          const spacing = 10.0;
+          final itemWidth = (constraints.maxWidth - spacing * 2) / 3;
+          final itemHeight = itemWidth * (200 / 126);
+
+          return Wrap(
+            spacing: spacing,
+            runSpacing: spacing,
+            children: [
+              for (final pulse in pulses)
+                SizedBox(
+                  width: itemWidth,
+                  height: itemHeight,
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: Image.asset(pulse.imagePath, fit: BoxFit.cover),
+                  ),
+                ),
+            ],
           );
         },
       ),

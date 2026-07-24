@@ -5,12 +5,14 @@ class HomeMapFriendSheet extends StatefulWidget {
     required this.friend,
     required this.onClose,
     required this.onSend,
+    required this.onOpenProfile,
     super.key,
   });
 
   final MapFriend friend;
   final VoidCallback onClose;
   final ValueChanged<String> onSend;
+  final VoidCallback onOpenProfile;
 
   @override
   State<HomeMapFriendSheet> createState() => _HomeMapFriendSheetState();
@@ -58,7 +60,7 @@ class _HomeMapFriendSheetState extends State<HomeMapFriendSheet> {
           mainAxisSize: MainAxisSize.min,
           children: [
             GestureDetector(
-              onTap: widget.onClose,
+              onTap: widget.onOpenProfile,
               behavior: HitTestBehavior.opaque,
               child: Row(
                 children: [
