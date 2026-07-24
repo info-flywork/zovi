@@ -6,6 +6,8 @@ import 'package:zovi/core/utils/constants/asset_paths.dart';
 import 'package:zovi/core/widgets/app_icon.dart';
 
 /// Ortak arama alanı — 300ms debounce ile `onDebouncedChanged` tetikler.
+///
+/// Boş durumda her zaman arama ikonu + [hintText] gösterilir.
 class AppSearchField extends StatefulWidget {
   const AppSearchField({
     required this.hintText,
@@ -13,6 +15,7 @@ class AppSearchField extends StatefulWidget {
     this.onDebouncedChanged,
     this.debounceDuration = const Duration(milliseconds: 300),
     this.isDark = false,
+    this.filledWhite = false,
     super.key,
   });
 
@@ -21,6 +24,9 @@ class AppSearchField extends StatefulWidget {
   final ValueChanged<String>? onDebouncedChanged;
   final Duration debounceDuration;
   final bool isDark;
+
+  /// Koyu sheet üzerinde beyaz kapsül arama alanı (Figma Frame 2).
+  final bool filledWhite;
 
   @override
   State<AppSearchField> createState() => _AppSearchFieldState();
@@ -58,16 +64,30 @@ class _AppSearchFieldState extends State<AppSearchField> {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = widget.isDark;
-    final fill = isDark ? const Color(0xFF2C2C2E) : const Color(0xFFF4F4F9);
-    final hintColor = isDark
+    final filledWhite = widget.filledWhite;
+    final isDark = widget.isDark && !filledWhite;
+    final fill = filledWhite
+        ? AppColors.white
+        : isDark
+        ? const Color(0xFF2C2C2E)
+        : const Color(0xFFF4F4F9);
+    final hintColor = filledWhite
+        ? const Color(0xFFB9B9C6)
+        : isDark
         ? const Color(0x99FFFFFF)
         : const Color(0xFFB9B9C6);
-    final textColor = isDark ? AppColors.white : AppColors.deepRoast;
-    final iconColor = isDark ? AppColors.white : null;
+    final textColor = (isDark && !filledWhite)
+        ? AppColors.white
+        : AppColors.deepRoast;
+    final iconColor = (isDark && !filledWhite) ? AppColors.white : null;
 
     return Container(
-      padding: const EdgeInsets.all(10),
+      height: filledWhite ? 50 : null,
+      padding: EdgeInsets.symmetric(
+        horizontal: 10,
+        vertical: filledWhite ? 0 : 10,
+      ),
+      alignment: Alignment.center,
       decoration: BoxDecoration(
         color: fill,
         borderRadius: BorderRadius.circular(99999),
@@ -79,7 +99,9 @@ class _AppSearchFieldState extends State<AppSearchField> {
           Expanded(
             child: TextField(
               controller: _controller,
-              cursorColor: isDark ? AppColors.zoviOrange : null,
+              cursorColor: isDark || filledWhite
+                  ? AppColors.zoviOrange
+                  : null,
               style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w500,

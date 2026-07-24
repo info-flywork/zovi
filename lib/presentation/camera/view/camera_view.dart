@@ -15,6 +15,7 @@ import 'package:zovi/core/utils/constants/asset_paths.dart';
 import 'package:zovi/core/utils/enum/route_paths.dart';
 import 'package:zovi/core/widgets/app_icon.dart';
 import 'package:zovi/presentation/camera/model/camera_compose_route_args.dart';
+import 'package:zovi/presentation/camera/view/widgets/camera_drafts_sheet.dart';
 
 enum _CameraMode { draft, story }
 
@@ -314,13 +315,14 @@ class _CameraViewState extends State<CameraView> with WidgetsBindingObserver {
 
   Future<void> _openDraft() async {
     setState(() => _mode = _CameraMode.draft);
-    final file = await ImagePicker().pickImage(source: ImageSource.gallery);
-    if (file == null || !mounted) {
-      if (mounted) setState(() => _mode = _CameraMode.story);
+    final path = await showCameraDraftsSheet(context);
+    if (!mounted) return;
+    if (path == null) {
+      setState(() => _mode = _CameraMode.story);
       return;
     }
-    await _setLastPhoto(file.path);
-    await _openCompose(file.path);
+    await _setLastPhoto(path);
+    await _openCompose(path);
   }
 
   Widget _buildGalleryThumb() {

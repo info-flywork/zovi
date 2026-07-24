@@ -1,6 +1,6 @@
 part of '../intro_view.dart';
 
-class IntroAroundPage extends StatelessWidget {
+class IntroAroundPage extends StatefulWidget {
   const IntroAroundPage({super.key});
 
   static const _creamBorder = Color(0xFFF5E6D8);
@@ -16,6 +16,31 @@ class IntroAroundPage extends StatelessWidget {
   static const _outerR = 1.0;
   static const _middleR = 130 / 199;
   static const _innerR = 56 / 199;
+
+  @override
+  State<IntroAroundPage> createState() => _IntroAroundPageState();
+}
+
+class _IntroAroundPageState extends State<IntroAroundPage>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _orbit;
+
+  @override
+  void initState() {
+    super.initState();
+    _orbit = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 24),
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _orbit.dispose();
+    super.dispose();
+  }
+
+  static double _angleOf(double dx, double dy) => math.atan2(dy, dx);
 
   @override
   Widget build(BuildContext context) {
@@ -54,124 +79,167 @@ class IntroAroundPage extends StatelessWidget {
           Expanded(
             child: LayoutBuilder(
               builder: (context, constraints) {
-                // Full width when height allows; otherwise fit available height.
                 final side = math.min(
                   constraints.maxWidth,
                   constraints.maxHeight,
                 );
-                // Renkli daire çapı — Figma ~75 on 398
                 final avatarSize = side * (78 / 398);
 
-                Offset onRing(double radius, double dx, double dy) {
-                  final mag = math.sqrt(dx * dx + dy * dy);
-                  final nx = dx / mag;
-                  final ny = dy / mag;
+                Offset onRing(double radius, double angle) {
                   final ringPx = radius * (side / 2);
-                  return Offset(side / 2 + nx * ringPx, side / 2 + ny * ringPx);
+                  return Offset(
+                    side / 2 + math.cos(angle) * ringPx,
+                    side / 2 + math.sin(angle) * ringPx,
+                  );
                 }
 
                 return Center(
                   child: SizedBox(
                     width: side,
                     height: side,
-                    child: Stack(
-                      clipBehavior: Clip.none,
-                      children: [
-                        Center(
-                          child: _RadarRing(
-                            diameter: side * _outerR,
-                            color: Colors.black.withValues(alpha: 0.08),
-                          ),
-                        ),
-                        Center(
-                          child: _RadarRing(
-                            diameter: side * _middleR,
-                            color: Colors.black.withValues(alpha: 0.1),
-                          ),
-                        ),
-                        Center(
-                          child: _RadarRing(
-                            diameter: side * _innerR,
-                            color: Colors.black.withValues(alpha: 0.12),
-                          ),
-                        ),
+                    child: AnimatedBuilder(
+                      animation: _orbit,
+                      builder: (context, _) {
+                        final turn = _orbit.value * 2 * math.pi;
+                        // Outer CW, middle CCW, inner faster CW.
+                        final outerSpin = turn;
+                        final middleSpin = -turn * 1.25;
+                        final innerSpin = turn * 1.6;
 
-                        // Outer
-                        _RadarAvatar(
-                          center: onRing(_outerR, -0.08, -1.0),
-                          asset: AssetPaths.introAvatarOrange,
-                          fill: _orange,
-                          glow: _orange,
-                          glowBlur: 16,
-                          size: avatarSize,
-                          imageScale: 0.78,
-                        ),
-                        _RadarAvatar(
-                          center: onRing(_outerR, 0.78, -0.62),
-                          asset: AssetPaths.introAvatarBlack,
-                          fill: _black,
-                          glow: Colors.black,
-                          glowBlur: 10,
-                          size: avatarSize,
-                        ),
-                        _RadarAvatar(
-                          center: onRing(_outerR, 0.48, 0.88),
-                          asset: AssetPaths.introAvatarGreen2,
-                          fill: _green,
-                          glow: _green,
-                          glowBlur: 16,
-                          size: avatarSize,
-                          imageScale: 0.78,
-                        ),
-                        _RadarAvatar(
-                          center: onRing(_outerR, -0.78, 0.62),
-                          asset: AssetPaths.introAvatarPurple,
-                          fill: _purple,
-                          glow: _purple,
-                          glowBlur: 10,
-                          size: avatarSize,
-                          imageScale: 0.78,
-                        ),
+                        return Stack(
+                          clipBehavior: Clip.none,
+                          children: [
+                            Center(
+                              child: _RadarRing(
+                                diameter: side * IntroAroundPage._outerR,
+                                color: Colors.black.withValues(alpha: 0.08),
+                              ),
+                            ),
+                            Center(
+                              child: _RadarRing(
+                                diameter: side * IntroAroundPage._middleR,
+                                color: Colors.black.withValues(alpha: 0.1),
+                              ),
+                            ),
+                            Center(
+                              child: _RadarRing(
+                                diameter: side * IntroAroundPage._innerR,
+                                color: Colors.black.withValues(alpha: 0.12),
+                              ),
+                            ),
 
-                        // Middle
-                        _RadarAvatar(
-                          center: onRing(_middleR, -0.90, -0.44),
-                          asset: AssetPaths.introAvatarGreen,
-                          fill: _green,
-                          glow: _green,
-                          glowBlur: 16,
-                          size: avatarSize,
-                          imageScale: 0.78,
-                        ),
-                        _RadarAvatar(
-                          center: onRing(_middleR, 0.95, 0.30),
-                          asset: AssetPaths.introAvatarPink,
-                          fill: _pink,
-                          glow: _pink,
-                          glowBlur: 10,
-                          size: avatarSize,
-                        ),
+                            // Outer
+                            _RadarAvatar(
+                              center: onRing(
+                                IntroAroundPage._outerR,
+                                _angleOf(-0.08, -1.0) + outerSpin,
+                              ),
+                              asset:
+                                  'assets/images/a4f406ee73abc4abe914ad3664a18b1316f07725.png',
+                              fill: IntroAroundPage._orange,
+                              glow: IntroAroundPage._orange,
+                              glowBlur: 16,
+                              size: avatarSize,
+                              imageScale: 0.8,
+                              imageRotation: -0.12,
+                            ),
+                            _RadarAvatar(
+                              center: onRing(
+                                IntroAroundPage._outerR,
+                                _angleOf(0.78, -0.62) + outerSpin,
+                              ),
+                              asset: AssetPaths.introAvatarBlack,
+                              fill: IntroAroundPage._black,
+                              glow: Colors.black,
+                              glowBlur: 10,
+                              size: avatarSize,
+                            ),
+                            _RadarAvatar(
+                              center: onRing(
+                                IntroAroundPage._outerR,
+                                _angleOf(0.48, 0.88) + outerSpin,
+                              ),
+                              asset: 'assets/images/greeeennn.png',
+                              fill: IntroAroundPage._green,
+                              glow: IntroAroundPage._green,
+                              glowBlur: 16,
+                              size: avatarSize,
+                              imageScale: 0.75,
+                              imageRotation: 0.22,
+                            ),
+                            _RadarAvatar(
+                              center: onRing(
+                                IntroAroundPage._outerR,
+                                _angleOf(-0.78, 0.62) + outerSpin,
+                              ),
+                              asset:
+                                  'assets/images/c14fd05db29ff97f4e72cdad306f0356d4970522.png',
+                              fill: IntroAroundPage._purple,
+                              glow: IntroAroundPage._purple,
+                              glowBlur: 10,
+                              size: avatarSize,
+                              imageScale: 0.8,
+                              imageRotation: 0.22,
+                            ),
 
-                        // Inner
-                        _RadarAvatar(
-                          center: onRing(_innerR, 0.78, -0.62),
-                          asset: AssetPaths.introAvatarPurple2,
-                          fill: _purple,
-                          glow: _purple,
-                          glowBlur: 10,
-                          size: avatarSize,
-                        ),
-                        _RadarAvatar(
-                          center: onRing(_innerR, -0.55, 0.84),
-                          asset: AssetPaths.introAvatarWhite,
-                          fill: _whiteFill,
-                          glow: _whiteGlow,
-                          glowBlur: 10,
-                          glowOpacity: 1,
-                          size: avatarSize,
-                          imageScale: 0.78,
-                        ),
-                      ],
+                            // Middle
+                            _RadarAvatar(
+                              center: onRing(
+                                IntroAroundPage._middleR,
+                                _angleOf(-0.90, -0.44) + middleSpin,
+                              ),
+                              asset:
+                                  'assets/images/facca6043be33c13f3205fe5c7645ee4b44cf962.png',
+                              fill: IntroAroundPage._purple,
+                              glow: IntroAroundPage._purple,
+                              glowBlur: 16,
+                              size: avatarSize,
+                              imageScale: 0.7,
+                            ),
+                            _RadarAvatar(
+                              center: onRing(
+                                IntroAroundPage._middleR,
+                                _angleOf(0.95, 0.30) + middleSpin,
+                              ),
+                              asset: AssetPaths.introAvatarPink,
+                              fill: IntroAroundPage._pink,
+                              glow: IntroAroundPage._pink,
+                              glowBlur: 10,
+                              size: avatarSize,
+                              imageScale: 0.78,
+                            ),
+
+                            // Inner
+                            _RadarAvatar(
+                              center: onRing(
+                                IntroAroundPage._innerR,
+                                _angleOf(0.78, -0.62) + innerSpin,
+                              ),
+                              asset:
+                                  'assets/images/74e80b53333c7c2914626772eefd93deb49d68bd.png',
+                              fill: IntroAroundPage._green,
+                              glow: IntroAroundPage._green,
+                              glowBlur: 10,
+                              size: avatarSize,
+                              imageScale: 0.78,
+                            ),
+                            _RadarAvatar(
+                              center: onRing(
+                                IntroAroundPage._innerR,
+                                _angleOf(-0.55, 0.84) + innerSpin,
+                              ),
+                              asset:
+                                  'assets/images/7eb500c6299afa01c0ebf5231ca77770b611bde5.png',
+                              fill: IntroAroundPage._whiteFill,
+                              glow: IntroAroundPage._whiteGlow,
+                              glowBlur: 10,
+                              glowOpacity: 1,
+                              size: avatarSize,
+                              imageScale: 0.78,
+                            ),
+                          ],
+                        );
+                      },
                     ),
                   ),
                 );
@@ -213,6 +281,7 @@ class _RadarAvatar extends StatelessWidget {
     required this.size,
     this.glowOpacity = 0.5,
     this.imageScale = 1,
+    this.imageRotation = 0,
   });
 
   final Offset center;
@@ -223,9 +292,36 @@ class _RadarAvatar extends StatelessWidget {
   final double glowOpacity;
   final double size;
   final double imageScale;
+  final double imageRotation;
 
   @override
   Widget build(BuildContext context) {
+    Widget image = imageScale >= 1
+        ? Image.asset(
+            asset,
+            fit: BoxFit.cover,
+            alignment: const Alignment(0, -0.12),
+            filterQuality: FilterQuality.high,
+            gaplessPlayback: true,
+          )
+        : Center(
+            child: SizedBox(
+              width: size * imageScale,
+              height: size * imageScale,
+              child: Image.asset(
+                asset,
+                fit: BoxFit.contain,
+                filterQuality: FilterQuality.high,
+                gaplessPlayback: true,
+                isAntiAlias: true,
+              ),
+            ),
+          );
+
+    if (imageRotation != 0) {
+      image = Transform.rotate(angle: imageRotation, child: image);
+    }
+
     return Positioned(
       left: center.dx - size / 2,
       top: center.dy - size / 2,
@@ -244,20 +340,7 @@ class _RadarAvatar extends StatelessWidget {
           ],
         ),
         clipBehavior: Clip.antiAlias,
-        child: imageScale >= 1
-            ? Image.asset(
-                asset,
-                fit: BoxFit.cover,
-                alignment: const Alignment(0, -0.12),
-              )
-            : Transform.scale(
-                scale: imageScale,
-                child: Image.asset(
-                  asset,
-                  fit: BoxFit.contain,
-                  alignment: Alignment.bottomCenter,
-                ),
-              ),
+        child: image,
       ),
     );
   }
