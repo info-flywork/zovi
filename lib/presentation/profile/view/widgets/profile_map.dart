@@ -247,7 +247,7 @@ class _ProfileMapSurface extends StatelessWidget {
                   ],
                 ),
                 child: ClipOval(
-                  child: Image.asset(avatarPath, fit: BoxFit.cover),
+                  child: ProfileAvatar(path: avatarPath, size: 39),
                 ),
               ),
             ),

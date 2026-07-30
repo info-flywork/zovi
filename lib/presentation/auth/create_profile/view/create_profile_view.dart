@@ -53,8 +53,12 @@ class _CreateProfileViewState extends State<CreateProfileView>
               stepCount: state.stepCount,
               activeStepIndex: state.activeStepIndex,
               isLoading: state is CreateProfileLoading,
+              usernameStatus: state.usernameStatus,
+              usernameSuggestions: state.usernameSuggestions,
+              canContinue: state.canContinue,
               onFullNameChanged: onFullNameChanged,
               onUsernameChanged: onUsernameChanged,
+              onSuggestionSelected: onSuggestionSelected,
               onContinue: onContinue,
             );
           },

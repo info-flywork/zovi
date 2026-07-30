@@ -1,26 +1,56 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:zovi/core/di/injection.dart';
 import 'package:zovi/core/theme/app_colors.dart';
 import 'package:zovi/core/utils/constants/asset_paths.dart';
 import 'package:zovi/core/utils/enum/route_paths.dart';
+import 'package:zovi/presentation/profile/bloc/profile_bloc.dart';
 
 class AddPlanSuccessView extends StatelessWidget {
   const AddPlanSuccessView({
-    this.friendAvatars = const [
-      AssetPaths.avatarLyra,
-      AssetPaths.avatarSona,
-      AssetPaths.avatarJessica,
-    ],
-    this.friendsLabel = '5',
+    this.friendAvatars = const [],
+    this.friendsLabel = '0',
+    this.showToFriends = true,
+    this.showToNearby = true,
     super.key,
   });
 
   final List<String> friendAvatars;
   final String friendsLabel;
+  final bool showToFriends;
+  final bool showToNearby;
+
+  bool get _hasJoiningFriends {
+    if (!showToFriends) return false;
+    final count =
+        int.tryParse(
+          RegExp(r'\d+').firstMatch(friendsLabel.trim())?.group(0) ?? '',
+        ) ??
+        0;
+    return count > 0 || friendAvatars.isNotEmpty;
+  }
+
+  String get _subtitleKey {
+    if (showToFriends && showToNearby) {
+      return 'plan_added_subtitle_friends_and_nearby';
+    }
+    if (showToFriends) return 'plan_added_subtitle_friends_only';
+    if (showToNearby) return 'plan_added_subtitle_nearby_only';
+    return 'plan_added_subtitle_private';
+  }
+
+  void _onContinue(BuildContext context) {
+    if (getIt.isRegistered<ProfileBloc>()) {
+      getIt<ProfileBloc>().add(const ProfilePlansRefreshRequested());
+    }
+    context.go(RoutePaths.profile.path);
+  }
 
   @override
   Widget build(BuildContext context) {
+    final hasFriends = _hasJoiningFriends;
+
     return Scaffold(
       backgroundColor: AppColors.white,
       body: SafeArea(
@@ -49,7 +79,7 @@ class AddPlanSuccessView extends StatelessWidget {
               ),
               const SizedBox(height: 12),
               Text(
-                'plan_added_subtitle'.tr(),
+                _subtitleKey.tr(),
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 16,
@@ -60,30 +90,45 @@ class AddPlanSuccessView extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 28),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  _AvatarPile(avatars: friendAvatars),
-                  const SizedBox(width: 8),
-                  Text(
-                    'friends_are_joining'.tr(namedArgs: {'count': friendsLabel}),
-                    textAlign: TextAlign.left,
-                    style: const TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w500,
-                      height: 1.15,
-                      letterSpacing: -0.24,
-                      color: AppColors.textSecondary,
+              if (hasFriends)
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    _AvatarPile(avatars: friendAvatars),
+                    const SizedBox(width: 8),
+                    Text(
+                      'friends_are_joining'.tr(
+                        namedArgs: {'count': friendsLabel},
+                      ),
+                      textAlign: TextAlign.left,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                        height: 1.15,
+                        letterSpacing: -0.24,
+                        color: AppColors.textSecondary,
+                      ),
                     ),
+                  ],
+                )
+              else
+                Text(
+                  'no_friends_joining'.tr(),
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                    height: 1.15,
+                    letterSpacing: -0.24,
+                    color: AppColors.textSecondary,
                   ),
-                ],
-              ),
+                ),
               const Spacer(flex: 3),
               SizedBox(
                 width: double.infinity,
                 height: 54,
                 child: GestureDetector(
-                  onTap: () => context.go(RoutePaths.profile.path),
+                  onTap: () => _onContinue(context),
                   child: DecoratedBox(
                     decoration: BoxDecoration(
                       color: AppColors.deepRoast,

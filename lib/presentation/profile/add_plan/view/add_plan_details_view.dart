@@ -1,10 +1,13 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:zovi/core/di/injection.dart';
+import 'package:zovi/core/snackbar/app_snackbar.dart';
 import 'package:zovi/core/theme/app_colors.dart';
 import 'package:zovi/core/utils/constants/asset_paths.dart';
 import 'package:zovi/core/utils/enum/route_paths.dart';
 import 'package:zovi/core/widgets/app_icon.dart';
+import 'package:zovi/domain/user/user_repository.dart';
 import 'package:zovi/presentation/profile/add_plan/model/add_plan_place.dart';
 import 'package:zovi/presentation/profile/add_plan/model/add_plan_success_route_args.dart';
 
@@ -42,6 +45,7 @@ class _AddPlanDetailsViewState extends State<AddPlanDetailsView> {
   String _selectedTime = '14:00';
   bool _showToFriends = true;
   bool _showToNearby = true;
+  bool _isSaving = false;
 
   @override
   void initState() {
@@ -60,189 +64,239 @@ class _AddPlanDetailsViewState extends State<AddPlanDetailsView> {
     super.dispose();
   }
 
+  DateTime _scheduledAtForSelectedTime() {
+    final now = DateTime.now();
+    final parts = _selectedTime.split(':');
+    final hour = int.tryParse(parts.first) ?? 0;
+    final minute = parts.length > 1 ? (int.tryParse(parts[1]) ?? 0) : 0;
+    return DateTime(now.year, now.month, now.day, hour, minute);
+  }
+
+  Future<void> _onSavePlan() async {
+    if (_isSaving) return;
+    setState(() => _isSaving = true);
+    FocusScope.of(context).unfocus();
+
+    try {
+      await getIt<UserRepository>().createPlan(
+        placeName: widget.place.placeName,
+        subtitle: widget.place.subtitle,
+        category: widget.place.categoryKey,
+        scheduledAt: _scheduledAtForSelectedTime(),
+        showToFriends: _showToFriends,
+        showToNearby: _showToNearby,
+        note: _noteController.text.trim(),
+      );
+      if (!mounted) return;
+      await context.push(
+        RoutePaths.addPlanSuccess.path,
+        extra: AddPlanSuccessRouteArgs(
+          place: widget.place,
+          showToFriends: _showToFriends,
+          showToNearby: _showToNearby,
+        ),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      AppSnackbar.instance.show(
+        context,
+        'plan_save_failed'.tr(),
+        isError: true,
+      );
+    } finally {
+      if (mounted) setState(() => _isSaving = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.sizeOf(context).width;
 
     return Scaffold(
       backgroundColor: AppColors.white,
-      body: SafeArea(
-        child: Column(
-          children: [
-            const _DetailsHeader(),
-            Expanded(
-              child: ListView(
-                padding: const EdgeInsets.only(top: 12, bottom: 12),
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: _SelectedPlaceCard(
-                      place: widget.place,
-                      onChangeTap: () => context.pop(),
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: Text(
-                      'select_time'.tr(),
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        height: 1,
-                        letterSpacing: -0.32,
-                        color: AppColors.black,
+      body: GestureDetector(
+        onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
+        behavior: HitTestBehavior.opaque,
+        child: SafeArea(
+          child: Column(
+            children: [
+              const _DetailsHeader(),
+              Expanded(
+                child: ListView(
+                  physics: const ClampingScrollPhysics(),
+                  keyboardDismissBehavior:
+                      ScrollViewKeyboardDismissBehavior.onDrag,
+                  padding: const EdgeInsets.only(top: 12, bottom: 12),
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: _SelectedPlaceCard(
+                        place: widget.place,
+                        onChangeTap: () => context.pop(),
                       ),
                     ),
-                  ),
-                  const SizedBox(height: 14),
-                  SizedBox(
-                    width: screenWidth,
-                    height: 40,
-                    child: ListView.separated(
-                      controller: _timeScrollController,
-                      scrollDirection: Axis.horizontal,
-                      clipBehavior: Clip.none,
-                      physics: const BouncingScrollPhysics(),
+                    const SizedBox(height: 24),
+                    Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16),
-                      itemCount: _timeSlots.length,
-                      separatorBuilder: (_, _) => const SizedBox(width: 10),
-                      itemBuilder: (context, index) {
-                        final time = _timeSlots[index];
-                        final isSelected = time == _selectedTime;
-                        return SizedBox(
-                          width: _timeChipWidth,
-                          child: GestureDetector(
-                            onTap: () => setState(() => _selectedTime = time),
-                            child: AnimatedContainer(
-                              duration: const Duration(milliseconds: 220),
-                              alignment: Alignment.center,
-                              padding: const EdgeInsets.symmetric(vertical: 10),
-                              decoration: BoxDecoration(
-                                color: isSelected
-                                    ? AppColors.zoviOrange
-                                    : AppColors.white,
-                                borderRadius: BorderRadius.circular(9999),
-                                border: Border.all(
+                      child: Text(
+                        'select_time'.tr(),
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          height: 1,
+                          letterSpacing: -0.32,
+                          color: AppColors.black,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    SizedBox(
+                      width: screenWidth,
+                      height: 40,
+                      child: ListView.separated(
+                        controller: _timeScrollController,
+                        scrollDirection: Axis.horizontal,
+                        clipBehavior: Clip.none,
+                        physics: const BouncingScrollPhysics(),
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        itemCount: _timeSlots.length,
+                        separatorBuilder: (_, _) => const SizedBox(width: 10),
+                        itemBuilder: (context, index) {
+                          final time = _timeSlots[index];
+                          final isSelected = time == _selectedTime;
+                          return SizedBox(
+                            width: _timeChipWidth,
+                            child: GestureDetector(
+                              onTap: () => setState(() => _selectedTime = time),
+                              child: AnimatedContainer(
+                                duration: const Duration(milliseconds: 220),
+                                alignment: Alignment.center,
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 10,
+                                ),
+                                decoration: BoxDecoration(
                                   color: isSelected
                                       ? AppColors.zoviOrange
-                                      : const Color(0xFFE2E2E2),
+                                      : AppColors.white,
+                                  borderRadius: BorderRadius.circular(9999),
+                                  border: Border.all(
+                                    color: isSelected
+                                        ? AppColors.zoviOrange
+                                        : const Color(0xFFE2E2E2),
+                                  ),
                                 ),
-                              ),
-                              child: Text(
-                                time,
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w500,
-                                  height: 1,
-                                  letterSpacing: -0.32,
-                                  color: isSelected
-                                      ? AppColors.white
-                                      : AppColors.deepRoast,
+                                child: Text(
+                                  time,
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w500,
+                                    height: 1,
+                                    letterSpacing: -0.32,
+                                    color: isSelected
+                                        ? AppColors.white
+                                        : AppColors.deepRoast,
+                                  ),
                                 ),
                               ),
                             ),
-                          ),
-                        );
-                      },
+                          );
+                        },
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 26),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        RichText(
-                          text: TextSpan(
-                            children: [
-                              TextSpan(
-                                text: 'add_note'.tr(),
-                                style: const TextStyle(
+                    const SizedBox(height: 26),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          RichText(
+                            text: TextSpan(
+                              children: [
+                                TextSpan(
+                                  text: 'add_note'.tr(),
+                                  style: const TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w600,
+                                    height: 1,
+                                    letterSpacing: -0.32,
+                                    color: AppColors.black,
+                                  ),
+                                ),
+                                TextSpan(
+                                  text: ' ${'optional'.tr()}',
+                                  style: const TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w400,
+                                    height: 1,
+                                    letterSpacing: -0.28,
+                                    color: AppColors.deepRoast,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          Container(
+                            height: 88,
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFF4F4F9),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: TextField(
+                              controller: _noteController,
+                              maxLines: null,
+                              expands: true,
+                              textAlignVertical: TextAlignVertical.top,
+                              onTapOutside: (_) =>
+                                  FocusManager.instance.primaryFocus?.unfocus(),
+                              decoration: InputDecoration(
+                                border: InputBorder.none,
+                                isDense: true,
+                                contentPadding: EdgeInsets.zero,
+                                hintText: 'note_hint'.tr(),
+                                hintStyle: const TextStyle(
                                   fontSize: 16,
-                                  fontWeight: FontWeight.w600,
-                                  height: 1,
+                                  fontWeight: FontWeight.w500,
+                                  height: 1.2,
                                   letterSpacing: -0.32,
-                                  color: AppColors.black,
+                                  color: AppColors.textSecondary,
                                 ),
                               ),
-                              TextSpan(
-                                text: ' ${'optional'.tr()}',
-                                style: const TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w400,
-                                  height: 1,
-                                  letterSpacing: -0.28,
-                                  color: AppColors.deepRoast,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        Container(
-                          height: 88,
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFF4F4F9),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: TextField(
-                            controller: _noteController,
-                            maxLines: null,
-                            expands: true,
-                            textAlignVertical: TextAlignVertical.top,
-                            decoration: InputDecoration(
-                              border: InputBorder.none,
-                              isDense: true,
-                              contentPadding: EdgeInsets.zero,
-                              hintText: 'note_hint'.tr(),
-                              hintStyle: const TextStyle(
+                              style: const TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w500,
                                 height: 1.2,
                                 letterSpacing: -0.32,
-                                color: AppColors.textSecondary,
+                                color: AppColors.black,
                               ),
                             ),
-                            style: const TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w500,
-                              height: 1.2,
-                              letterSpacing: -0.32,
-                              color: AppColors.black,
-                            ),
                           ),
-                        ),
-                        const SizedBox(height: 28),
-                        _VisibilitySwitchRow(
-                          title: 'show_to_friends_title'.tr(),
-                          subtitle: 'show_to_friends_subtitle'.tr(),
-                          value: _showToFriends,
-                          onChanged: (value) =>
-                              setState(() => _showToFriends = value),
-                        ),
-                        const SizedBox(height: 16),
-                        _VisibilitySwitchRow(
-                          title: 'show_to_nearby_title'.tr(),
-                          subtitle: 'show_to_nearby_subtitle'.tr(),
-                          value: _showToNearby,
-                          onChanged: (value) =>
-                              setState(() => _showToNearby = value),
-                        ),
-                      ],
+                          const SizedBox(height: 28),
+                          _VisibilitySwitchRow(
+                            title: 'show_to_friends_title'.tr(),
+                            subtitle: 'show_to_friends_subtitle'.tr(),
+                            value: _showToFriends,
+                            onChanged: (value) =>
+                                setState(() => _showToFriends = value),
+                          ),
+                          const SizedBox(height: 16),
+                          _VisibilitySwitchRow(
+                            title: 'show_to_nearby_title'.tr(),
+                            subtitle: 'show_to_nearby_subtitle'.tr(),
+                            value: _showToNearby,
+                            onChanged: (value) =>
+                                setState(() => _showToNearby = value),
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-            _SaveButton(
-              onTap: () => context.push(
-                RoutePaths.addPlanSuccess.path,
-                extra: AddPlanSuccessRouteArgs(place: widget.place),
-              ),
-            ),
-          ],
+              _SaveButton(isLoading: _isSaving, onTap: _onSavePlan),
+            ],
+          ),
         ),
       ),
     );
@@ -268,7 +322,7 @@ class _DetailsHeader extends StatelessWidget {
             const SizedBox(width: 12),
             Text(
               'details_title'.tr(),
-              style: TextStyle(
+              style: const TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w500,
                 height: 1,
@@ -284,10 +338,7 @@ class _DetailsHeader extends StatelessWidget {
 }
 
 class _SelectedPlaceCard extends StatelessWidget {
-  const _SelectedPlaceCard({
-    required this.place,
-    required this.onChangeTap,
-  });
+  const _SelectedPlaceCard({required this.place, required this.onChangeTap});
 
   final AddPlanPlace place;
   final VoidCallback onChangeTap;
@@ -426,9 +477,10 @@ class _VisibilitySwitchRow extends StatelessWidget {
 }
 
 class _SaveButton extends StatelessWidget {
-  const _SaveButton({required this.onTap});
+  const _SaveButton({required this.onTap, required this.isLoading});
 
   final VoidCallback onTap;
+  final bool isLoading;
 
   @override
   Widget build(BuildContext context) {
@@ -437,7 +489,7 @@ class _SaveButton extends StatelessWidget {
       child: Padding(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
         child: GestureDetector(
-          onTap: onTap,
+          onTap: isLoading ? null : onTap,
           behavior: HitTestBehavior.opaque,
           child: SizedBox(
             width: double.infinity,
@@ -448,16 +500,25 @@ class _SaveButton extends StatelessWidget {
                 borderRadius: BorderRadius.circular(999),
               ),
               child: Center(
-                child: Text(
-                  'save_plan'.tr(),
-                  style: TextStyle(
-                    fontSize: 17,
-                    fontWeight: FontWeight.w600,
-                    height: 1,
-                    letterSpacing: -0.34,
-                    color: AppColors.white,
-                  ),
-                ),
+                child: isLoading
+                    ? const SizedBox(
+                        width: 22,
+                        height: 22,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2.4,
+                          color: AppColors.white,
+                        ),
+                      )
+                    : Text(
+                        'save_plan'.tr(),
+                        style: const TextStyle(
+                          fontSize: 17,
+                          fontWeight: FontWeight.w600,
+                          height: 1,
+                          letterSpacing: -0.34,
+                          color: AppColors.white,
+                        ),
+                      ),
               ),
             ),
           ),

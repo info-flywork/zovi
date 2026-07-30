@@ -1,10 +1,15 @@
 import 'package:easy_localization/easy_localization.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:shimmer/shimmer.dart';
+import 'package:zovi/core/di/injection.dart';
 import 'package:zovi/core/theme/app_colors.dart';
 import 'package:zovi/core/utils/constants/asset_paths.dart';
 import 'package:zovi/core/utils/enum/route_paths.dart';
 import 'package:zovi/core/widgets/app_icon.dart';
+import 'package:zovi/core/widgets/stamp_image.dart';
+import 'package:zovi/domain/auth/auth_repository.dart';
 
 class StickersView extends StatefulWidget {
   const StickersView({super.key});
@@ -17,46 +22,33 @@ class _StickersViewState extends State<StickersView> {
   static const _previewCount = 10;
   static const _myCreationsId = 'my_creations';
   static const _zoviStampsId = 'zovi_stamps';
-  static const _nightOwlId = 'night_owl';
 
-  late List<String> _myCreations;
-  late List<String> _zoviStamps;
-  late List<String> _nightOwl;
+  final AuthRepository _authRepository = getIt<AuthRepository>();
+  List<_StickerItem> _myCreations = [];
+  List<_StickerItem> _zoviStamps = [];
 
   final _scrollController = ScrollController();
-  final Set<String> _expandedSections = {};
+  final Map<String, int> _visibleCountBySection = {};
   final Set<String> _hiddenSections = {};
   final Set<_StampKey> _selected = {};
   String? _openMenuSectionId;
   var _isSelecting = false;
+  String? _lastLoadedLocale;
+  var _isLoadingMyCreations = false;
+  var _isLoadingZoviStamps = false;
 
   @override
   void initState() {
     super.initState();
-    final all = [
-      AssetPaths.stamp1,
-      AssetPaths.stamp2,
-      AssetPaths.stamp3,
-      AssetPaths.stamp4,
-      AssetPaths.stamp5,
-      AssetPaths.stamp6,
-      AssetPaths.stamp7,
-      AssetPaths.stamp8,
-      AssetPaths.stamp9,
-      AssetPaths.stamp10,
-      AssetPaths.stamp11,
-      AssetPaths.stamp12,
-      AssetPaths.stamp13,
-      AssetPaths.stamp14,
-      AssetPaths.stamp15,
-      AssetPaths.stamp16,
-      AssetPaths.stamp17,
-      AssetPaths.stamp1,
-      AssetPaths.stamp5,
-    ];
-    _myCreations = List<String>.from(all);
-    _zoviStamps = List<String>.from(all);
-    _nightOwl = List<String>.from(all);
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final locale = context.locale.languageCode;
+    if (_lastLoadedLocale == locale) return;
+    _lastLoadedLocale = locale;
+    _loadStickers(locale);
   }
 
   @override
@@ -65,32 +57,113 @@ class _StickersViewState extends State<StickersView> {
     super.dispose();
   }
 
-  List<String> _stampsFor(String sectionId) {
+  Future<void> _loadStickers(String locale) async {
+    final peekedCatalog = _authRepository.peekStampCatalog(locale: locale);
+
+    if (mounted) {
+      setState(() {
+        _isLoadingMyCreations = _myCreations.isEmpty;
+        if (peekedCatalog != null) {
+          _zoviStamps = peekedCatalog
+              .map(
+                (item) => _StickerItem(
+                  id: item.id,
+                  path: item.imageUrl,
+                  name: item.name,
+                ),
+              )
+              .toList();
+          _isLoadingZoviStamps = false;
+        } else {
+          _isLoadingZoviStamps = true;
+        }
+      });
+    }
+
+    try {
+      final catalog = await _authRepository.fetchStampCatalog(locale: locale);
+      final zoviStamps = catalog
+          .map(
+            (item) =>
+                _StickerItem(id: item.id, path: item.imageUrl, name: item.name),
+          )
+          .toList();
+      if (mounted) {
+        setState(() {
+          _zoviStamps = zoviStamps;
+          _isLoadingZoviStamps = false;
+        });
+      }
+    } catch (_) {
+      if (kDebugMode) {
+        debugPrint('StickersView: failed to fetch /stamps catalog');
+      }
+      if (mounted) {
+        setState(() {
+          _isLoadingZoviStamps = false;
+        });
+      }
+    }
+
+    // "My Creations" holds both what the user made and what they earned.
+    try {
+      final owned = await _authRepository.fetchOwnedPickerStamps(
+        locale: locale,
+        forceRefresh: true,
+      );
+      final myCreations = owned
+          .map(
+            (item) => _StickerItem(
+              id: item.id,
+              path: item.imageUrl,
+              name: item.name,
+            ),
+          )
+          .toList();
+      if (!mounted) return;
+      setState(() {
+        _myCreations = myCreations;
+        _isLoadingMyCreations = false;
+      });
+    } catch (_) {
+      if (kDebugMode) {
+        debugPrint('StickersView: failed to fetch owned stickers/stamps');
+      }
+      if (!mounted) return;
+      setState(() {
+        _isLoadingMyCreations = false;
+      });
+    }
+  }
+
+  List<_StickerItem> _stampsFor(String sectionId) {
     return switch (sectionId) {
       _myCreationsId => _myCreations,
       _zoviStampsId => _zoviStamps,
-      _ => _nightOwl,
+      _ => const [],
     };
   }
 
-  void _setStampsFor(String sectionId, List<String> stamps) {
+  void _setStampsFor(String sectionId, List<_StickerItem> stamps) {
     switch (sectionId) {
       case _myCreationsId:
         _myCreations = stamps;
       case _zoviStampsId:
         _zoviStamps = stamps;
-      case _nightOwlId:
-        _nightOwl = stamps;
     }
   }
 
-  void _toggleExpanded(String sectionId) {
+  void _showMore(String sectionId) {
+    final total = _stampsFor(sectionId).length;
+    if (total <= 0) return;
+    final currentVisible = _visibleCountBySection[sectionId] ?? _previewCount;
+    final minVisible = total < _previewCount ? total : _previewCount;
+    final nextVisible = (currentVisible + _previewCount).clamp(
+      minVisible,
+      total,
+    );
     setState(() {
-      if (_expandedSections.contains(sectionId)) {
-        _expandedSections.remove(sectionId);
-      } else {
-        _expandedSections.add(sectionId);
-      }
+      _visibleCountBySection[sectionId] = nextVisible;
       _openMenuSectionId = null;
     });
   }
@@ -120,6 +193,7 @@ class _StickersViewState extends State<StickersView> {
   }
 
   void _onStampLongPress(String sectionId, int index) {
+    if (sectionId == _zoviStampsId) return;
     final offset = _scrollController.hasClients
         ? _scrollController.offset
         : 0.0;
@@ -137,7 +211,7 @@ class _StickersViewState extends State<StickersView> {
     });
   }
 
-  void _onStampTap(String sectionId, int index, String path) {
+  void _onStampTap(String sectionId, int index, _StickerItem stamp) {
     if (_isSelecting) {
       setState(() {
         final key = _StampKey(sectionId, index);
@@ -151,10 +225,10 @@ class _StickersViewState extends State<StickersView> {
       return;
     }
     _openMenuSectionId = null;
-    _showStampPreview(path);
+    _showStampPreview(stamp);
   }
 
-  Future<void> _showStampPreview(String path) {
+  Future<void> _showStampPreview(_StickerItem stamp) {
     return showGeneralDialog<void>(
       context: context,
       barrierDismissible: true,
@@ -169,11 +243,10 @@ class _StickersViewState extends State<StickersView> {
             child: Center(
               child: Padding(
                 padding: const EdgeInsets.all(32),
-                child: Image.asset(
-                  path,
-                  width: 280,
-                  height: 280,
-                  fit: BoxFit.contain,
+                child: _StampImage(
+                  path: stamp.path,
+                  stampId: stamp.id,
+                  size: 280,
                 ),
               ),
             ),
@@ -201,14 +274,16 @@ class _StickersViewState extends State<StickersView> {
 
     final bySection = <String, List<int>>{};
     for (final key in _selected) {
+      if (key.sectionId == _zoviStampsId) continue;
       bySection.putIfAbsent(key.sectionId, () => []).add(key.index);
     }
+    if (bySection.isEmpty) return;
 
     setState(() {
       for (final entry in bySection.entries) {
         final indexes = entry.value.toSet();
         final current = _stampsFor(entry.key);
-        final updated = <String>[
+        final updated = <_StickerItem>[
           for (var i = 0; i < current.length; i++)
             if (!indexes.contains(i)) current[i],
         ];
@@ -255,15 +330,18 @@ class _StickersViewState extends State<StickersView> {
                             sectionId: _myCreationsId,
                             title: 'sticker_my_creations'.tr(),
                             stamps: _myCreations,
+                            emptyTextKey: 'sticker_empty_my_creations',
+                            isLoading: _isLoadingMyCreations,
                             previewCount: _previewCount,
-                            isExpanded: _expandedSections.contains(
-                              _myCreationsId,
-                            ),
-                            onToggleMore: () => _toggleExpanded(_myCreationsId),
+                            visibleCount:
+                                _visibleCountBySection[_myCreationsId] ??
+                                _previewCount,
+                            onShowMore: () => _showMore(_myCreationsId),
                             isMenuOpen: _openMenuSectionId == _myCreationsId,
                             onMenuTap: () => _toggleMenu(_myCreationsId),
                             onDeleteSection: () =>
                                 _deleteSection(_myCreationsId),
+                            canDeleteSection: true,
                             isSelecting: _isSelecting,
                             selected: _selected,
                             onStampTap: _onStampTap,
@@ -276,15 +354,17 @@ class _StickersViewState extends State<StickersView> {
                             sectionId: _zoviStampsId,
                             title: 'sticker_zovi_stamps'.tr(),
                             stamps: _zoviStamps,
+                            emptyTextKey: 'sticker_empty_zovi_stamps',
+                            isLoading: _isLoadingZoviStamps,
                             previewCount: _previewCount,
-                            isExpanded: _expandedSections.contains(
-                              _zoviStampsId,
-                            ),
-                            onToggleMore: () => _toggleExpanded(_zoviStampsId),
+                            visibleCount:
+                                _visibleCountBySection[_zoviStampsId] ??
+                                _previewCount,
+                            onShowMore: () => _showMore(_zoviStampsId),
                             isMenuOpen: _openMenuSectionId == _zoviStampsId,
-                            onMenuTap: () => _toggleMenu(_zoviStampsId),
-                            onDeleteSection: () =>
-                                _deleteSection(_zoviStampsId),
+                            onMenuTap: () {},
+                            onDeleteSection: () {},
+                            canDeleteSection: false,
                             isSelecting: _isSelecting,
                             selected: _selected,
                             onStampTap: _onStampTap,
@@ -292,22 +372,6 @@ class _StickersViewState extends State<StickersView> {
                           ),
                           const SizedBox(height: 28),
                         ],
-                        if (!_hiddenSections.contains(_nightOwlId))
-                          _StickerSection(
-                            sectionId: _nightOwlId,
-                            title: 'sticker_night_owl'.tr(),
-                            stamps: _nightOwl,
-                            previewCount: _previewCount,
-                            isExpanded: _expandedSections.contains(_nightOwlId),
-                            onToggleMore: () => _toggleExpanded(_nightOwlId),
-                            isMenuOpen: _openMenuSectionId == _nightOwlId,
-                            onMenuTap: () => _toggleMenu(_nightOwlId),
-                            onDeleteSection: () => _deleteSection(_nightOwlId),
-                            isSelecting: _isSelecting,
-                            selected: _selected,
-                            onStampTap: _onStampTap,
-                            onStampLongPress: _onStampLongPress,
-                          ),
                       ],
                     ),
                   ),
@@ -323,8 +387,13 @@ class _StickersViewState extends State<StickersView> {
                               onTap: _deleteSelected,
                             )
                           : _CreateStickerButton(
-                              onTap: () =>
-                                  context.push(RoutePaths.createSticker.path),
+                              onTap: () async {
+                                final created = await context.push<bool>(
+                                  RoutePaths.createSticker.path,
+                                );
+                                if (!mounted || created != true) return;
+                                await _loadStickers(context.locale.languageCode);
+                              },
                             ),
                     ),
                   ),
@@ -434,12 +503,15 @@ class _StickerSection extends StatelessWidget {
     required this.sectionId,
     required this.title,
     required this.stamps,
+    required this.emptyTextKey,
+    required this.isLoading,
     required this.previewCount,
-    required this.isExpanded,
-    required this.onToggleMore,
+    required this.visibleCount,
+    required this.onShowMore,
     required this.isMenuOpen,
     required this.onMenuTap,
     required this.onDeleteSection,
+    required this.canDeleteSection,
     required this.isSelecting,
     required this.selected,
     required this.onStampTap,
@@ -448,24 +520,31 @@ class _StickerSection extends StatelessWidget {
 
   final String sectionId;
   final String title;
-  final List<String> stamps;
+  final List<_StickerItem> stamps;
+  final String emptyTextKey;
+  final bool isLoading;
   final int previewCount;
-  final bool isExpanded;
-  final VoidCallback onToggleMore;
+  final int visibleCount;
+  final VoidCallback onShowMore;
   final bool isMenuOpen;
   final VoidCallback onMenuTap;
   final VoidCallback onDeleteSection;
+  final bool canDeleteSection;
   final bool isSelecting;
   final Set<_StampKey> selected;
-  final void Function(String sectionId, int index, String path) onStampTap;
+  final void Function(String sectionId, int index, _StickerItem stamp) onStampTap;
   final void Function(String sectionId, int index) onStampLongPress;
 
   @override
   Widget build(BuildContext context) {
-    final remaining = stamps.length - previewCount;
-    final visibleCount = isExpanded || remaining <= 0
-        ? stamps.length
-        : previewCount;
+    final canShowMenu = canDeleteSection && stamps.isNotEmpty;
+    final safeVisibleCount = stamps.isEmpty
+        ? 0
+        : visibleCount.clamp(
+            stamps.length < previewCount ? stamps.length : previewCount,
+            stamps.length,
+          );
+    final remaining = stamps.length - safeVisibleCount;
 
     return Stack(
       clipBehavior: Clip.none,
@@ -488,10 +567,10 @@ class _StickerSection extends StatelessWidget {
                   ),
                 ),
                 GestureDetector(
-                  onTap: isSelecting ? null : onMenuTap,
+                  onTap: isSelecting || !canShowMenu ? null : onMenuTap,
                   behavior: HitTestBehavior.opaque,
                   child: Opacity(
-                    opacity: isSelecting ? 0 : 1,
+                    opacity: isSelecting || !canShowMenu ? 0 : 1,
                     child: const Padding(
                       padding: EdgeInsets.all(4),
                       child: AppIcon(AssetPaths.iconThreeDot, size: 24),
@@ -501,36 +580,42 @@ class _StickerSection extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 14),
-            GridView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: visibleCount,
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 5,
-                mainAxisSpacing: 10,
-                crossAxisSpacing: 10,
-                childAspectRatio: 1,
+            if (isLoading)
+              const _SectionLoadingState()
+            else if (stamps.isEmpty)
+              _SectionEmptyState(textKey: emptyTextKey)
+            else
+              GridView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: safeVisibleCount,
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 5,
+                  mainAxisSpacing: 10,
+                  crossAxisSpacing: 10,
+                  childAspectRatio: 1,
+                ),
+                itemBuilder: (context, index) {
+                  final stamp = stamps[index];
+                  final isSelected = selected.contains(
+                    _StampKey(sectionId, index),
+                  );
+                  return _StampCell(
+                    path: stamp.path,
+                    stampId: stamp.id,
+                    isSelecting: isSelecting,
+                    isSelected: isSelected,
+                    onTap: () => onStampTap(sectionId, index, stamp),
+                    onLongPress: () => onStampLongPress(sectionId, index),
+                  );
+                },
               ),
-              itemBuilder: (context, index) {
-                final path = stamps[index];
-                final isSelected = selected.contains(
-                  _StampKey(sectionId, index),
-                );
-                return _StampCell(
-                  path: path,
-                  isSelecting: isSelecting,
-                  isSelected: isSelected,
-                  onTap: () => onStampTap(sectionId, index, path),
-                  onLongPress: () => onStampLongPress(sectionId, index),
-                );
-              },
-            ),
-            if (!isExpanded && remaining > 0) ...[
+            if (remaining > 0) ...[
               Transform.translate(
                 offset: const Offset(0, -18),
                 child: Center(
                   child: GestureDetector(
-                    onTap: onToggleMore,
+                    onTap: onShowMore,
                     behavior: HitTestBehavior.opaque,
                     child: Text(
                       'sticker_more'.tr(namedArgs: {'count': '$remaining'}),
@@ -548,7 +633,7 @@ class _StickerSection extends StatelessWidget {
             ],
           ],
         ),
-        if (isMenuOpen && !isSelecting)
+        if (isMenuOpen && !isSelecting && canShowMenu)
           Positioned(
             top: 36,
             right: 0,
@@ -562,6 +647,7 @@ class _StickerSection extends StatelessWidget {
 class _StampCell extends StatelessWidget {
   const _StampCell({
     required this.path,
+    required this.stampId,
     required this.isSelecting,
     required this.isSelected,
     required this.onTap,
@@ -569,6 +655,7 @@ class _StampCell extends StatelessWidget {
   });
 
   final String path;
+  final String stampId;
   final bool isSelecting;
   final bool isSelected;
   final VoidCallback onTap;
@@ -585,7 +672,7 @@ class _StampCell extends StatelessWidget {
         children: [
           Padding(
             padding: const EdgeInsets.all(2),
-            child: Image.asset(path, fit: BoxFit.contain),
+            child: _StampImage(path: path, stampId: stampId),
           ),
           if (isSelected)
             IgnorePointer(
@@ -629,6 +716,92 @@ class _StampCell extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _StampImage extends StatelessWidget {
+  const _StampImage({required this.path, this.size, this.stampId = ''});
+
+  final String path;
+  final String stampId;
+  final double? size;
+
+  @override
+  Widget build(BuildContext context) {
+    return StampImage(
+      path: path,
+      stampId: stampId,
+      width: size,
+      height: size,
+      fit: BoxFit.contain,
+      errorBuilder: (_, _, _) => const SizedBox.shrink(),
+    );
+  }
+}
+
+class _SectionEmptyState extends StatelessWidget {
+  const _SectionEmptyState({required this.textKey});
+
+  final String textKey;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 12),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceGray,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.borderGray),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          AppIcon(AssetPaths.iconAward, size: 24, color: AppColors.mutedGray),
+          const SizedBox(height: 8),
+          Text(
+            textKey.tr(),
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+              color: AppColors.textSecondary,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SectionLoadingState extends StatelessWidget {
+  const _SectionLoadingState();
+
+  @override
+  Widget build(BuildContext context) {
+    return Shimmer.fromColors(
+      baseColor: const Color(0xFFEDEDED),
+      highlightColor: const Color(0xFFF8F8F8),
+      child: GridView.builder(
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        itemCount: 10,
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 5,
+          mainAxisSpacing: 10,
+          crossAxisSpacing: 10,
+          childAspectRatio: 1,
+        ),
+        itemBuilder: (_, _) {
+          return DecoratedBox(
+            decoration: BoxDecoration(
+              color: AppColors.white,
+              borderRadius: BorderRadius.circular(12),
+            ),
+          );
+        },
       ),
     );
   }
@@ -766,4 +939,16 @@ class _CreateStickerButton extends StatelessWidget {
       ),
     );
   }
+}
+
+class _StickerItem {
+  const _StickerItem({
+    required this.id,
+    required this.path,
+    required this.name,
+  });
+
+  final String id;
+  final String path;
+  final String name;
 }

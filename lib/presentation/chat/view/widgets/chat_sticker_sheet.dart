@@ -1,32 +1,16 @@
+import 'dart:async';
 import 'dart:ui';
 
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
+import 'package:zovi/core/di/injection.dart';
 import 'package:zovi/core/theme/app_colors.dart';
 import 'package:zovi/core/utils/constants/asset_paths.dart';
 import 'package:zovi/core/widgets/app_icon.dart';
 import 'package:zovi/core/widgets/app_search_field.dart';
+import 'package:zovi/core/widgets/stamp_image.dart';
+import 'package:zovi/domain/auth/auth_repository.dart';
 import 'package:zovi/domain/user/user_repository.dart';
-
-const _stamps = [
-  StampItem(imagePath: AssetPaths.stamp1, title: 'After Hours'),
-  StampItem(imagePath: AssetPaths.stamp2, title: 'VIP Pass'),
-  StampItem(imagePath: AssetPaths.stamp3, title: 'DJ Booth'),
-  StampItem(imagePath: AssetPaths.stamp4, title: 'Surf Mode'),
-  StampItem(imagePath: AssetPaths.stamp5, title: 'Barista'),
-  StampItem(imagePath: AssetPaths.stamp6, title: 'Brunch Club'),
-  StampItem(imagePath: AssetPaths.stamp7, title: 'Globetrotter'),
-  StampItem(imagePath: AssetPaths.stamp8, title: 'Need Coffee'),
-  StampItem(imagePath: AssetPaths.stamp9, title: 'Power Duo'),
-  StampItem(imagePath: AssetPaths.stamp10, title: 'On The Decks'),
-  StampItem(imagePath: AssetPaths.stamp11, title: 'Soulmates'),
-  StampItem(imagePath: AssetPaths.stamp12, title: 'Day & Night'),
-  StampItem(imagePath: AssetPaths.stamp13, title: 'Music Fest'),
-  StampItem(imagePath: AssetPaths.stamp14, title: 'Spark Pals'),
-  StampItem(imagePath: AssetPaths.stamp15, title: 'Foodies'),
-  StampItem(imagePath: AssetPaths.stamp16, title: 'Founder'),
-  StampItem(imagePath: AssetPaths.stamp17, title: 'Peekaboo'),
-];
 
 Future<StampItem?> showChatStickerSheet(
   BuildContext context, {
@@ -64,7 +48,20 @@ class ChatStickerSheet extends StatefulWidget {
 }
 
 class _ChatStickerSheetState extends State<ChatStickerSheet> {
+  final _authRepository = getIt<AuthRepository>();
+
   var _query = '';
+  var _loading = true;
+  var _loadFailed = false;
+  List<StampItem> _stamps = const [];
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _loadStamps();
+    });
+  }
 
   List<StampItem> get _filtered {
     final q = _query.trim().toLowerCase();
@@ -72,6 +69,59 @@ class _ChatStickerSheetState extends State<ChatStickerSheet> {
     return _stamps
         .where((s) => s.title.toLowerCase().contains(q))
         .toList(growable: false);
+  }
+
+  Future<void> _loadStamps() async {
+    final locale = context.locale.languageCode;
+    final peeked = _authRepository.peekOwnedPickerStamps();
+    if (peeked != null) {
+      final items = peeked.map(StampItem.fromCatalog).toList(growable: false);
+      setState(() {
+        _stamps = items;
+        _loading = false;
+        _loadFailed = false;
+      });
+      // Refresh quietly in the background.
+      unawaited(_refreshInBackground(locale));
+      return;
+    }
+
+    setState(() {
+      _loading = true;
+      _loadFailed = false;
+    });
+
+    try {
+      final owned = await _authRepository.fetchOwnedPickerStamps(locale: locale);
+      if (!mounted) return;
+      final items = owned.map(StampItem.fromCatalog).toList(growable: false);
+      setState(() {
+        _stamps = items;
+        _loading = false;
+        _loadFailed = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _loading = false;
+        _loadFailed = true;
+      });
+    }
+  }
+
+  Future<void> _refreshInBackground(String locale) async {
+    try {
+      final owned = await _authRepository.fetchOwnedPickerStamps(
+        locale: locale,
+        forceRefresh: true,
+      );
+      if (!mounted) return;
+      setState(() {
+        _stamps = owned.map(StampItem.fromCatalog).toList(growable: false);
+      });
+    } catch (_) {
+      // Keep peeked list.
+    }
   }
 
   @override
@@ -118,44 +168,7 @@ class _ChatStickerSheetState extends State<ChatStickerSheet> {
                         ],
                       ),
                     ),
-                    Expanded(
-                      child: stamps.isEmpty
-                          ? CustomScrollView(
-                              controller: scrollController,
-                              physics: const ClampingScrollPhysics(),
-                              slivers: const [
-                                SliverFillRemaining(
-                                  hasScrollBody: false,
-                                  child: _StampEmptyState(),
-                                ),
-                              ],
-                            )
-                          : GridView.builder(
-                              controller: scrollController,
-                              physics: const ClampingScrollPhysics(),
-                              padding: const EdgeInsets.fromLTRB(16, 6, 16, 24),
-                              gridDelegate:
-                                  const SliverGridDelegateWithFixedCrossAxisCount(
-                                crossAxisCount: 3,
-                                mainAxisSpacing: 10,
-                                crossAxisSpacing: 10,
-                                childAspectRatio: 1,
-                              ),
-                              itemCount: stamps.length,
-                              itemBuilder: (context, index) {
-                                final stamp = stamps[index];
-                                return GestureDetector(
-                                  onTap: () =>
-                                      Navigator.of(context).pop(stamp),
-                                  behavior: HitTestBehavior.opaque,
-                                  child: Image.asset(
-                                    stamp.imagePath,
-                                    fit: BoxFit.contain,
-                                  ),
-                                );
-                              },
-                            ),
-                    ),
+                    Expanded(child: _buildBody(scrollController, stamps)),
                   ],
                 ),
               ),
@@ -165,10 +178,99 @@ class _ChatStickerSheetState extends State<ChatStickerSheet> {
       ),
     );
   }
+
+  Widget _buildBody(ScrollController scrollController, List<StampItem> stamps) {
+    if (_loading) {
+      return const Center(
+        child: SizedBox(
+          width: 28,
+          height: 28,
+          child: CircularProgressIndicator(
+            strokeWidth: 2.5,
+            color: AppColors.white,
+          ),
+        ),
+      );
+    }
+
+    if (_loadFailed && _stamps.isEmpty) {
+      return CustomScrollView(
+        controller: scrollController,
+        physics: const ClampingScrollPhysics(),
+        slivers: [
+          SliverFillRemaining(
+            hasScrollBody: false,
+            child: _StampEmptyState(
+              messageKey: 'chat_stamp_load_failed',
+              onRetry: _loadStamps,
+            ),
+          ),
+        ],
+      );
+    }
+
+    if (_stamps.isEmpty) {
+      return CustomScrollView(
+        controller: scrollController,
+        physics: const ClampingScrollPhysics(),
+        slivers: const [
+          SliverFillRemaining(
+            hasScrollBody: false,
+            child: _StampEmptyState(messageKey: 'chat_stamp_empty_owned'),
+          ),
+        ],
+      );
+    }
+
+    if (stamps.isEmpty) {
+      return CustomScrollView(
+        controller: scrollController,
+        physics: const ClampingScrollPhysics(),
+        slivers: const [
+          SliverFillRemaining(
+            hasScrollBody: false,
+            child: _StampEmptyState(messageKey: 'chat_stamp_empty_search'),
+          ),
+        ],
+      );
+    }
+
+    return GridView.builder(
+      controller: scrollController,
+      physics: const ClampingScrollPhysics(),
+      padding: const EdgeInsets.fromLTRB(16, 6, 16, 24),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 3,
+        mainAxisSpacing: 10,
+        crossAxisSpacing: 10,
+        childAspectRatio: 1,
+      ),
+      itemCount: stamps.length,
+      itemBuilder: (context, index) {
+        final stamp = stamps[index];
+        return GestureDetector(
+          onTap: () => Navigator.of(context).pop(stamp),
+          behavior: HitTestBehavior.opaque,
+          child: StampImage(
+            path: stamp.imagePath,
+            stampId: stamp.id,
+            fit: BoxFit.contain,
+            errorBuilder: (_, _, _) => const SizedBox.shrink(),
+          ),
+        );
+      },
+    );
+  }
 }
 
 class _StampEmptyState extends StatelessWidget {
-  const _StampEmptyState();
+  const _StampEmptyState({
+    required this.messageKey,
+    this.onRetry,
+  });
+
+  final String messageKey;
+  final VoidCallback? onRetry;
 
   @override
   Widget build(BuildContext context) {
@@ -183,7 +285,7 @@ class _StampEmptyState extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           Text(
-            'chat_stamp_empty_search'.tr(),
+            messageKey.tr(),
             textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: 16,
@@ -193,6 +295,16 @@ class _StampEmptyState extends StatelessWidget {
               color: AppColors.white.withValues(alpha: 0.65),
             ),
           ),
+          if (onRetry != null) ...[
+            const SizedBox(height: 16),
+            TextButton(
+              onPressed: onRetry,
+              child: Text(
+                'retry'.tr(),
+                style: const TextStyle(color: AppColors.white),
+              ),
+            ),
+          ],
         ],
       ),
     );

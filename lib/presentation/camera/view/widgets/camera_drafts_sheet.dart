@@ -1,15 +1,27 @@
-import 'dart:io';
 import 'dart:ui';
 
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
+import 'package:zovi/core/di/injection.dart';
 import 'package:zovi/core/theme/app_colors.dart';
 import 'package:zovi/core/utils/constants/asset_paths.dart';
 import 'package:zovi/core/widgets/app_icon.dart';
+import 'package:zovi/core/widgets/stamp_image.dart';
+import 'package:zovi/domain/auth/auth_repository.dart';
 import 'package:zovi/presentation/camera/utils/camera_drafts.dart';
 
-Future<String?> showCameraDraftsSheet(BuildContext context) {
-  return showModalBottomSheet<String>(
+class CameraDraftPick {
+  const CameraDraftPick({
+    required this.imagePath,
+    this.draftId,
+  });
+
+  final String imagePath;
+  final String? draftId;
+}
+
+Future<CameraDraftPick?> showCameraDraftsSheet(BuildContext context) {
+  return showModalBottomSheet<CameraDraftPick>(
     context: context,
     isScrollControlled: true,
     backgroundColor: Colors.transparent,
@@ -27,7 +39,9 @@ class CameraDraftsSheet extends StatefulWidget {
 
 class _CameraDraftsSheetState extends State<CameraDraftsSheet> {
   var _loading = true;
-  List<File> _drafts = const [];
+  var _opening = false;
+  var _loadFailed = false;
+  List<StoryDraftItem> _drafts = const [];
 
   @override
   void initState() {
@@ -36,12 +50,57 @@ class _CameraDraftsSheetState extends State<CameraDraftsSheet> {
   }
 
   Future<void> _load() async {
-    final drafts = await CameraDrafts.list();
-    if (!mounted) return;
-    setState(() {
-      _drafts = drafts;
-      _loading = false;
-    });
+    final auth = getIt<AuthRepository>();
+    final peeked = auth.peekStoryDrafts();
+    final needsRefresh = auth.storyDraftsNeedRefresh;
+
+    if (peeked != null && mounted) {
+      setState(() {
+        _drafts = peeked;
+        _loading = needsRefresh;
+        _loadFailed = false;
+      });
+      if (!needsRefresh) return;
+    } else if (mounted) {
+      setState(() {
+        _loading = true;
+        _loadFailed = false;
+      });
+    }
+
+    try {
+      final drafts = await auth.fetchStoryDrafts(
+        forceRefresh: needsRefresh,
+      );
+      if (!mounted) return;
+      setState(() {
+        _drafts = drafts;
+        _loading = false;
+        _loadFailed = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _loading = false;
+        // Keep peeked list if we already had cache.
+        _loadFailed = peeked == null;
+      });
+    }
+  }
+
+  Future<void> _openDraft(StoryDraftItem draft) async {
+    if (_opening) return;
+    setState(() => _opening = true);
+    try {
+      final file = await CameraDrafts.materializeRemoteDraft(draft);
+      if (!mounted) return;
+      Navigator.of(context).pop(
+        CameraDraftPick(imagePath: file.path, draftId: draft.id),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _opening = false);
+    }
   }
 
   @override
@@ -87,12 +146,26 @@ class _CameraDraftsSheetState extends State<CameraDraftsSheet> {
                     ),
                   ),
                   Expanded(
-                    child: _loading
+                    child: _loading || _opening
                         ? const Center(
                             child: CircularProgressIndicator(
                               color: AppColors.white,
                               strokeWidth: 2,
                             ),
+                          )
+                        : _loadFailed
+                        ? CustomScrollView(
+                            controller: scrollController,
+                            physics: const ClampingScrollPhysics(),
+                            slivers: [
+                              SliverFillRemaining(
+                                hasScrollBody: false,
+                                child: _DraftsEmptyState(
+                                  messageKey: 'camera_drafts_load_failed',
+                                  onRetry: _load,
+                                ),
+                              ),
+                            ],
                           )
                         : _drafts.isEmpty
                         ? CustomScrollView(
@@ -101,7 +174,9 @@ class _CameraDraftsSheetState extends State<CameraDraftsSheet> {
                             slivers: const [
                               SliverFillRemaining(
                                 hasScrollBody: false,
-                                child: _DraftsEmptyState(),
+                                child: _DraftsEmptyState(
+                                  messageKey: 'camera_drafts_empty',
+                                ),
                               ),
                             ],
                           )
@@ -118,15 +193,15 @@ class _CameraDraftsSheetState extends State<CameraDraftsSheet> {
                                 ),
                             itemCount: _drafts.length,
                             itemBuilder: (context, index) {
-                              final file = _drafts[index];
+                              final draft = _drafts[index];
                               return GestureDetector(
-                                onTap: () =>
-                                    Navigator.of(context).pop(file.path),
+                                onTap: () => _openDraft(draft),
                                 behavior: HitTestBehavior.opaque,
                                 child: ClipRRect(
                                   borderRadius: BorderRadius.circular(12),
-                                  child: Image.file(
-                                    file,
+                                  child: StampImage(
+                                    path: draft.mediaUrl,
+                                    stampId: draft.id,
                                     fit: BoxFit.cover,
                                     errorBuilder: (_, _, _) => ColoredBox(
                                       color: AppColors.white.withValues(
@@ -157,7 +232,13 @@ class _CameraDraftsSheetState extends State<CameraDraftsSheet> {
 }
 
 class _DraftsEmptyState extends StatelessWidget {
-  const _DraftsEmptyState();
+  const _DraftsEmptyState({
+    required this.messageKey,
+    this.onRetry,
+  });
+
+  final String messageKey;
+  final VoidCallback? onRetry;
 
   @override
   Widget build(BuildContext context) {
@@ -174,7 +255,7 @@ class _DraftsEmptyState extends StatelessWidget {
             ),
             const SizedBox(height: 12),
             Text(
-              'camera_drafts_empty'.tr(),
+              messageKey.tr(),
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 16,
@@ -184,6 +265,16 @@ class _DraftsEmptyState extends StatelessWidget {
                 color: AppColors.white.withValues(alpha: 0.65),
               ),
             ),
+            if (onRetry != null) ...[
+              const SizedBox(height: 16),
+              TextButton(
+                onPressed: onRetry,
+                child: Text(
+                  'retry'.tr(),
+                  style: const TextStyle(color: AppColors.white),
+                ),
+              ),
+            ],
           ],
         ),
       ),

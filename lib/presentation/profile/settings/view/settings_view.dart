@@ -7,8 +7,10 @@ import 'package:zovi/core/di/injection.dart';
 import 'package:zovi/core/theme/app_colors.dart';
 import 'package:zovi/core/utils/constants/asset_paths.dart';
 import 'package:zovi/core/utils/enum/route_paths.dart';
+import 'package:zovi/core/utils/extensions/future_extensions.dart';
 import 'package:zovi/core/widgets/app_icon.dart';
 import 'package:zovi/domain/auth/auth_repository.dart';
+import 'package:zovi/domain/user/user_repository.dart';
 import 'package:zovi/presentation/profile/settings/view/widgets/account_privacy_sheet.dart';
 import 'package:zovi/presentation/profile/settings/view/widgets/blocked_users_sheet.dart';
 import 'package:zovi/presentation/profile/settings/view/widgets/language_sheet.dart';
@@ -28,20 +30,20 @@ class _SettingsViewState extends State<SettingsView>
   bool _isUpdatingNotifications = false;
   bool _isUpdatingLocation = false;
   AccountPrivacy _accountPrivacy = AccountPrivacy.public;
+  bool _isUpdatingAccountPrivacy = false;
   AppLanguage? _selectedLanguage;
-  List<BlockedUser> _blockedUsers = const [
-    BlockedUser(
-      username: 'juliaivanova',
-      avatarPath: AssetPaths.avatarJulia,
-    ),
-  ];
+  List<BlockedUser> _blockedUsers = const [];
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    final cached = getIt<UserRepository>().cachedCurrentUser;
+    _accountPrivacy = _privacyFromRaw(cached?.accountPrivacy);
     _syncNotificationPermission();
     _syncLocationPermission();
+    _syncAccountPrivacyFromBackend();
+    _syncBlockedUsersFromBackend();
   }
 
   @override
@@ -141,29 +143,133 @@ class _SettingsViewState extends State<SettingsView>
   }
 
   Future<void> _pickAccountPrivacy() async {
+    if (_isUpdatingAccountPrivacy) return;
     final selected = await showAccountPrivacySheet(
       context,
       initial: _accountPrivacy,
     );
     if (selected == null || !mounted) return;
-    setState(() => _accountPrivacy = selected);
+    if (selected == _accountPrivacy) return;
+
+    _isUpdatingAccountPrivacy = true;
+    try {
+      final raw = switch (selected) {
+        AccountPrivacy.public => 'public',
+        AccountPrivacy.friends => 'friends',
+      };
+      await getIt<AuthRepository>()
+          .updateAccountPrivacy(raw)
+          .withLoading(context);
+      if (!mounted) return;
+      setState(() => _accountPrivacy = selected);
+      final repo = getIt<UserRepository>();
+      final cached = repo.cachedCurrentUser;
+      if (cached != null) {
+        repo.updateCurrentUser(cached.copyWith(accountPrivacy: raw));
+      }
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('error_profile_save_failed'.tr())));
+    } finally {
+      _isUpdatingAccountPrivacy = false;
+    }
+  }
+
+  Future<void> _syncAccountPrivacyFromBackend() async {
+    try {
+      final payload = await getIt<AuthRepository>().fetchMyProfilePayload();
+      final profile = payload['profile'];
+      final profileMap = profile is Map<String, dynamic>
+          ? profile
+          : const <String, dynamic>{};
+      final raw = (profileMap['accountPrivacy'] as String?)
+          ?.trim()
+          .toLowerCase();
+      if (!mounted) return;
+      final privacy = _privacyFromRaw(raw);
+      setState(() => _accountPrivacy = privacy);
+      final repo = getIt<UserRepository>();
+      final cached = repo.cachedCurrentUser;
+      if (cached != null) {
+        repo.updateCurrentUser(
+          cached.copyWith(
+            accountPrivacy: raw == 'friends' ? 'friends' : 'public',
+          ),
+        );
+      }
+    } catch (_) {
+      // Cache-first UX: keep current value on transient failures.
+    }
+  }
+
+  AccountPrivacy _privacyFromRaw(String? raw) {
+    return raw == 'friends' ? AccountPrivacy.friends : AccountPrivacy.public;
   }
 
   Future<void> _openBlockedUsers() async {
-    final updated = await showBlockedUsersSheet(
-      context,
-      users: _blockedUsers,
-    );
+    final previous = List<BlockedUser>.from(_blockedUsers);
+    final updated = await showBlockedUsersSheet(context, users: _blockedUsers);
     if (!mounted) return;
     setState(() => _blockedUsers = updated);
+
+    final removedIds = previous
+        .where((oldUser) => oldUser.userId.isNotEmpty)
+        .where((oldUser) => !updated.any((u) => u.userId == oldUser.userId))
+        .map((u) => u.userId)
+        .toList();
+    if (removedIds.isEmpty) return;
+
+    try {
+      await Future.wait(
+        removedIds.map((id) => getIt<AuthRepository>().unblockUser(id)),
+      );
+      await _syncBlockedUsersFromBackend();
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('error_profile_save_failed'.tr())));
+      await _syncBlockedUsersFromBackend();
+    }
+  }
+
+  Future<void> _syncBlockedUsersFromBackend() async {
+    try {
+      final blocked = await getIt<AuthRepository>().fetchBlockedUsers();
+      if (!mounted) return;
+      setState(() {
+        _blockedUsers = blocked
+            .map(
+              (item) => BlockedUser(
+                userId: item.userId,
+                username: item.username.isEmpty ? 'user' : item.username,
+                avatarPath: item.avatarUrl,
+              ),
+            )
+            .toList();
+      });
+    } catch (_) {
+      // Keep last known value on failures.
+    }
   }
 
   Future<void> _logout() async {
     final confirmed = await showLogoutSheet(context);
     if (!confirmed || !mounted) return;
-    await getIt<AuthRepository>().logout();
-    if (!mounted) return;
-    context.go(RoutePaths.onboarding.path);
+    try {
+      await getIt<AuthRepository>().logout().withLoading(context);
+      getIt<UserRepository>().clearSessionCache();
+      if (!mounted) return;
+      context.go(RoutePaths.onboarding.path);
+      await resetUserScopedSingletons();
+    } catch (_) {
+      getIt<UserRepository>().clearSessionCache();
+      if (!mounted) return;
+      context.go(RoutePaths.onboarding.path);
+      await resetUserScopedSingletons();
+    }
   }
 
   @override

@@ -1,0 +1,46 @@
+{
+  "project_info": {
+    "project_number": "226127781305",
+    "project_id": "zovi-7a4a7",
+    "storage_bucket": "zovi-7a4a7.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:226127781305:android:4cb39b4123a70887b22a68",
+        "android_client_info": {
+          "package_name": "com.flywork.zovi"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "226127781305-5e4gb2jlk2ou56tu1lpve7043ri97e77.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAYqABsPsbJFR2Kj2WszVePoRgzzL2Jvbs"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "226127781305-5e4gb2jlk2ou56tu1lpve7043ri97e77.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "226127781305-c6gnbjquspm9eslanqmhhcasbhrqg126.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.flywork.zovi"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

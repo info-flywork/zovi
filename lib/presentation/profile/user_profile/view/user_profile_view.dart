@@ -10,9 +10,10 @@ import 'package:zovi/core/in_app_notification/in_app_notification_data.dart';
 import 'package:zovi/core/theme/app_colors.dart';
 import 'package:zovi/core/utils/constants/asset_paths.dart';
 import 'package:zovi/core/utils/enum/route_paths.dart';
+import 'package:shimmer/shimmer.dart';
 import 'package:zovi/core/widgets/app_icon.dart';
-import 'package:zovi/core/widgets/app_loading.dart';
 import 'package:zovi/core/widgets/profile_avatar.dart';
+import 'package:zovi/core/widgets/stamp_image.dart';
 import 'package:zovi/domain/user/user_repository.dart';
 import 'package:zovi/presentation/chat/model/chat_detail_route_args.dart';
 import 'package:zovi/presentation/profile/connections/model/profile_connections_route_args.dart';
@@ -21,6 +22,7 @@ import 'package:zovi/presentation/profile/user_profile/view/widgets/user_profile
 import 'package:zovi/presentation/profile/user_profile/view/widgets/user_profile_actions_sheet.dart';
 import 'package:zovi/presentation/profile/user_profile/view/widgets/user_profile_confirm_sheet.dart';
 import 'package:zovi/presentation/profile/view/widgets/profile_share_sheet.dart';
+import 'package:zovi/presentation/stories/model/story_detail_route_args.dart';
 
 enum _UserProfileTab { pulse, stamps, checkIn }
 
@@ -37,9 +39,10 @@ class UserProfileView extends StatefulWidget {
 
 class _UserProfileViewState extends State<UserProfileView>
     with SingleTickerProviderStateMixin {
-  late PublicUserProfile _user = widget.args.user;
+  late PublicUserProfile _user;
   late final TabController _tabController;
-  var _loading = true;
+  var _headerLoading = true;
+  var _friendContentLoading = false;
   var _isBlocked = false;
   var _isRestricted = false;
   var _isReported = false;
@@ -51,8 +54,10 @@ class _UserProfileViewState extends State<UserProfileView>
   @override
   void initState() {
     super.initState();
+    _user = widget.args.user;
+    _headerLoading = !_user.isHydrated;
     _tabController = TabController(length: 3, vsync: this);
-    unawaited(_load());
+    unawaited(_bootstrap());
   }
 
   @override
@@ -61,23 +66,102 @@ class _UserProfileViewState extends State<UserProfileView>
     super.dispose();
   }
 
-  Future<void> _load() async {
+  Future<void> _bootstrap() async {
     final repo = getIt<UserRepository>();
     final username = _user.usernameHandle;
-    final results = await Future.wait([
-      repo.getPulses(forUsername: username),
-      repo.getStamps(forUsername: username),
-      repo.getCheckIns(forUsername: username),
-      repo.getTodayPlans(forUsername: username),
-    ]);
+
+    // Cached/hydrated seed — load friend sections immediately in parallel.
+    if (_user.isHydrated && _user.canSeeFriendContent) {
+      unawaited(_loadFriendContent(username));
+    }
+
+    try {
+      final profile = await repo.getPublicUserProfile(username);
+      if (!mounted) return;
+      final wasFriend = _user.canSeeFriendContent;
+      setState(() {
+        _user = profile;
+        _headerLoading = false;
+      });
+      if (profile.canSeeFriendContent && !wasFriend) {
+        unawaited(_loadFriendContent(username));
+      } else if (!profile.canSeeFriendContent) {
+        setState(() {
+          _plans = const [];
+          _pulses = const [];
+          _stamps = const [];
+          _checkIns = const [];
+          _friendContentLoading = false;
+        });
+      }
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _headerLoading = false);
+    }
+  }
+
+  Future<void> _loadFriendContent(String username) async {
     if (!mounted) return;
-    setState(() {
-      _pulses = results[0] as List<PulseItem>;
-      _stamps = results[1] as List<StampItem>;
-      _checkIns = results[2] as List<CheckInItem>;
-      _plans = results[3] as List<PlanItem>;
-      _loading = false;
-    });
+    setState(() => _friendContentLoading = true);
+    final repo = getIt<UserRepository>();
+
+    Future<void> loadPlans() async {
+      try {
+        final value = await repo.getTodayPlans(forUsername: username);
+        if (mounted) setState(() => _plans = value);
+      } catch (_) {}
+    }
+
+    Future<void> loadStamps() async {
+      try {
+        final value = await repo.getStamps(forUsername: username);
+        if (mounted) setState(() => _stamps = value);
+      } catch (_) {}
+    }
+
+    Future<void> loadPulses() async {
+      try {
+        final value = await repo.getPulses(forUsername: username);
+        if (mounted) setState(() => _pulses = value);
+      } catch (_) {}
+    }
+
+    Future<void> loadCheckIns() async {
+      try {
+        final value = await repo.getCheckIns(forUsername: username);
+        if (mounted) setState(() => _checkIns = value);
+      } catch (_) {}
+    }
+
+    await Future.wait([
+      loadPlans(),
+      loadStamps(),
+      loadPulses(),
+      loadCheckIns(),
+    ]);
+
+    if (!mounted) return;
+    setState(() => _friendContentLoading = false);
+  }
+
+  Future<void> _openStory() async {
+    if (!_user.hasActiveStory || _user.userId.isEmpty) return;
+    final items = await getIt<UserRepository>().getStoryItemsForUser(
+      _user.userId,
+    );
+    if (!mounted || items.isEmpty) return;
+    await context.push(
+      RoutePaths.storyDetail.path,
+      extra: StoryDetailRouteArgs(items: items, initialIndex: 0),
+    );
+    if (!mounted) return;
+    // Refresh ring viewed state after closing the viewer.
+    try {
+      final refreshed = await getIt<UserRepository>().getPublicUserProfile(
+        _user.usernameHandle,
+      );
+      if (mounted) setState(() => _user = refreshed);
+    } catch (_) {}
   }
 
   bool get _actionsDisabled =>
@@ -259,9 +343,7 @@ class _UserProfileViewState extends State<UserProfileView>
       backgroundColor: AppColors.white,
       body: SafeArea(
         bottom: false,
-        child: _loading
-            ? const AppLoading()
-            : ListView(
+        child: ListView(
                 physics: const ClampingScrollPhysics(),
                 padding: EdgeInsets.only(bottom: bottom + 24),
                 children: [
@@ -276,11 +358,18 @@ class _UserProfileViewState extends State<UserProfileView>
                   ),
                   const SizedBox(height: 10),
                   Center(
-                    child: ProfileAvatar(
-                      path: _user.avatarPath,
-                      size: 120,
-                      showGradientRing: true,
-                      ringWidth: 3,
+                    child: GestureDetector(
+                      onTap: _user.hasActiveStory ? _openStory : null,
+                      behavior: HitTestBehavior.opaque,
+                      child: ProfileAvatar(
+                        path: _user.avatarPath,
+                        size: 120,
+                        showGradientRing:
+                            _user.hasActiveStory && !_user.storyIsViewed,
+                        showSeenRing:
+                            _user.hasActiveStory && _user.storyIsViewed,
+                        ringWidth: 3,
+                      ),
                     ),
                   ),
                   const SizedBox(height: 10),
@@ -316,57 +405,76 @@ class _UserProfileViewState extends State<UserProfileView>
                     ),
                   ),
                   const SizedBox(height: 10),
-                  _StatsRow(
-                    checkIns: _user.checkIns,
-                    followers: _user.followers,
-                    friends: _user.friends,
-                    onFollowersTap: () =>
-                        _openConnections(ProfileConnectionsTab.followers),
-                    onFriendsTap: () =>
-                        _openConnections(ProfileConnectionsTab.friends),
-                  ),
+                  if (_headerLoading)
+                    const _StatsRowShimmer()
+                  else
+                    _StatsRow(
+                      checkIns: _user.checkIns,
+                      followers: _user.followers,
+                      friends: _user.friends,
+                      onFollowersTap: () =>
+                          _openConnections(ProfileConnectionsTab.followers),
+                      onFriendsTap: () =>
+                          _openConnections(ProfileConnectionsTab.friends),
+                    ),
                   const SizedBox(height: 10),
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                     child: Column(
                       children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            const AppIcon(
-                              AssetPaths.iconLocationDark,
-                              size: 18,
-                            ),
-                            const SizedBox(width: 4),
-                            Flexible(
-                              child: Text(
-                                _user.explorerTitle.isEmpty
-                                    ? _user.location
-                                    : '${_user.location} · ${_user.explorerTitle}',
-                                textAlign: TextAlign.center,
-                                style: const TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w500,
-                                  height: 1,
-                                  letterSpacing: -0.28,
-                                  color: AppColors.black,
+                        if (_headerLoading &&
+                            _user.location.trim().isEmpty &&
+                            _user.explorerTitle.trim().isEmpty)
+                          const _BioLineShimmer(width: 160)
+                        else if (_user.location.trim().isNotEmpty ||
+                            _user.explorerTitle.trim().isNotEmpty) ...[
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const AppIcon(
+                                AssetPaths.iconLocationDark,
+                                size: 18,
+                              ),
+                              const SizedBox(width: 4),
+                              Flexible(
+                                child: Text(
+                                  _user.explorerTitle.isEmpty
+                                      ? _user.location
+                                      : (_user.location.isEmpty
+                                          ? _user.explorerTitle
+                                          : '${_user.location} · ${_user.explorerTitle}'),
+                                  textAlign: TextAlign.center,
+                                  style: const TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w500,
+                                    height: 1,
+                                    letterSpacing: -0.28,
+                                    color: AppColors.black,
+                                  ),
                                 ),
                               ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 12),
-                        Text(
-                          '“${_user.bio}”',
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w500,
-                            letterSpacing: -0.32,
-                            color: AppColors.deepRoast,
+                            ],
                           ),
-                        ),
-                        if (_user.mutualFriendAvatars.isNotEmpty) ...[
+                          const SizedBox(height: 12),
+                        ],
+                        if (_headerLoading && _user.bio.trim().isEmpty)
+                          const Padding(
+                            padding: EdgeInsets.only(bottom: 4),
+                            child: _BioLineShimmer(width: 220),
+                          )
+                        else if (_user.bio.trim().isNotEmpty)
+                          Text(
+                            '“${_user.bio}”',
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w500,
+                              letterSpacing: -0.32,
+                              color: AppColors.deepRoast,
+                            ),
+                          ),
+                        if (_user.canSeeFriendContent &&
+                            _user.mutualFriendAvatars.isNotEmpty) ...[
                           const SizedBox(height: 14),
                           _MutualFriendsRow(
                             avatars: _user.mutualFriendAvatars,
@@ -384,71 +492,202 @@ class _UserProfileViewState extends State<UserProfileView>
                       ],
                     ),
                   ),
-                  const SizedBox(height: 16),
-                  _UserMapCard(
-                    placeName: _user.mapPlaceName.isEmpty
-                        ? _user.location
-                        : _user.mapPlaceName,
-                    distance: _user.mapDistanceKm.isEmpty
-                        ? 'distance_km'.tr()
-                        : _user.mapDistanceKm,
-                  ),
-                  const SizedBox(height: 16),
-                  _UserPlans(plans: _plans),
-                  const SizedBox(height: 16),
-                  _UserTabs(
-                    controller: _tabController,
-                    onSelect: (tab) => _tabController.animateTo(tab.index),
-                  ),
-                  AnimatedBuilder(
-                    animation: _tabController.animation!,
-                    builder: (context, child) {
-                      final value = _tabController.animation!.value.clamp(
-                        0.0,
-                        2.0,
-                      );
-                      final lower = value.floor().clamp(0, 2);
-                      final upper = value.ceil().clamp(0, 2);
-                      final t = value - lower;
-                      final height = lerpDouble(
-                        _tabHeight(
-                          index: lower,
-                          width: width,
-                          pulseCount: _pulses.length,
-                          stampCount: _stamps.length,
-                          checkInCount: _checkIns.length,
-                        ),
-                        _tabHeight(
-                          index: upper,
-                          width: width,
-                          pulseCount: _pulses.length,
-                          stampCount: _stamps.length,
-                          checkInCount: _checkIns.length,
-                        ),
-                        t,
-                      )!;
-                      return SizedBox(height: height, child: child);
-                    },
-                    child: TabBarView(
+                  if (_user.canSeeFriendContent) ...[
+                    if (_friendContentLoading && _plans.isEmpty)
+                      const Padding(
+                        padding: EdgeInsets.only(top: 16),
+                        child: _PlansShimmer(),
+                      )
+                    else if (_plans.isNotEmpty) ...[
+                      const SizedBox(height: 16),
+                      _UserPlans(plans: _plans),
+                    ],
+                    const SizedBox(height: 16),
+                    _UserTabs(
                       controller: _tabController,
-                      children: [
-                        Align(
-                          alignment: Alignment.topCenter,
-                          child: _PulseStrip(pulses: _pulses),
-                        ),
-                        Align(
-                          alignment: Alignment.topCenter,
-                          child: _StampGrid(stamps: _stamps),
-                        ),
-                        Align(
-                          alignment: Alignment.topCenter,
-                          child: _CheckInList(checkIns: _checkIns),
-                        ),
-                      ],
+                      onSelect: (tab) => _tabController.animateTo(tab.index),
                     ),
-                  ),
+                    if (_friendContentLoading &&
+                        _pulses.isEmpty &&
+                        _stamps.isEmpty &&
+                        _checkIns.isEmpty)
+                      const _TabsBodyShimmer()
+                    else
+                      AnimatedBuilder(
+                        animation: _tabController.animation!,
+                        builder: (context, child) {
+                          final value = _tabController.animation!.value.clamp(
+                            0.0,
+                            2.0,
+                          );
+                          final lower = value.floor().clamp(0, 2);
+                          final upper = value.ceil().clamp(0, 2);
+                          final t = value - lower;
+                          final height = lerpDouble(
+                            _tabHeight(
+                              index: lower,
+                              width: width,
+                              pulseCount: _pulses.length,
+                              stampCount: _stamps.length,
+                              checkInCount: _checkIns.length,
+                            ),
+                            _tabHeight(
+                              index: upper,
+                              width: width,
+                              pulseCount: _pulses.length,
+                              stampCount: _stamps.length,
+                              checkInCount: _checkIns.length,
+                            ),
+                            t,
+                          )!;
+                          return SizedBox(height: height, child: child);
+                        },
+                        child: TabBarView(
+                          controller: _tabController,
+                          children: [
+                            Align(
+                              alignment: Alignment.topCenter,
+                              child: _PulseStrip(pulses: _pulses),
+                            ),
+                            Align(
+                              alignment: Alignment.topCenter,
+                              child: _StampGrid(stamps: _stamps),
+                            ),
+                            Align(
+                              alignment: Alignment.topCenter,
+                              child: _CheckInList(checkIns: _checkIns),
+                            ),
+                          ],
+                        ),
+                      ),
+                  ],
                 ],
               ),
+      ),
+    );
+  }
+}
+
+class _ProfileShimmer extends StatelessWidget {
+  const _ProfileShimmer({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Shimmer.fromColors(
+      baseColor: const Color(0xFFE8E8E8),
+      highlightColor: const Color(0xFFF5F5F5),
+      child: child,
+    );
+  }
+}
+
+class _ShimmerBox extends StatelessWidget {
+  const _ShimmerBox({
+    required this.width,
+    required this.height,
+    this.radius = 8,
+  });
+
+  final double width;
+  final double height;
+  final double radius;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: width,
+      height: height,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(radius),
+      ),
+    );
+  }
+}
+
+class _BioLineShimmer extends StatelessWidget {
+  const _BioLineShimmer({required this.width});
+
+  final double width;
+
+  @override
+  Widget build(BuildContext context) {
+    return _ProfileShimmer(
+      child: Center(child: _ShimmerBox(width: width, height: 14, radius: 6)),
+    );
+  }
+}
+
+class _StatsRowShimmer extends StatelessWidget {
+  const _StatsRowShimmer();
+
+  @override
+  Widget build(BuildContext context) {
+    return _ProfileShimmer(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        child: Row(
+          children: [
+            for (var i = 0; i < 3; i++) ...[
+              if (i > 0) const SizedBox(width: 8),
+              const Expanded(child: _ShimmerBox(width: double.infinity, height: 56, radius: 12)),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _PlansShimmer extends StatelessWidget {
+  const _PlansShimmer();
+
+  @override
+  Widget build(BuildContext context) {
+    return _ProfileShimmer(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        child: Column(
+          children: [
+            const Align(
+              alignment: Alignment.centerLeft,
+              child: _ShimmerBox(width: 140, height: 16, radius: 6),
+            ),
+            const SizedBox(height: 12),
+            for (var i = 0; i < 2; i++) ...[
+              if (i > 0) const SizedBox(height: 10),
+              const _ShimmerBox(width: double.infinity, height: 72, radius: 14),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _TabsBodyShimmer extends StatelessWidget {
+  const _TabsBodyShimmer();
+
+  @override
+  Widget build(BuildContext context) {
+    return _ProfileShimmer(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+        child: Row(
+          children: [
+            for (var i = 0; i < 3; i++) ...[
+              if (i > 0) const SizedBox(width: 10),
+              const Expanded(
+                child: AspectRatio(
+                  aspectRatio: 1,
+                  child: _ShimmerBox(width: double.infinity, height: double.infinity, radius: 12),
+                ),
+              ),
+            ],
+          ],
+        ),
       ),
     );
   }
@@ -764,76 +1003,6 @@ class _ActionRow extends StatelessWidget {
           ),
         ),
       ],
-    );
-  }
-}
-
-class _UserMapCard extends StatelessWidget {
-  const _UserMapCard({required this.placeName, required this.distance});
-
-  final String placeName;
-  final String distance;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(16),
-        child: AspectRatio(
-          aspectRatio: 398 / 180,
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              Image.asset(AssetPaths.mapLa, fit: BoxFit.cover),
-              Align(
-                alignment: Alignment.bottomCenter,
-                child: Container(
-                  margin: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 8,
-                  ),
-                  decoration: BoxDecoration(
-                    color: AppColors.white,
-                    borderRadius: BorderRadius.circular(999),
-                  ),
-                  child: Row(
-                    children: [
-                      const AppIcon(AssetPaths.iconLocationDark, size: 16),
-                      const SizedBox(width: 6),
-                      Expanded(
-                        child: Text(
-                          placeName,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w500,
-                            height: 1,
-                            letterSpacing: -0.28,
-                            color: AppColors.deepRoast,
-                          ),
-                        ),
-                      ),
-                      Text(
-                        distance,
-                        style: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
-                          height: 1,
-                          letterSpacing: -0.28,
-                          color: AppColors.textTertiary,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
     );
   }
 }
@@ -1170,10 +1339,16 @@ class _StampGrid extends StatelessWidget {
                     children: [
                       AspectRatio(
                         aspectRatio: 1,
-                        child: Image.asset(
-                          stamp.imagePath,
-                          fit: BoxFit.contain,
-                        ),
+                        child: stamp.isNetwork
+                            ? StampImage(
+                                path: stamp.imagePath,
+                                stampId: stamp.id,
+                                fit: BoxFit.contain,
+                              )
+                            : Image.asset(
+                                stamp.imagePath,
+                                fit: BoxFit.contain,
+                              ),
                       ),
                       const SizedBox(height: 6),
                       Text(

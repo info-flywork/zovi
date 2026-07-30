@@ -1,10 +1,12 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:zovi/core/di/injection.dart';
 import 'package:zovi/core/snackbar/app_snackbar.dart';
 import 'package:zovi/core/theme/app_colors.dart';
 import 'package:zovi/core/utils/constants/asset_paths.dart';
 import 'package:zovi/core/utils/enum/route_paths.dart';
+import 'package:zovi/core/utils/extensions/future_extensions.dart';
 import 'package:zovi/core/widgets/app_icon.dart';
 import 'package:zovi/domain/user/user_repository.dart';
 
@@ -39,6 +41,35 @@ class _EditProfileLinksViewState extends State<EditProfileLinksView> {
     );
   }
 
+  Future<void> _onDone() async {
+    if (_sameLinks(_links, widget.links)) {
+      context.pop(_links);
+      return;
+    }
+    try {
+      final updated = await getIt<UserRepository>()
+          .patchProfileLinks(_links)
+          .withLoading(context);
+      if (!mounted) return;
+      context.pop(updated.links);
+    } catch (_) {
+      if (!mounted) return;
+      AppSnackbar.instance.show(
+        context,
+        'error_profile_save_failed'.tr(),
+        isError: true,
+      );
+    }
+  }
+
+  static bool _sameLinks(List<ProfileLink> a, List<ProfileLink> b) {
+    if (a.length != b.length) return false;
+    for (var i = 0; i < a.length; i++) {
+      if (a[i].title != b[i].title || a[i].url != b[i].url) return false;
+    }
+    return true;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -47,7 +78,10 @@ class _EditProfileLinksViewState extends State<EditProfileLinksView> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            _LinksHeader(onBack: () => context.pop(_links)),
+            _LinksHeader(
+              onBack: () => context.pop(_links),
+              onDone: _onDone,
+            ),
             Expanded(
               child: ListView(
                 physics: const ClampingScrollPhysics(),
@@ -79,9 +113,10 @@ class _EditProfileLinksViewState extends State<EditProfileLinksView> {
 }
 
 class _LinksHeader extends StatelessWidget {
-  const _LinksHeader({required this.onBack});
+  const _LinksHeader({required this.onBack, required this.onDone});
 
   final VoidCallback onBack;
+  final VoidCallback onDone;
 
   @override
   Widget build(BuildContext context) {
@@ -105,6 +140,24 @@ class _LinksHeader extends StatelessWidget {
                 height: 1,
                 letterSpacing: -0.32,
                 color: AppColors.black,
+              ),
+            ),
+            const Spacer(),
+            GestureDetector(
+              onTap: onDone,
+              behavior: HitTestBehavior.opaque,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+                child: Text(
+                  'done'.tr(),
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
+                    height: 1,
+                    letterSpacing: -0.32,
+                    color: AppColors.doneBlue,
+                  ),
+                ),
               ),
             ),
           ],

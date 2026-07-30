@@ -1,19 +1,35 @@
 import 'package:equatable/equatable.dart';
 import 'package:zovi/presentation/auth/model/signup_flow.dart';
 
+enum UsernameAvailabilityStatus {
+  idle,
+  checking,
+  available,
+  taken,
+  invalid,
+}
+
 sealed class CreateProfileState extends Equatable {
   const CreateProfileState({
     required this.signupFlow,
     this.fullName = '',
     this.username = '',
+    this.usernameStatus = UsernameAvailabilityStatus.idle,
+    this.usernameSuggestions = const [],
   });
 
   final SignupFlow signupFlow;
   final String fullName;
   final String username;
+  final UsernameAvailabilityStatus usernameStatus;
+  final List<String> usernameSuggestions;
 
   bool get isFormComplete =>
       fullName.trim().isNotEmpty && username.trim().isNotEmpty;
+
+  bool get canContinue =>
+      isFormComplete &&
+      usernameStatus == UsernameAvailabilityStatus.available;
 
   int get stepCount => signupFlow.stepCount;
 
@@ -23,7 +39,13 @@ sealed class CreateProfileState extends Equatable {
       };
 
   @override
-  List<Object?> get props => [signupFlow, fullName, username];
+  List<Object?> get props => [
+        signupFlow,
+        fullName,
+        username,
+        usernameStatus,
+        usernameSuggestions,
+      ];
 }
 
 final class CreateProfileInitial extends CreateProfileState {
@@ -31,6 +53,8 @@ final class CreateProfileInitial extends CreateProfileState {
     required super.signupFlow,
     super.fullName,
     super.username,
+    super.usernameStatus,
+    super.usernameSuggestions,
   });
 }
 
@@ -39,6 +63,8 @@ final class CreateProfileLoading extends CreateProfileState {
     required super.signupFlow,
     super.fullName,
     super.username,
+    super.usernameStatus,
+    super.usernameSuggestions,
   });
 }
 
@@ -48,12 +74,17 @@ final class CreateProfileSuccess extends CreateProfileState {
     required super.signupFlow,
     super.fullName,
     super.username,
+    super.usernameStatus,
+    super.usernameSuggestions,
   });
 
   final String navigateTo;
 
   @override
-  List<Object?> get props => [signupFlow, fullName, username, navigateTo];
+  List<Object?> get props => [
+        ...super.props,
+        navigateTo,
+      ];
 }
 
 final class CreateProfileError extends CreateProfileState {
@@ -62,10 +93,15 @@ final class CreateProfileError extends CreateProfileState {
     required super.signupFlow,
     super.fullName,
     super.username,
+    super.usernameStatus,
+    super.usernameSuggestions,
   });
 
   final String message;
 
   @override
-  List<Object?> get props => [signupFlow, fullName, username, message];
+  List<Object?> get props => [
+        ...super.props,
+        message,
+      ];
 }

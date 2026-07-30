@@ -8,7 +8,13 @@ sealed class HomeEvent extends Equatable {
 }
 
 final class HomeStarted extends HomeEvent {
-  const HomeStarted();
+  const HomeStarted({this.forceLoading = false});
+
+  /// Shows the full-screen loader even when data is already on screen.
+  final bool forceLoading;
+
+  @override
+  List<Object?> get props => [forceLoading];
 }
 
 final class HomeRefreshRequested extends HomeEvent {

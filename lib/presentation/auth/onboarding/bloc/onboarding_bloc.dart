@@ -3,6 +3,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:zovi/core/utils/enum/route_paths.dart';
 import 'package:zovi/core/utils/phone/phone_format.dart';
 import 'package:zovi/domain/auth/auth_repository.dart';
+import 'package:zovi/domain/auth/models/auth_session.dart';
+import 'package:zovi/domain/auth/phone_auth_error.dart';
 import 'package:zovi/presentation/auth/onboarding/bloc/onboarding_event.dart';
 import 'package:zovi/presentation/auth/onboarding/bloc/onboarding_state.dart';
 
@@ -15,9 +17,9 @@ class OnboardingBloc extends Bloc<OnboardingEvent, OnboardingState> {
 
   final AuthRepository _authRepository;
 
-  Future<void> signInWithGoogle() => _authRepository.signInWithGoogle();
+  Future<AuthSession> signInWithGoogle() => _authRepository.signInWithGoogle();
 
-  Future<void> signInWithApple() => _authRepository.signInWithApple();
+  Future<AuthSession> signInWithApple() => _authRepository.signInWithApple();
 
   void _onPhoneChanged(
     OnboardingPhoneChanged event,
@@ -66,13 +68,26 @@ class OnboardingBloc extends Bloc<OnboardingEvent, OnboardingState> {
         selectedCountry: state.selectedCountry,
       ),
     );
-    await _authRepository.sendVerificationCode(phone);
-    emit(
-      OnboardingSuccess(
-        navigateTo: RoutePaths.otp.path,
+    try {
+      await _authRepository.sendVerificationCode(
         phone: phone,
-        selectedCountry: state.selectedCountry,
-      ),
-    );
+        dialCode: state.selectedCountry.dialCode,
+      );
+      emit(
+        OnboardingSuccess(
+          navigateTo: RoutePaths.otp.path,
+          phone: phone,
+          selectedCountry: state.selectedCountry,
+        ),
+      );
+    } catch (error) {
+      emit(
+        OnboardingError(
+          message: mapPhoneAuthError(error),
+          phone: phone,
+          selectedCountry: state.selectedCountry,
+        ),
+      );
+    }
   }
 }

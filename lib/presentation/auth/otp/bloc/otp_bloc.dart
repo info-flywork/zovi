@@ -3,8 +3,8 @@ import 'dart:async';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:zovi/core/models/country.dart';
-import 'package:zovi/core/utils/enum/route_paths.dart';
 import 'package:zovi/domain/auth/auth_repository.dart';
+import 'package:zovi/domain/auth/phone_auth_error.dart';
 import 'package:zovi/presentation/auth/otp/bloc/otp_event.dart';
 import 'package:zovi/presentation/auth/otp/bloc/otp_state.dart';
 
@@ -73,12 +73,24 @@ class OtpBloc extends Bloc<OtpEvent, OtpState> {
       ),
     );
 
-    final verified = await _authRepository.verifyCode(
-      state.phone,
-      state.code,
-    );
+    try {
+      final session = await _authRepository.verifyCode(
+        state.phone,
+        state.code,
+      );
+      final dest = session.phoneOtpDestination;
 
-    if (!verified) {
+      emit(
+        OtpSuccess(
+          navigateTo: dest.path,
+          navigateExtra: dest.extra,
+          phone: state.phone,
+          selectedCountry: state.selectedCountry,
+          code: state.code,
+          resendSeconds: state.resendSeconds,
+        ),
+      );
+    } catch (_) {
       emit(
         OtpError(
           message: 'error_invalid_otp'.tr(),
@@ -88,18 +100,7 @@ class OtpBloc extends Bloc<OtpEvent, OtpState> {
           resendSeconds: state.resendSeconds,
         ),
       );
-      return;
     }
-
-    emit(
-      OtpSuccess(
-        navigateTo: RoutePaths.phoneVerified.path,
-        phone: state.phone,
-        selectedCountry: state.selectedCountry,
-        code: state.code,
-        resendSeconds: state.resendSeconds,
-      ),
-    );
   }
 
   Future<void> _onResend(OtpResendTapped event, Emitter<OtpState> emit) async {
@@ -114,16 +115,31 @@ class OtpBloc extends Bloc<OtpEvent, OtpState> {
       ),
     );
 
-    await _authRepository.sendVerificationCode(state.phone);
-
-    emit(
-      OtpInitial(
+    try {
+      await _authRepository.sendVerificationCode(
         phone: state.phone,
-        selectedCountry: state.selectedCountry,
-        code: state.code,
-        resendSeconds: 28,
-      ),
-    );
+        dialCode: state.selectedCountry.dialCode,
+      );
+      emit(
+        OtpInitial(
+          phone: state.phone,
+          selectedCountry: state.selectedCountry,
+          code: state.code,
+          resendSeconds: 28,
+        ),
+      );
+      _startResendTimer();
+    } catch (error) {
+      emit(
+        OtpError(
+          message: mapPhoneAuthError(error),
+          phone: state.phone,
+          selectedCountry: state.selectedCountry,
+          code: state.code,
+          resendSeconds: state.resendSeconds,
+        ),
+      );
+    }
   }
 
   void _onResendTick(OtpResendTick event, Emitter<OtpState> emit) {

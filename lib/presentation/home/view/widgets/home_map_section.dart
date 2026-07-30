@@ -679,29 +679,36 @@ class _HomeMapSectionState extends State<HomeMapSection>
                       final Widget marker;
                       if (activeCheckIn == null) {
                         marker = Center(
-                          child: Container(
-                            width: HomeMapCheckInMarker.avatarSize,
-                            height: HomeMapCheckInMarker.avatarSize,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              border: Border.all(
-                                color: AppColors.zoviOrange,
-                                width: HomeMapCheckInMarker.border,
-                              ),
-                              boxShadow: const [
-                                BoxShadow(
-                                  color: Color(0x33000000),
-                                  blurRadius: 6,
-                                  offset: Offset(0, 2),
+                          child: ValueListenableBuilder<UserProfile?>(
+                            valueListenable:
+                                getIt<UserRepository>().currentUserListenable,
+                            builder: (context, user, _) {
+                              final path =
+                                  user?.hasPhoto == true ? user!.avatarPath : '';
+                              return Container(
+                                width: HomeMapCheckInMarker.avatarSize,
+                                height: HomeMapCheckInMarker.avatarSize,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  border: Border.all(
+                                    color: AppColors.zoviOrange,
+                                    width: HomeMapCheckInMarker.border,
+                                  ),
+                                  boxShadow: const [
+                                    BoxShadow(
+                                      color: Color(0x33000000),
+                                      blurRadius: 6,
+                                      offset: Offset(0, 2),
+                                    ),
+                                  ],
                                 ),
-                              ],
-                            ),
-                            child: ClipOval(
-                              child: Image.asset(
-                                AssetPaths.avatarYou,
-                                fit: BoxFit.cover,
-                              ),
-                            ),
+                                child: ProfileAvatar(
+                                  path: path,
+                                  size: HomeMapCheckInMarker.avatarSize -
+                                      HomeMapCheckInMarker.border * 2,
+                                ),
+                              );
+                            },
                           ),
                         );
                       } else if (activeCheckIn.hasTitle) {
@@ -758,8 +765,14 @@ class _HomeMapSectionState extends State<HomeMapSection>
                     shape: BoxShape.circle,
                     border: Border.all(color: AppColors.zoviOrange, width: 2),
                   ),
-                  child: ClipOval(
-                    child: Image.asset(AssetPaths.avatarYou, fit: BoxFit.cover),
+                  child: ValueListenableBuilder<UserProfile?>(
+                    valueListenable:
+                        getIt<UserRepository>().currentUserListenable,
+                    builder: (context, user, _) {
+                      final path =
+                          user?.hasPhoto == true ? user!.avatarPath : '';
+                      return ProfileAvatar(path: path, size: 20);
+                    },
                   ),
                 ),
                 if (_cityLabel.isNotEmpty) ...[

@@ -13,22 +13,47 @@ mixin OnboardingViewMixin on State<OnboardingView> {
     context.read<OnboardingBloc>().add(const OnboardingSendCodeTapped());
   }
 
-  Future<void> onGoogle() async {
-    await context.read<OnboardingBloc>().signInWithGoogle().withLoading(context);
+  Future<void> _goAfterAuth(AuthSession session) async {
+    if (session.nextStep == 'home') {
+      try {
+        await getIt<UserRepository>().getCurrentUser();
+      } catch (_) {}
+    }
     if (!mounted) return;
-    context.go(
-      RoutePaths.createProfile.path,
-      extra: const CreateProfileRouteArgs(signupFlow: SignupFlow.social),
-    );
+    final dest = session.destination;
+    if (dest.extra != null) {
+      context.go(dest.path, extra: dest.extra);
+    } else {
+      context.go(dest.path);
+    }
+  }
+
+  Future<void> onGoogle() async {
+    try {
+      final session = await context
+          .read<OnboardingBloc>()
+          .signInWithGoogle()
+          .withLoading(context);
+      if (!mounted) return;
+      _goAfterAuth(session);
+    } catch (_) {
+      if (!mounted) return;
+      showErrorSnackbar('error_google_sign_in'.tr());
+    }
   }
 
   Future<void> onApple() async {
-    await context.read<OnboardingBloc>().signInWithApple().withLoading(context);
-    if (!mounted) return;
-    context.go(
-      RoutePaths.createProfile.path,
-      extra: const CreateProfileRouteArgs(signupFlow: SignupFlow.social),
-    );
+    try {
+      final session = await context
+          .read<OnboardingBloc>()
+          .signInWithApple()
+          .withLoading(context);
+      if (!mounted) return;
+      _goAfterAuth(session);
+    } catch (_) {
+      if (!mounted) return;
+      showErrorSnackbar('error_apple_sign_in'.tr());
+    }
   }
 
   Future<void> onCountryTap(Country selectedCountry) async {

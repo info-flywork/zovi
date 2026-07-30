@@ -25,6 +25,24 @@ final class CreateProfileUsernameChanged extends CreateProfileEvent {
   List<Object?> get props => [username];
 }
 
+final class CreateProfileUsernameCheckRequested extends CreateProfileEvent {
+  const CreateProfileUsernameCheckRequested(this.username);
+
+  final String username;
+
+  @override
+  List<Object?> get props => [username];
+}
+
+final class CreateProfileUsernameSuggestionSelected extends CreateProfileEvent {
+  const CreateProfileUsernameSuggestionSelected(this.username);
+
+  final String username;
+
+  @override
+  List<Object?> get props => [username];
+}
+
 final class CreateProfileContinueTapped extends CreateProfileEvent {
   const CreateProfileContinueTapped();
 }

@@ -2,6 +2,8 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:zovi/core/theme/app_colors.dart';
+import 'package:zovi/core/utils/constants/asset_paths.dart';
+import 'package:zovi/core/widgets/app_icon.dart';
 
 class ProfileAvatar extends StatelessWidget {
   const ProfileAvatar({
@@ -12,10 +14,12 @@ class ProfileAvatar extends StatelessWidget {
     this.ringWidth = 3,
     this.ringGap = 2,
     this.ringGapColor = AppColors.white,
+    this.ringOpacity = 1,
     super.key,
   });
 
   /// Dış boyut (ring varsa ring dahil).
+  /// `path`: network URL, local file (`/…`), asset, or empty → profile icon.
   final String path;
   final double size;
   final bool showGradientRing;
@@ -24,12 +28,53 @@ class ProfileAvatar extends StatelessWidget {
   final double ringGap;
   final Color ringGapColor;
 
-  bool get _isFilePath => path.startsWith('/');
+  /// Only the story ring is faded; the photo stays full strength.
+  final double ringOpacity;
+
+  bool get _isNetwork =>
+      path.startsWith('http://') || path.startsWith('https://');
+
+  bool get _isFilePath => path.startsWith('/') || path.startsWith('file:');
+
+  /// Gerçek kullanıcı fotoğrafı (CDN / galeri). Asset placeholder değil.
+  bool get _hasPhoto =>
+      path.isNotEmpty && (_isNetwork || _isFilePath);
+
+  Widget get _placeholder {
+    return ColoredBox(
+      color: AppColors.surfaceGray,
+      child: Center(
+        child: AppIcon(
+          AssetPaths.iconProfile6,
+          size: size * 0.42,
+          color: AppColors.mutedGray,
+        ),
+      ),
+    );
+  }
 
   Widget get _image {
-    final child = _isFilePath
-        ? Image.file(File(path), fit: BoxFit.cover)
-        : Image.asset(path, fit: BoxFit.cover);
+    final Widget child;
+    if (!_hasPhoto) {
+      child = _placeholder;
+    } else if (_isNetwork) {
+      child = Image.network(
+        path,
+        fit: BoxFit.cover,
+        errorBuilder: (_, _, _) => _placeholder,
+      );
+    } else if (_isFilePath) {
+      final filePath = path.startsWith('file:')
+          ? Uri.parse(path).toFilePath()
+          : path;
+      child = Image.file(
+        File(filePath),
+        fit: BoxFit.cover,
+        errorBuilder: (_, _, _) => _placeholder,
+      );
+    } else {
+      child = _placeholder;
+    }
     return ClipOval(child: child);
   }
 
@@ -49,14 +94,36 @@ class ProfileAvatar extends StatelessWidget {
             color: Color(0xFFD1D1D6),
           );
 
-    return Container(
+    final inset = ringWidth + ringGap;
+    final imageSize = size - inset * 2;
+
+    return SizedBox(
       width: size,
       height: size,
-      padding: EdgeInsets.all(ringWidth),
-      decoration: ringDecoration,
-      child: Container(
-        decoration: BoxDecoration(shape: BoxShape.circle, color: ringGapColor),
-        child: _image,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          Opacity(
+            opacity: ringOpacity.clamp(0.0, 1.0),
+            child: Container(
+              width: size,
+              height: size,
+              decoration: ringDecoration,
+              padding: EdgeInsets.all(ringWidth),
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: ringGapColor,
+                ),
+              ),
+            ),
+          ),
+          SizedBox(
+            width: imageSize,
+            height: imageSize,
+            child: _image,
+          ),
+        ],
       ),
     );
   }

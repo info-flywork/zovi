@@ -13,6 +13,12 @@ mixin CreateProfileViewMixin on State<CreateProfileView> {
     context.read<CreateProfileBloc>().add(CreateProfileUsernameChanged(value));
   }
 
+  void onSuggestionSelected(String value) {
+    context
+        .read<CreateProfileBloc>()
+        .add(CreateProfileUsernameSuggestionSelected(value));
+  }
+
   void onContinue() {
     context.read<CreateProfileBloc>().add(const CreateProfileContinueTapped());
   }

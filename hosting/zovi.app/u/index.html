@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Open in Zovi</title>
+  <meta name="description" content="Open this profile in the Zovi app." />
+  <style>
+    :root {
+      --bg: #f7f4ef;
+      --ink: #2b2118;
+      --muted: #6f6256;
+      --accent: #ff6a3d;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      padding: 24px;
+      font-family: "Avenir Next", "Segoe UI", sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at top left, #ffe0d3 0%, transparent 45%),
+        radial-gradient(circle at bottom right, #d9efe8 0%, transparent 40%),
+        var(--bg);
+    }
+    .card {
+      width: min(420px, 100%);
+      text-align: center;
+    }
+    h1 {
+      margin: 0 0 8px;
+      font-size: 2rem;
+      letter-spacing: -0.04em;
+    }
+    p {
+      margin: 0 0 24px;
+      color: var(--muted);
+      line-height: 1.4;
+    }
+    .handle {
+      display: inline-block;
+      margin-bottom: 20px;
+      padding: 8px 14px;
+      border-radius: 999px;
+      background: rgba(43, 33, 24, 0.06);
+      font-weight: 600;
+    }
+    a.button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 220px;
+      height: 52px;
+      padding: 0 20px;
+      border-radius: 999px;
+      background: var(--ink);
+      color: #fff;
+      text-decoration: none;
+      font-weight: 600;
+    }
+    .stores {
+      margin-top: 16px;
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+    .stores a {
+      color: var(--accent);
+      font-weight: 600;
+      text-decoration: none;
+    }
+  </style>
+</head>
+<body>
+  <main class="card">
+    <h1>zovi</h1>
+    <p>Open this profile in the app. If Zovi is installed, it should launch automatically.</p>
+    <div id="handle" class="handle">@user</div>
+    <a id="openApp" class="button" href="#">Open in Zovi</a>
+    <div class="stores">
+      <a href="https://apps.apple.com/">App Store</a>
+      <a href="https://play.google.com/store">Google Play</a>
+    </div>
+  </main>
+  <script>
+    (function () {
+      var parts = location.pathname.split('/').filter(Boolean);
+      var handle = parts.length >= 2 && parts[0] === 'u' ? parts[1] : '';
+      handle = decodeURIComponent(handle || '').replace(/^@/, '');
+      var label = document.getElementById('handle');
+      var openApp = document.getElementById('openApp');
+      if (handle) {
+        label.textContent = '@' + handle;
+        openApp.href = 'zovi://u/' + encodeURIComponent(handle);
+        // Best-effort: also try https app link for devices that support it.
+        setTimeout(function () {
+          // no-op; OS may already have tried Universal Links.
+        }, 300);
+      } else {
+        label.textContent = 'zovi.app';
+        openApp.href = 'https://zovi.app';
+      }
+    })();
+  </script>
+</body>
+</html>

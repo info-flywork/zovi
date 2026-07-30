@@ -53,9 +53,7 @@ class CreateStickerSuccessView extends StatelessWidget {
                 height: 54,
                 child: GestureDetector(
                   onTap: () {
-                    // success + create'i kapat, profil üstündeki sticker listesine dön
-                    if (context.canPop()) context.pop();
-                    if (context.canPop()) context.pop();
+                    context.pop(true);
                   },
                   child: DecoratedBox(
                     decoration: BoxDecoration(

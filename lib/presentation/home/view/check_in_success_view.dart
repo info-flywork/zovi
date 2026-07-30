@@ -197,6 +197,16 @@ class CheckInSuccessView extends StatelessWidget {
           placeName: args.placeName,
           checkedAt: DateTime.now(),
           titleLabel: reward.titleLabel,
+          avatarPath: getIt<UserRepository>()
+                      .currentUserListenable
+                      .value
+                      ?.hasPhoto ==
+                  true
+              ? getIt<UserRepository>()
+                    .currentUserListenable
+                    .value!
+                    .avatarPath
+              : '',
         ),
       );
     }

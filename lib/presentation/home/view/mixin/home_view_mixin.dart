@@ -44,39 +44,40 @@ mixin HomeViewMixin on State<HomeView> {
   }
 
   Future<void> onStoryTap(StoryPreview story) async {
-    if (story.isYou) {
+    if (story.isYou && !story.hasStory) {
       context.push(RoutePaths.camera.path);
       return;
     }
 
-    final state = context.read<HomeBloc>().state;
-    if (state is! HomeLoaded) return;
-
-    final viewable = state.stories.where((s) => s.hasStory).toList();
-    if (viewable.isEmpty) return;
-
-    final feed = await getIt<UserRepository>().getStoryFeed();
-    final items = viewable.map((preview) {
-      final match = feed.where((f) => f.avatarPath == preview.avatarPath);
-      if (match.isNotEmpty) return match.first;
-      return StoryMediaItem(
-        imagePath: preview.avatarPath,
-        label: preview.name,
-        avatarPath: preview.avatarPath,
+    if (story.isYou && story.hasStory) {
+      final repo = getIt<UserRepository>();
+      var items = repo.peekMyActiveStoryItems();
+      if (items.isEmpty) {
+        items = await repo.getMyActiveStoryItems();
+        if (!mounted) return;
+      } else {
+        // Keep cache warm without blocking open.
+        unawaited(repo.getMyActiveStoryItems(forceRefresh: true));
+      }
+      if (items.isEmpty) {
+        context.push(RoutePaths.camera.path);
+        return;
+      }
+      await context.push(
+        RoutePaths.storyDetail.path,
+        extra: StoryDetailRouteArgs(items: items, initialIndex: 0),
       );
-    }).toList();
+      if (!mounted) return;
+      context.read<HomeBloc>().add(const HomeStoriesRefreshRequested());
+      return;
+    }
 
-    final initialIndex = viewable.indexWhere(
-      (s) => s.avatarPath == story.avatarPath && s.name == story.name,
-    );
+    final items = getIt<UserRepository>().peekStoryItemsForUser(story.userId);
+    if (items.isEmpty) return;
 
-    if (!mounted) return;
     await context.push(
       RoutePaths.storyDetail.path,
-      extra: StoryDetailRouteArgs(
-        items: items,
-        initialIndex: initialIndex < 0 ? 0 : initialIndex,
-      ),
+      extra: StoryDetailRouteArgs(items: items, initialIndex: 0),
     );
     if (!mounted) return;
     context.read<HomeBloc>().add(const HomeStoriesRefreshRequested());

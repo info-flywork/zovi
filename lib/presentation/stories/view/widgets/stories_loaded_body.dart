@@ -60,6 +60,33 @@ class StoriesLoadedBody extends StatelessWidget {
   }
 }
 
+class StoriesGridShimmer extends StatelessWidget {
+  const StoriesGridShimmer({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Shimmer.fromColors(
+      baseColor: const Color(0xFFE8E8E8),
+      highlightColor: const Color(0xFFF5F5F5),
+      child: GridView.builder(
+        padding: EdgeInsets.only(
+          bottom:
+              MainWrapper.navBarHeight + MediaQuery.paddingOf(context).bottom,
+        ),
+        physics: const NeverScrollableScrollPhysics(),
+        itemCount: 18,
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 3,
+          mainAxisSpacing: 1.5,
+          crossAxisSpacing: 1.5,
+          childAspectRatio: 1,
+        ),
+        itemBuilder: (_, _) => const ColoredBox(color: AppColors.white),
+      ),
+    );
+  }
+}
+
 class _StoriesEmptyState extends StatelessWidget {
   const _StoriesEmptyState();
 
@@ -122,7 +149,7 @@ class _StoriesGrid extends StatelessWidget {
         final item = items[index];
         final delayMs = (index % 9) * 28;
         return _StoryGridItem(
-          key: ValueKey(item.imagePath),
+          key: ValueKey(item.storyId ?? item.imagePath),
           item: item,
           delay: Duration(milliseconds: delayMs),
           onTap: () => onOpen(items, index),
@@ -190,10 +217,19 @@ class _StoryGridItemState extends State<_StoryGridItem>
           child: Stack(
             fit: StackFit.expand,
             children: [
-              Image.asset(
-                widget.item.imagePath,
-                fit: BoxFit.cover,
-              ),
+              if (widget.item.isNetworkImage)
+                StampImage(
+                  path: widget.item.imagePath,
+                  stampId: widget.item.storyId ?? '',
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, _, _) =>
+                      const ColoredBox(color: AppColors.surfaceGray),
+                )
+              else
+                Image.asset(
+                  widget.item.imagePath,
+                  fit: BoxFit.cover,
+                ),
               if (widget.item.isReel)
                 const Positioned(
                   top: 8,

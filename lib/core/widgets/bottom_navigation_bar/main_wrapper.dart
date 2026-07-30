@@ -1,45 +1,71 @@
+import 'dart:async';
+
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:zovi/core/di/injection.dart';
 import 'package:zovi/core/theme/app_colors.dart';
 import 'package:zovi/core/utils/constants/asset_paths.dart';
 import 'package:zovi/core/utils/enum/route_paths.dart';
 import 'package:zovi/core/widgets/app_icon.dart';
+import 'package:zovi/core/widgets/profile_avatar.dart';
+import 'package:zovi/domain/user/user_repository.dart';
+import 'package:zovi/presentation/home/bloc/home_bloc.dart';
+import 'package:zovi/presentation/home/bloc/home_event.dart';
 
-class MainWrapper extends StatelessWidget {
-  const MainWrapper({required this.child, super.key});
+class MainWrapper extends StatefulWidget {
+  const MainWrapper({required this.navigationShell, super.key});
 
-  final Widget child;
+  final StatefulNavigationShell navigationShell;
 
   /// Floating bottom nav yaklaşık yüksekliği (içerik padding için).
   static const double navBarHeight = 72;
 
-  int _indexForLocation(String location) {
-    if (location.startsWith(RoutePaths.stories.path)) return 2;
-    if (location.startsWith(RoutePaths.chat.path)) return 3;
-    if (location.startsWith(RoutePaths.profile.path)) return 4;
+  @override
+  State<MainWrapper> createState() => _MainWrapperState();
+}
+
+class _MainWrapperState extends State<MainWrapper> {
+  /// Nav item index → shell branch index (camera is a push, not a branch).
+  static const _branchForNavItem = {0: 0, 2: 1, 3: 2, 4: 3};
+
+  @override
+  void initState() {
+    super.initState();
+    final repo = getIt<UserRepository>();
+    if (repo.currentUserListenable.value == null) {
+      unawaited(repo.getCurrentUser());
+    }
+  }
+
+  int get _currentNavIndex {
+    for (final entry in _branchForNavItem.entries) {
+      if (entry.value == widget.navigationShell.currentIndex) return entry.key;
+    }
     return 0;
   }
 
   void _onTap(BuildContext context, int index) {
-    switch (index) {
-      case 0:
-        context.go(RoutePaths.home.path);
-      case 1:
-        context.push(RoutePaths.camera.path);
-      case 2:
-        context.go(RoutePaths.stories.path);
-      case 3:
-        context.go(RoutePaths.chat.path);
-      case 4:
-        context.go(RoutePaths.profile.path);
+    if (index == 1) {
+      context.push(RoutePaths.camera.path);
+      return;
+    }
+
+    final branch = _branchForNavItem[index];
+    if (branch == null) return;
+
+    final wasOnBranch = branch == widget.navigationShell.currentIndex;
+    widget.navigationShell.goBranch(branch, initialLocation: wasOnBranch);
+
+    // Map tab stays mounted, so pull fresh data instead of rebuilding it.
+    if (branch == 0 && !wasOnBranch) {
+      getIt<HomeBloc>().add(const HomeStarted());
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final location = GoRouterState.of(context).uri.toString();
-    final currentIndex = _indexForLocation(location);
+    final currentIndex = _currentNavIndex;
 
     return Scaffold(
       backgroundColor: AppColors.white,
@@ -47,7 +73,7 @@ class MainWrapper extends StatelessWidget {
       body: Stack(
         fit: StackFit.expand,
         children: [
-          child,
+          widget.navigationShell,
           Positioned(
             left: 0,
             right: 0,
@@ -102,11 +128,19 @@ class MainWrapper extends StatelessWidget {
                         selected: currentIndex == 3,
                         onTap: () => _onTap(context, 3),
                       ),
-                      _NavItem(
-                        label: 'nav_profile'.tr(),
-                        selected: currentIndex == 4,
-                        onTap: () => _onTap(context, 4),
-                        avatar: AssetPaths.avatarYou,
+                      ValueListenableBuilder<UserProfile?>(
+                        valueListenable:
+                            getIt<UserRepository>().currentUserListenable,
+                        builder: (context, user, _) {
+                          final hasPhoto = user?.hasPhoto ?? false;
+                          return _NavItem(
+                            label: 'nav_profile'.tr(),
+                            selected: currentIndex == 4,
+                            onTap: () => _onTap(context, 4),
+                            avatarPath: hasPhoto ? user!.avatarPath : null,
+                            icon: AssetPaths.iconProfile6,
+                          );
+                        },
                       ),
                     ],
                   ),
@@ -126,14 +160,14 @@ class _NavItem extends StatelessWidget {
     required this.selected,
     required this.onTap,
     this.icon,
-    this.avatar,
+    this.avatarPath,
   });
 
   final String label;
   final bool selected;
   final VoidCallback onTap;
   final String? icon;
-  final String? avatar;
+  final String? avatarPath;
 
   @override
   Widget build(BuildContext context) {
@@ -147,17 +181,20 @@ class _NavItem extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              if (avatar != null)
+              if (avatarPath != null)
                 Container(
                   width: 28,
                   height: 28,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    border: Border.all(color: AppColors.zoviOrange, width: 2),
+                    border: Border.all(
+                      color: selected
+                          ? AppColors.zoviOrange
+                          : AppColors.borderGray,
+                      width: 2,
+                    ),
                   ),
-                  child: ClipOval(
-                    child: Image.asset(avatar!, fit: BoxFit.cover),
-                  ),
+                  child: ProfileAvatar(path: avatarPath!, size: 24),
                 )
               else
                 AppIcon(icon!, size: 24, color: color),

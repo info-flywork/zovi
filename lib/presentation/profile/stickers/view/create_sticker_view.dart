@@ -6,12 +6,14 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:zovi/core/di/injection.dart';
 import 'package:zovi/core/snackbar/app_snackbar.dart';
 import 'package:zovi/core/theme/app_colors.dart';
 import 'package:zovi/core/utils/constants/asset_paths.dart';
 import 'package:zovi/core/utils/enum/route_paths.dart';
 import 'package:zovi/core/utils/extensions/future_extensions.dart';
 import 'package:zovi/core/widgets/app_icon.dart';
+import 'package:zovi/domain/auth/auth_repository.dart';
 
 enum _StickerStyle {
   modern('🎨', 'sticker_style_modern'),
@@ -40,11 +42,20 @@ class _CreateStickerViewState extends State<CreateStickerView> {
   static const _hintGray = Color(0xFF9999A0);
 
   final _imagePicker = ImagePicker();
+  final AuthRepository _authRepository = getIt<AuthRepository>();
   final _nameController = TextEditingController();
   final _descriptionController = TextEditingController();
 
   _StickerStyle _selectedStyle = _StickerStyle.modern;
   String? _imagePath;
+  var _isSubmitting = false;
+
+  void _dismissKeyboard() {
+    final focus = FocusScope.of(context);
+    if (!focus.hasPrimaryFocus && focus.focusedChild != null) {
+      focus.unfocus();
+    }
+  }
 
   @override
   void dispose() {
@@ -77,100 +88,167 @@ class _CreateStickerViewState extends State<CreateStickerView> {
   }
 
   void _onContinue() {
-    context.push(RoutePaths.createStickerSuccess.path);
+    _submitCreateSticker();
+  }
+
+  Future<void> _submitCreateSticker() async {
+    if (_isSubmitting) return;
+
+    final imagePath = _imagePath;
+    final name = _nameController.text.trim();
+    final description = _descriptionController.text.trim();
+
+    if (imagePath == null || imagePath.isEmpty) {
+      AppSnackbar.instance.show(
+        context,
+        'sticker_error_select_photo'.tr(),
+        isError: true,
+      );
+      return;
+    }
+    if (name.isEmpty) {
+      AppSnackbar.instance.show(
+        context,
+        'sticker_error_name_required'.tr(),
+        isError: true,
+      );
+      return;
+    }
+    if (description.isEmpty) {
+      AppSnackbar.instance.show(
+        context,
+        'sticker_error_description_required'.tr(),
+        isError: true,
+      );
+      return;
+    }
+
+    setState(() => _isSubmitting = true);
+    try {
+      await _authRepository
+          .generateSticker(
+            imagePath: imagePath,
+            style: _selectedStyle.name,
+            name: name,
+            description: description,
+          )
+          .withLoading(context);
+      if (!mounted) return;
+      final completed = await context.push<bool>(
+        RoutePaths.createStickerSuccess.path,
+      );
+      if (!mounted) return;
+      if (completed == true) {
+        context.pop(true);
+      }
+    } catch (_) {
+      if (!mounted) return;
+      AppSnackbar.instance.show(
+        context,
+        'sticker_error_create_failed'.tr(),
+        isError: true,
+      );
+    } finally {
+      if (mounted) setState(() => _isSubmitting = false);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.white,
-      body: SafeArea(
-        child: Column(
-          children: [
-            const _CreateStickerHeader(),
-            Expanded(
-              child: ListView(
-                physics: const ClampingScrollPhysics(),
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-                children: [
-                  _UploadCard(
-                    imagePath: _imagePath,
-                    onUpload: () => _pickImage(ImageSource.gallery),
-                    onCamera: () => _pickImage(ImageSource.camera),
-                    uploadFill: _uploadFill,
-                    uploadBorder: _uploadBorder,
-                  ),
-                  const SizedBox(height: 24),
-                  Text(
-                    'sticker_select_style'.tr(),
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      height: 1,
-                      letterSpacing: -0.32,
-                      color: AppColors.black,
+      body: GestureDetector(
+        onTap: _dismissKeyboard,
+        behavior: HitTestBehavior.translucent,
+        child: SafeArea(
+          child: Column(
+            children: [
+              const _CreateStickerHeader(),
+              Expanded(
+                child: ListView(
+                  physics: const ClampingScrollPhysics(),
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+                  children: [
+                    _UploadCard(
+                      imagePath: _imagePath,
+                      onUpload: () => _pickImage(ImageSource.gallery),
+                      onCamera: () => _pickImage(ImageSource.camera),
+                      uploadFill: _uploadFill,
+                      uploadBorder: _uploadBorder,
                     ),
-                  ),
-                  const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      for (final style in _StickerStyle.values) ...[
-                        if (style != _StickerStyle.values.first)
-                          const SizedBox(width: 8),
-                        Expanded(
-                          child: _StyleChip(
-                            style: style,
-                            isSelected: style == _selectedStyle,
-                            onTap: () => setState(() => _selectedStyle = style),
+                    const SizedBox(height: 24),
+                    Text(
+                      'sticker_select_style'.tr(),
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        height: 1,
+                        letterSpacing: -0.32,
+                        color: AppColors.black,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        for (final style in _StickerStyle.values) ...[
+                          if (style != _StickerStyle.values.first)
+                            const SizedBox(width: 8),
+                          Expanded(
+                            child: _StyleChip(
+                              style: style,
+                              isSelected: style == _selectedStyle,
+                              onTap: () =>
+                                  setState(() => _selectedStyle = style),
+                            ),
                           ),
-                        ),
+                        ],
                       ],
-                    ],
-                  ),
-                  const SizedBox(height: 24),
-                  Text(
-                    'sticker_name_label'.tr(),
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      height: 1,
-                      letterSpacing: -0.32,
-                      color: AppColors.black,
                     ),
-                  ),
-                  const SizedBox(height: 12),
-                  _RoundedField(
-                    controller: _nameController,
-                    hintText: 'sticker_name_hint'.tr(),
-                    fillColor: _fieldFill,
-                    hintColor: _hintGray,
-                    maxLines: 1,
-                  ),
-                  const SizedBox(height: 24),
-                  Text(
-                    'sticker_description_label'.tr(),
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      height: 1,
-                      letterSpacing: -0.32,
-                      color: AppColors.black,
+                    const SizedBox(height: 24),
+                    Text(
+                      'sticker_name_label'.tr(),
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        height: 1,
+                        letterSpacing: -0.32,
+                        color: AppColors.black,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 12),
-                  _RoundedField(
-                    controller: _descriptionController,
-                    hintText: 'sticker_description_hint'.tr(),
-                    fillColor: _fieldFill,
-                    hintColor: _hintGray,
-                    maxLines: 6,
-                    minHeight: 140,
-                  ),
-                ],
+                    const SizedBox(height: 12),
+                    _RoundedField(
+                      controller: _nameController,
+                      hintText: 'sticker_name_hint'.tr(),
+                      fillColor: _fieldFill,
+                      hintColor: _hintGray,
+                      maxLines: 1,
+                    ),
+                    const SizedBox(height: 24),
+                    Text(
+                      'sticker_description_label'.tr(),
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        height: 1,
+                        letterSpacing: -0.32,
+                        color: AppColors.black,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    _RoundedField(
+                      controller: _descriptionController,
+                      hintText: 'sticker_description_hint'.tr(),
+                      fillColor: _fieldFill,
+                      hintColor: _hintGray,
+                      maxLines: 6,
+                      minHeight: 140,
+                    ),
+                  ],
+                ),
               ),
-            ),
-            _ContinueButton(onTap: _onContinue),
-          ],
+              _ContinueButton(onTap: _onContinue),
+            ],
+          ),
         ),
       ),
     );

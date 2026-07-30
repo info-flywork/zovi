@@ -1,12 +1,17 @@
+import 'dart:async';
 import 'dart:io';
 import 'dart:ui' as ui;
 
+import 'package:audioplayers/audioplayers.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:photo_manager/photo_manager.dart';
+import 'package:zovi/core/cache/music_audio_cache.dart';
+import 'package:zovi/core/di/injection.dart';
 import 'package:zovi/core/in_app_notification/app_in_app_notification.dart';
 import 'package:zovi/core/in_app_notification/in_app_notification_data.dart';
 import 'package:zovi/core/theme/app_colors.dart';
@@ -14,12 +19,15 @@ import 'package:zovi/core/utils/constants/asset_paths.dart';
 import 'package:zovi/core/utils/enum/route_paths.dart';
 import 'package:zovi/core/widgets/app_confirm_dialog.dart';
 import 'package:zovi/core/widgets/app_icon.dart';
+import 'package:zovi/core/widgets/stamp_image.dart';
 import 'package:zovi/domain/user/user_repository.dart';
 import 'package:zovi/presentation/camera/model/camera_compose_route_args.dart';
 import 'package:zovi/presentation/camera/utils/camera_drafts.dart';
 import 'package:zovi/presentation/camera/view/widgets/camera_music_sheet.dart';
 import 'package:zovi/presentation/camera/view/widgets/camera_text_editor_sheet.dart';
 import 'package:zovi/presentation/chat/view/widgets/chat_sticker_sheet.dart';
+import 'package:zovi/presentation/home/bloc/home_bloc.dart';
+import 'package:zovi/presentation/home/bloc/home_event.dart';
 
 enum _ComposeAudience { friendsOnly, public }
 
@@ -65,6 +73,10 @@ class CameraComposeView extends StatefulWidget {
 class _CameraComposeViewState extends State<CameraComposeView> {
   final _stageKey = GlobalKey();
   final _composeKey = GlobalKey();
+  final _musicPlayer = AudioPlayer();
+  StreamSubscription<Duration>? _musicPositionSub;
+  StreamSubscription<void>? _musicCompleteSub;
+  var _musicSeeking = false;
   var _saving = false;
   var _audience = _ComposeAudience.friendsOnly;
   final List<_ComposeTextItem> _texts = [];
@@ -79,7 +91,22 @@ class _CameraComposeViewState extends State<CameraComposeView> {
   double? _gestureStartScale;
   double? _gestureStartRotation;
 
+  /// True after the user adds/edits text, stamps, music, audience, or transforms.
+  var _hasEdits = false;
+
   CameraComposeRouteArgs get args => widget.args;
+
+  void _markEdited() {
+    if (_hasEdits) return;
+    _hasEdits = true;
+  }
+
+  @override
+  void dispose() {
+    unawaited(_stopMusicPreview());
+    unawaited(_musicPlayer.dispose());
+    super.dispose();
+  }
 
   bool get _isDragging => _dragKind != _DragKind.none;
 
@@ -180,10 +207,17 @@ class _CameraComposeViewState extends State<CameraComposeView> {
     if (bytes == null || bytes.isEmpty) {
       throw StateError('capture failed');
     }
-    await CameraDrafts.saveBytes(bytes);
+    await CameraDrafts.saveRemote(bytes);
   }
 
   Future<void> _onClosePressed() async {
+    // Re-opening an unchanged draft shouldn't ask to save it again.
+    final needsSavePrompt = !args.fromDraft || _hasEdits;
+    if (!needsSavePrompt) {
+      if (mounted) context.pop();
+      return;
+    }
+
     final shouldSave = await showAppConfirmDialog(
       context,
       title: 'camera_compose_save_draft_title'.tr(),
@@ -218,12 +252,70 @@ class _CameraComposeViewState extends State<CameraComposeView> {
     if (mounted) context.pop();
   }
 
+  Future<void> _shareStory() async {
+    if (_saving) return;
+    setState(() => _saving = true);
+    File? tempFile;
+    try {
+      final bytes = await _captureComposeBytes();
+      if (bytes == null || bytes.isEmpty) {
+        _showBanner(
+          titleKey: 'camera_compose_save_failed',
+          subtitleKey: 'camera_compose_save_failed_subtitle',
+          icon: AssetPaths.iconImportArrow,
+        );
+        return;
+      }
+
+      final dir = await getTemporaryDirectory();
+      tempFile = File(
+        '${dir.path}/story_share_${DateTime.now().millisecondsSinceEpoch}.png',
+      );
+      await tempFile.writeAsBytes(bytes, flush: true);
+
+      final music = _selectedMusic;
+      await getIt<UserRepository>().publishStory(
+        imagePath: tempFile.path,
+        audience: _audience == _ComposeAudience.public
+            ? 'public'
+            : 'friends_only',
+        musicTrackId: music?.track.id,
+        musicClipStartMs: music?.clipStart.inMilliseconds,
+        musicClipDurationMs: music?.clipDuration.inMilliseconds,
+      );
+
+      if (!mounted) return;
+      await _stopMusicPreview();
+      if (!mounted) return;
+      _showBanner(
+        titleKey: 'camera_compose_shared',
+        subtitleKey: 'camera_compose_shared_subtitle',
+        icon: AssetPaths.iconSendPlane,
+      );
+      getIt<HomeBloc>().add(const HomeStoriesRefreshRequested());
+      context.go(RoutePaths.home.path);
+    } catch (_) {
+      if (!mounted) return;
+      _showBanner(
+        titleKey: 'camera_compose_share_failed',
+        subtitleKey: 'camera_compose_share_failed_subtitle',
+        icon: AssetPaths.iconImportArrow,
+      );
+    } finally {
+      try {
+        await tempFile?.delete();
+      } catch (_) {}
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
   void _toggleAudience() {
     setState(() {
       _audience = _audience == _ComposeAudience.friendsOnly
           ? _ComposeAudience.public
           : _ComposeAudience.friendsOnly;
     });
+    _markEdited();
   }
 
   Future<void> _openTextEditor({Alignment? at, String? editId}) async {
@@ -238,12 +330,14 @@ class _CameraComposeViewState extends State<CameraComposeView> {
       if (!result.hasContent) {
         if (editId != null) {
           _texts.removeWhere((item) => item.id == editId);
+          _markEdited();
         }
         return;
       }
 
       if (existing != null) {
         existing.draft = result;
+        _markEdited();
         return;
       }
 
@@ -254,6 +348,7 @@ class _CameraComposeViewState extends State<CameraComposeView> {
           alignment: at ?? const Alignment(0, -0.25),
         ),
       );
+      _markEdited();
     });
   }
 
@@ -294,12 +389,77 @@ class _CameraComposeViewState extends State<CameraComposeView> {
         ),
       );
     });
+    _markEdited();
   }
 
   Future<void> _openMusicSheet() async {
+    await _stopMusicPreview();
+    if (!mounted) return;
     final selection = await showCameraMusicSheet(context);
     if (!mounted || selection == null) return;
     setState(() => _selectedMusic = selection);
+    _markEdited();
+    await _playMusicSelection(selection);
+  }
+
+  Future<void> _clearSelectedMusic() async {
+    await _stopMusicPreview();
+    if (!mounted) return;
+    setState(() => _selectedMusic = null);
+    _markEdited();
+  }
+
+  Future<void> _stopMusicPreview() async {
+    await _musicPositionSub?.cancel();
+    await _musicCompleteSub?.cancel();
+    _musicPositionSub = null;
+    _musicCompleteSub = null;
+    _musicSeeking = false;
+    try {
+      await _musicPlayer.stop();
+    } catch (_) {}
+  }
+
+  Future<void> _playMusicSelection(CameraMusicSelection selection) async {
+    await _stopMusicPreview();
+    final start = selection.clipStart;
+    final end = start + selection.clipDuration;
+    final url = selection.track.audioUrl.trim();
+    if (url.isEmpty) return;
+
+    await _musicPlayer.setReleaseMode(ReleaseMode.stop);
+
+    _musicPositionSub = _musicPlayer.onPositionChanged.listen((pos) async {
+      if (_musicSeeking) return;
+      if (pos < end) return;
+      _musicSeeking = true;
+      try {
+        await _musicPlayer.seek(start);
+      } finally {
+        _musicSeeking = false;
+      }
+    });
+
+    _musicCompleteSub = _musicPlayer.onPlayerComplete.listen((_) async {
+      if (_musicSeeking) return;
+      _musicSeeking = true;
+      try {
+        await _musicPlayer.seek(start);
+        await _musicPlayer.resume();
+      } finally {
+        _musicSeeking = false;
+      }
+    });
+
+    try {
+      final source = await getIt<MusicAudioCache>().resolveSource(
+        trackId: selection.track.id,
+        url: url,
+      );
+      await _musicPlayer.play(source, position: start);
+    } catch (_) {
+      await _stopMusicPreview();
+    }
   }
 
   void _startTextGesture(String id) {
@@ -345,7 +505,10 @@ class _CameraComposeViewState extends State<CameraComposeView> {
         details.focalPointDelta.distance > 0.8 ||
         (details.scale - 1).abs() > 0.01 ||
         details.rotation.abs() > 0.01;
-    if (moved) _gestureMoved = true;
+    if (moved) {
+      _gestureMoved = true;
+      _markEdited();
+    }
 
     final size = box.size;
     final dx = details.focalPointDelta.dx / (size.width / 2);
@@ -402,6 +565,7 @@ class _CameraComposeViewState extends State<CameraComposeView> {
 
     if (shouldDelete) {
       HapticFeedback.heavyImpact();
+      _markEdited();
       setState(() {
         if (_dragKind == _DragKind.text && _draggingTextId != null) {
           _texts.removeWhere((item) => item.id == _draggingTextId);
@@ -490,8 +654,9 @@ class _CameraComposeViewState extends State<CameraComposeView> {
                             onScaleStart: (_) => _startStampGesture(item.id),
                             onScaleUpdate: _updateGesture,
                             onScaleEnd: (_) => _endGesture(),
-                            child: Image.asset(
-                              item.stamp.imagePath,
+                            child: StampImage(
+                              path: item.stamp.imagePath,
+                              stampId: item.stamp.id,
                               width: 96,
                               height: 96,
                               fit: BoxFit.contain,
@@ -571,8 +736,7 @@ class _CameraComposeViewState extends State<CameraComposeView> {
                                 const SizedBox(width: 10),
                                 _SelectedMusicPill(
                                   selection: _selectedMusic!,
-                                  onClear: () =>
-                                      setState(() => _selectedMusic = null),
+                                  onClear: _clearSelectedMusic,
                                 ),
                               ],
                               const Spacer(),
@@ -760,15 +924,7 @@ class _CameraComposeViewState extends State<CameraComposeView> {
                                   ),
                                   const SizedBox(width: 10),
                                   GestureDetector(
-                                    onTap: () {
-                                      _showBanner(
-                                        titleKey: 'camera_compose_shared',
-                                        subtitleKey:
-                                            'camera_compose_shared_subtitle',
-                                        icon: AssetPaths.iconSendPlane,
-                                      );
-                                      context.go(RoutePaths.home.path);
-                                    },
+                                    onTap: _saving ? null : _shareStory,
                                     behavior: HitTestBehavior.opaque,
                                     child: Container(
                                       height: 44,
@@ -930,12 +1086,27 @@ class _SelectedMusicPill extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               ClipOval(
-                child: Image.asset(
-                  track.coverPath,
-                  width: 28,
-                  height: 28,
-                  fit: BoxFit.cover,
-                ),
+                child: track.coverUrl.startsWith('http')
+                    ? Image.network(
+                        track.coverUrl,
+                        width: 28,
+                        height: 28,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, _, _) => Image.asset(
+                          AssetPaths.stamp13,
+                          width: 28,
+                          height: 28,
+                          fit: BoxFit.cover,
+                        ),
+                      )
+                    : Image.asset(
+                        track.coverUrl.isEmpty
+                            ? AssetPaths.stamp13
+                            : track.coverUrl,
+                        width: 28,
+                        height: 28,
+                        fit: BoxFit.cover,
+                      ),
               ),
               const SizedBox(width: 8),
               ConstrainedBox(

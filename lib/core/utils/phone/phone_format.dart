@@ -136,4 +136,170 @@ abstract final class PhoneFormats {
   static PhoneFormat forCountry(String isoCode) {
     return _byIso[isoCode.toUpperCase()] ?? defaultFormat;
   }
+
+  /// Formats E.164 (`+905321234567`) as `+90 532 123 45 67` using country rules.
+  static String formatE164(String raw) {
+    final trimmed = raw.trim();
+    if (trimmed.isEmpty) return '';
+
+    final hasPlus = trimmed.startsWith('+');
+    final digits = trimmed.replaceAll(RegExp(r'\D'), '');
+    if (digits.isEmpty) return trimmed;
+
+    final match = _matchDialCode(digits);
+    if (match == null) {
+      final grouped = defaultFormat.formatDigits(digits);
+      return hasPlus || trimmed.startsWith('+') ? '+$grouped' : grouped;
+    }
+
+    final dialDigits = match.dialCode.replaceAll(RegExp(r'\D'), '');
+    final national = digits.substring(dialDigits.length);
+    final format = forCountry(match.isoCode);
+    final nationalFormatted = format.formatDigits(national);
+    if (nationalFormatted.isEmpty) return match.dialCode;
+    return '${match.dialCode} $nationalFormatted';
+  }
+
+  static ({String isoCode, String dialCode})? _matchDialCode(String digits) {
+    // Longest dial-code match first (+994 before +9…).
+    final candidates = <({String isoCode, String dialCode, int len})>[];
+    for (final entry in _dialCodeByIso.entries) {
+      final dialDigits = entry.value.replaceAll(RegExp(r'\D'), '');
+      if (dialDigits.isEmpty) continue;
+      if (digits.startsWith(dialDigits)) {
+        candidates.add((
+          isoCode: entry.key,
+          dialCode: entry.value.startsWith('+')
+              ? entry.value
+              : '+${entry.value}',
+          len: dialDigits.length,
+        ));
+      }
+    }
+    if (candidates.isEmpty) return null;
+    candidates.sort((a, b) => b.len.compareTo(a.len));
+    final bestLen = candidates.first.len;
+    final sameLen = candidates.where((c) => c.len == bestLen).toList();
+    final dialKey = sameLen.first.dialCode.replaceAll(RegExp(r'\D'), '');
+    final preferred = _preferredIsoByDial[dialKey];
+    if (preferred != null) {
+      for (final c in sameLen) {
+        if (c.isoCode == preferred) {
+          return (isoCode: c.isoCode, dialCode: c.dialCode);
+        }
+      }
+    }
+    final best = sameLen.first;
+    return (isoCode: best.isoCode, dialCode: best.dialCode);
+  }
+
+  /// Prefer common countries when dial codes collide (e.g. +1 → US).
+  static const _preferredIsoByDial = {
+    '1': 'US',
+    '7': 'RU',
+  };
+
+  static final Map<String, String> _dialCodeByIso = () {
+    // Built lazily from Countries list via side import in formatE164 callers —
+    // keep a compact map here to avoid circular imports; populated below.
+    return <String, String>{
+      for (final e in _isoDialPairs) e.$1: e.$2,
+    };
+  }();
+
+  // iso → dial pairs used for E.164 matching (mirrors Countries dataset).
+  static const _isoDialPairs = <(String, String)>[
+    ('TR', '+90'),
+    ('US', '+1'),
+    ('CA', '+1'),
+    ('GB', '+44'),
+    ('DE', '+49'),
+    ('FR', '+33'),
+    ('IT', '+39'),
+    ('ES', '+34'),
+    ('NL', '+31'),
+    ('BE', '+32'),
+    ('CH', '+41'),
+    ('AT', '+43'),
+    ('SE', '+46'),
+    ('NO', '+47'),
+    ('DK', '+45'),
+    ('FI', '+358'),
+    ('PL', '+48'),
+    ('GR', '+30'),
+    ('PT', '+351'),
+    ('RU', '+7'),
+    ('UA', '+380'),
+    ('AE', '+971'),
+    ('SA', '+966'),
+    ('IN', '+91'),
+    ('CN', '+86'),
+    ('JP', '+81'),
+    ('KR', '+82'),
+    ('AU', '+61'),
+    ('NZ', '+64'),
+    ('BR', '+55'),
+    ('MX', '+52'),
+    ('AR', '+54'),
+    ('ZA', '+27'),
+    ('EG', '+20'),
+    ('NG', '+234'),
+    ('IL', '+972'),
+    ('SG', '+65'),
+    ('MY', '+60'),
+    ('TH', '+66'),
+    ('ID', '+62'),
+    ('PH', '+63'),
+    ('VN', '+84'),
+    ('PK', '+92'),
+    ('BD', '+880'),
+    ('IR', '+98'),
+    ('IQ', '+964'),
+    ('AZ', '+994'),
+    ('KZ', '+7'),
+    ('RO', '+40'),
+    ('CZ', '+420'),
+    ('HU', '+36'),
+    ('IE', '+353'),
+    ('AF', '+93'),
+    ('AL', '+355'),
+    ('DZ', '+213'),
+    ('AD', '+376'),
+    ('AO', '+244'),
+    ('AM', '+374'),
+    ('BH', '+973'),
+    ('BY', '+375'),
+    ('BA', '+387'),
+    ('BG', '+359'),
+    ('CL', '+56'),
+    ('CO', '+57'),
+    ('HR', '+385'),
+    ('CY', '+357'),
+    ('EE', '+372'),
+    ('GE', '+995'),
+    ('HK', '+852'),
+    ('IS', '+354'),
+    ('JO', '+962'),
+    ('KE', '+254'),
+    ('KW', '+965'),
+    ('LV', '+371'),
+    ('LB', '+961'),
+    ('LT', '+370'),
+    ('LU', '+352'),
+    ('MT', '+356'),
+    ('MA', '+212'),
+    ('NP', '+977'),
+    ('OM', '+968'),
+    ('PE', '+51'),
+    ('QA', '+974'),
+    ('RS', '+381'),
+    ('SK', '+421'),
+    ('SI', '+386'),
+    ('LK', '+94'),
+    ('SY', '+963'),
+    ('TW', '+886'),
+    ('TN', '+216'),
+    ('TM', '+993'),
+    ('UZ', '+998'),
+  ];
 }

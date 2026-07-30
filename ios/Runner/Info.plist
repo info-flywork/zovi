@@ -41,6 +41,11 @@
 	<string>We need access to your photo library so you can share photos and update your profile.</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
 	<string>We need access to save photos you take in the camera.</string>
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsLocalNetworking</key>
+		<true/>
+	</dict>
 	<key>LSApplicationQueriesSchemes</key>
 	<array>
 		<string>https</string>
@@ -67,6 +72,27 @@
 			</array>
 		</dict>
 	</dict>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>com.googleusercontent.apps.226127781305-c6gnbjquspm9eslanqmhhcasbhrqg126</string>
+			</array>
+		</dict>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLName</key>
+			<string>com.flywork.zovi.profile</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>zovi</string>
+			</array>
+		</dict>
+	</array>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
 	<key>UILaunchStoryboardName</key>

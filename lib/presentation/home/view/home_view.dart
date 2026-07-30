@@ -10,6 +10,7 @@ import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:zovi/core/deep_link/deep_link_service.dart';
 import 'package:zovi/core/di/injection.dart';
 import 'package:zovi/core/in_app_notification/app_in_app_notification.dart';
 import 'package:zovi/core/in_app_notification/in_app_notification_data.dart';
@@ -27,22 +28,22 @@ import 'package:zovi/domain/user/user_repository.dart';
 import 'package:zovi/presentation/home/bloc/home_bloc.dart';
 import 'package:zovi/presentation/home/bloc/home_event.dart';
 import 'package:zovi/presentation/home/bloc/home_state.dart';
-import 'package:zovi/presentation/stories/model/story_detail_route_args.dart';
 import 'package:zovi/presentation/home/view/widgets/check_in_create_sheet.dart';
 import 'package:zovi/presentation/home/view/widgets/first_check_in_sheet.dart';
+import 'package:zovi/presentation/stories/model/story_detail_route_args.dart';
 
 part 'mixin/home_view_mixin.dart';
 part 'widgets/home_error_body.dart';
 part 'widgets/home_header_section.dart';
 part 'widgets/home_loaded_body.dart';
 part 'widgets/home_loading_body.dart';
-part 'widgets/home_map_marker.dart';
 part 'widgets/home_map_anon_marker.dart';
 part 'widgets/home_map_check_in_marker.dart';
-part 'widgets/home_map_last_check_in_sheet.dart';
-part 'widgets/home_map_venue_marker.dart';
 part 'widgets/home_map_friend_sheet.dart';
+part 'widgets/home_map_last_check_in_sheet.dart';
+part 'widgets/home_map_marker.dart';
 part 'widgets/home_map_section.dart';
+part 'widgets/home_map_venue_marker.dart';
 part 'widgets/home_stories_row.dart';
 
 class HomeView extends StatefulWidget {
@@ -57,6 +58,7 @@ class _HomeViewState extends State<HomeView> with HomeViewMixin {
   void initState() {
     super.initState();
     context.read<HomeBloc>().add(const HomeStarted());
+    unawaited(getIt<DeepLinkService>().markReadyAndFlush());
   }
 
   @override

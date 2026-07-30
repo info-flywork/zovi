@@ -16,22 +16,24 @@ import 'package:zovi/core/widgets/app_icon.dart';
 import 'package:zovi/core/widgets/app_loading.dart';
 import 'package:zovi/core/widgets/bottom_navigation_bar/main_wrapper.dart';
 import 'package:zovi/core/widgets/profile_avatar.dart';
+import 'package:zovi/core/widgets/stamp_image.dart';
 import 'package:zovi/domain/user/user_repository.dart';
 import 'package:zovi/presentation/profile/bloc/profile_bloc.dart';
 import 'package:zovi/presentation/profile/connections/model/profile_connections_route_args.dart';
 import 'package:zovi/presentation/profile/edit/model/edit_profile_route_args.dart';
 import 'package:zovi/presentation/profile/view/widgets/profile_share_sheet.dart';
+import 'package:zovi/presentation/profile/view/widgets/profile_links_sheet.dart';
 
 part 'mixin/profile_view_mixin.dart';
-part 'widgets/profile_loaded_body.dart';
+part 'widgets/profile_checkins.dart';
 part 'widgets/profile_header.dart';
-part 'widgets/profile_stats.dart';
+part 'widgets/profile_loaded_body.dart';
 part 'widgets/profile_map.dart';
 part 'widgets/profile_plans.dart';
-part 'widgets/profile_tabs.dart';
 part 'widgets/profile_pulses.dart';
 part 'widgets/profile_stamps.dart';
-part 'widgets/profile_checkins.dart';
+part 'widgets/profile_stats.dart';
+part 'widgets/profile_tabs.dart';
 
 class ProfileView extends StatefulWidget {
   const ProfileView({super.key});

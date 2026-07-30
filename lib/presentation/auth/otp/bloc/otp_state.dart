@@ -53,14 +53,23 @@ final class OtpSuccess extends OtpState {
     required this.navigateTo,
     required super.phone,
     required super.selectedCountry,
+    this.navigateExtra,
     super.code,
     super.resendSeconds,
   });
 
   final String navigateTo;
+  final Object? navigateExtra;
 
   @override
-  List<Object?> get props => [phone, selectedCountry, code, resendSeconds, navigateTo];
+  List<Object?> get props => [
+        phone,
+        selectedCountry,
+        code,
+        resendSeconds,
+        navigateTo,
+        navigateExtra,
+      ];
 }
 
 final class OtpError extends OtpState {

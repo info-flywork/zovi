@@ -1,17 +1,18 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:zovi/core/di/injection.dart';
 import 'package:zovi/core/snackbar/app_snackbar.dart';
 import 'package:zovi/core/theme/app_colors.dart';
 import 'package:zovi/core/utils/constants/asset_paths.dart';
+import 'package:zovi/core/utils/extensions/future_extensions.dart';
+import 'package:zovi/core/utils/phone/phone_format.dart';
 import 'package:zovi/core/widgets/app_icon.dart';
+import 'package:zovi/domain/auth/auth_repository.dart';
 import 'package:zovi/presentation/profile/settings/view/widgets/delete_account_sheet.dart';
 
 class PersonalInfoView extends StatelessWidget {
   const PersonalInfoView({super.key});
-
-  static const _demoEmail = 'jhondoe4512@gmail.com';
-  static final _demoBirthday = DateTime(1992, 2, 15);
 
   static const _monthKeys = [
     'month_january',
@@ -28,25 +29,58 @@ class PersonalInfoView extends StatelessWidget {
     'month_december',
   ];
 
-  String _formatBirthday(BuildContext context) {
-    final month = _monthKeys[_demoBirthday.month - 1].tr();
+  String _formatBirthday(BuildContext context, DateTime birthday) {
+    final month = _monthKeys[birthday.month - 1].tr();
     if (context.locale.languageCode == 'tr') {
-      return '${_demoBirthday.day} $month ${_demoBirthday.year}';
+      return '${birthday.day} $month ${birthday.year}';
     }
-    return '$month ${_demoBirthday.day}, ${_demoBirthday.year}';
+    return '$month ${birthday.day}, ${birthday.year}';
+  }
+
+  String _formatContact(CachedPersonalInfo? info) {
+    if (info == null) return '-';
+    if (info.isPhoneAuth) {
+      final phone = info.phoneE164.trim();
+      if (phone.isEmpty) return '-';
+      return PhoneFormats.formatE164(phone);
+    }
+    final email = info.email.trim();
+    return email.isEmpty ? '-' : email;
   }
 
   Future<void> _onDeleteAccount(BuildContext context) async {
-    final submitted = await showDeleteAccountSheet(context);
-    if (!submitted || !context.mounted) return;
-    AppSnackbar.instance.show(
-      context,
-      'delete_account_request_received'.tr(),
-    );
+    final reason = await showDeleteAccountSheet(context);
+    if (reason == null || !context.mounted) return;
+
+    try {
+      await getIt<AuthRepository>()
+          .requestAccountDeletion(reason: reason)
+          .withLoading(context);
+      if (!context.mounted) return;
+      AppSnackbar.instance.show(
+        context,
+        'delete_account_request_received'.tr(),
+      );
+    } catch (_) {
+      if (!context.mounted) return;
+      AppSnackbar.instance.show(
+        context,
+        'delete_account_request_failed'.tr(),
+        isError: true,
+      );
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    final info = getIt<AuthRepository>().cachedPersonalInfo;
+    final isPhone = info?.isPhoneAuth ?? true;
+    final contactText = _formatContact(info);
+    final birthday = info?.birthDate;
+    final birthdayText = birthday == null
+        ? '-'
+        : _formatBirthday(context, birthday);
+
     return Scaffold(
       backgroundColor: AppColors.white,
       body: SafeArea(
@@ -71,13 +105,15 @@ class PersonalInfoView extends StatelessWidget {
                   ),
                   const SizedBox(height: 24),
                   _InfoRow(
-                    label: 'personal_info_email'.tr(),
-                    value: _demoEmail,
+                    label: isPhone
+                        ? 'personal_info_phone'.tr()
+                        : 'personal_info_email'.tr(),
+                    value: contactText,
                   ),
                   const _PersonalInfoDivider(),
                   _InfoRow(
                     label: 'personal_info_birthday'.tr(),
-                    value: _formatBirthday(context),
+                    value: birthdayText,
                   ),
                   const _PersonalInfoDivider(),
                   GestureDetector(
@@ -184,10 +220,6 @@ class _PersonalInfoDivider extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Divider(
-      height: 1,
-      thickness: 1,
-      color: AppColors.borderLight,
-    );
+    return const Divider(height: 1, thickness: 1, color: AppColors.borderLight);
   }
 }

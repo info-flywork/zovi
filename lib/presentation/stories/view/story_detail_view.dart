@@ -1,11 +1,16 @@
+import 'dart:async';
+
+import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
+import 'package:zovi/core/cache/music_audio_cache.dart';
 import 'package:zovi/core/di/injection.dart';
 import 'package:zovi/core/theme/app_colors.dart';
 import 'package:zovi/core/utils/constants/asset_paths.dart';
 import 'package:zovi/core/utils/navigation/open_user_profile.dart';
 import 'package:zovi/core/widgets/app_icon.dart';
+import 'package:zovi/core/widgets/profile_avatar.dart';
 import 'package:zovi/domain/user/user_repository.dart';
 import 'package:zovi/presentation/stories/model/story_detail_route_args.dart';
 
@@ -25,32 +30,104 @@ class _StoryDetailViewState extends State<StoryDetailView>
   late final PageController _pageController;
   late final AnimationController _progressController;
   late int _index;
-  final Set<int> _liked = {};
+  late List<StoryMediaItem> _items;
+  late Set<int> _unviewedAtOpen;
   var _paused = false;
+  var _likeInFlight = false;
 
-  List<StoryMediaItem> get _items => widget.args.items;
+  final _musicPlayer = AudioPlayer();
+  StreamSubscription<Duration>? _musicPosSub;
+  StreamSubscription<void>? _musicCompleteSub;
+  var _musicSeeking = false;
 
   StoryMediaItem get _current => _items[_index];
 
   @override
   void initState() {
     super.initState();
+    _items = List<StoryMediaItem>.of(widget.args.items);
     _index = widget.args.initialIndex.clamp(0, _items.length - 1);
+    _unviewedAtOpen = _resolveUnviewedIndexes();
     _pageController = PageController(initialPage: _index);
     _progressController = AnimationController(
       vsync: this,
       duration: _storyDuration,
     )..addStatusListener(_onProgressStatus);
-    _markCurrentViewed();
+    unawaited(_markCurrentViewed());
+    unawaited(_syncMusic());
     _startProgress();
   }
 
-  void _markCurrentViewed() {
-    getIt<UserRepository>().markStoryViewed(_current.avatarPath);
+  Future<void> _markCurrentViewed() async {
+    final item = _current;
+    getIt<UserRepository>().markStoryViewed(item.avatarPath);
+    final storyId = item.storyId;
+    if (storyId != null && storyId.isNotEmpty) {
+      await getIt<UserRepository>().markStoryViewedById(storyId);
+    }
+  }
+
+  Future<void> _stopMusic() async {
+    await _musicPosSub?.cancel();
+    await _musicCompleteSub?.cancel();
+    _musicPosSub = null;
+    _musicCompleteSub = null;
+    _musicSeeking = false;
+    try {
+      await _musicPlayer.stop();
+    } catch (_) {}
+  }
+
+  Future<void> _syncMusic() async {
+    await _stopMusic();
+    final item = _current;
+    if (!item.hasMusic) return;
+
+    final url = item.musicAudioUrl!.trim();
+    final startMs = item.musicClipStartMs ?? 0;
+    final durationMs = item.musicClipDurationMs ?? 15000;
+    final start = Duration(milliseconds: startMs.clamp(0, 1 << 30));
+    final end = start + Duration(milliseconds: durationMs.clamp(1000, 60000));
+
+    try {
+      await _musicPlayer.setReleaseMode(ReleaseMode.stop);
+      final source = await getIt<MusicAudioCache>().resolveSource(
+        trackId: item.musicTrackId ?? item.storyId ?? url,
+        url: url,
+      );
+
+      _musicPosSub = _musicPlayer.onPositionChanged.listen((pos) async {
+        if (_musicSeeking) return;
+        if (pos < end) return;
+        _musicSeeking = true;
+        try {
+          await _musicPlayer.seek(start);
+        } finally {
+          _musicSeeking = false;
+        }
+      });
+
+      _musicCompleteSub = _musicPlayer.onPlayerComplete.listen((_) async {
+        if (_musicSeeking) return;
+        _musicSeeking = true;
+        try {
+          await _musicPlayer.seek(start);
+          await _musicPlayer.resume();
+        } finally {
+          _musicSeeking = false;
+        }
+      });
+
+      await _musicPlayer.play(source, position: start);
+    } catch (_) {
+      await _stopMusic();
+    }
   }
 
   @override
   void dispose() {
+    unawaited(_stopMusic());
+    unawaited(_musicPlayer.dispose());
     _progressController
       ..removeStatusListener(_onProgressStatus)
       ..dispose();
@@ -58,15 +135,35 @@ class _StoryDetailViewState extends State<StoryDetailView>
     super.dispose();
   }
 
+  /// Stories already seen before this session opened — used to stop playback
+  /// once nothing new is left.
+  Set<int> _resolveUnviewedIndexes() {
+    final repo = getIt<UserRepository>();
+    return {
+      for (var i = 0; i < _items.length; i++)
+        if (!_wasAlreadyViewed(repo, _items[i])) i,
+    };
+  }
+
+  bool _wasAlreadyViewed(UserRepository repo, StoryMediaItem item) {
+    final storyId = item.storyId?.trim() ?? '';
+    if (storyId.isNotEmpty) return item.isViewed;
+    return repo.isStoryViewed(item.avatarPath);
+  }
+
   void _onProgressStatus(AnimationStatus status) {
     if (status != AnimationStatus.completed || _paused) return;
-    if (_current.isReel) {
-      _progressController
-        ..reset()
-        ..forward();
-      return;
+    _advanceToNextUnviewed();
+  }
+
+  void _advanceToNextUnviewed() {
+    for (var i = _index + 1; i < _items.length; i++) {
+      if (_unviewedAtOpen.contains(i)) {
+        _goTo(i);
+        return;
+      }
     }
-    _goNext();
+    if (mounted) context.pop();
   }
 
   void _startProgress() {
@@ -80,12 +177,14 @@ class _StoryDetailViewState extends State<StoryDetailView>
     if (_paused) return;
     _paused = true;
     _progressController.stop();
+    unawaited(_musicPlayer.pause());
   }
 
   void _resume() {
     if (!_paused) return;
     _paused = false;
     _progressController.forward();
+    unawaited(_musicPlayer.resume());
   }
 
   Future<void> _goTo(int index) async {
@@ -98,7 +197,8 @@ class _StoryDetailViewState extends State<StoryDetailView>
       return;
     }
     setState(() => _index = index);
-    _markCurrentViewed();
+    unawaited(_markCurrentViewed());
+    unawaited(_syncMusic());
     await _pageController.animateToPage(
       index,
       duration: const Duration(milliseconds: 240),
@@ -120,31 +220,86 @@ class _StoryDetailViewState extends State<StoryDetailView>
   void _onPageChanged(int index) {
     if (index == _index) return;
     setState(() => _index = index);
-    _markCurrentViewed();
+    unawaited(_markCurrentViewed());
+    unawaited(_syncMusic());
     _startProgress();
   }
 
-  void _toggleLike() {
+  Future<void> _toggleLike() async {
+    if (_likeInFlight) return;
+    final item = _current;
+    final storyId = item.storyId?.trim() ?? '';
+    final willLike = !item.likedByMe;
+    final previous = item;
+    final optimisticCount = willLike
+        ? item.likeCount + 1
+        : (item.likeCount - 1).clamp(0, 1 << 30);
+
     setState(() {
-      if (!_liked.add(_index)) {
-        _liked.remove(_index);
-      }
+      _items[_index] = item.copyWith(
+        likedByMe: willLike,
+        likeCount: optimisticCount,
+      );
+    });
+
+    // Mock feed entries have no server id — keep the local toggle only.
+    if (storyId.isEmpty) return;
+
+    _likeInFlight = true;
+    final updated = await getIt<UserRepository>().toggleStoryLike(
+      storyId: storyId,
+      like: willLike,
+    );
+    _likeInFlight = false;
+    if (!mounted) return;
+
+    if (updated == null) {
+      setState(() => _items[_index] = previous);
+      return;
+    }
+
+    setState(() {
+      _items[_index] = _items[_index].copyWith(
+        likedByMe: updated.likedByMe,
+        likeCount: updated.likeCount,
+      );
     });
   }
 
   Future<void> _openProfile() async {
+    final handle = _current.username?.trim() ?? '';
+    if (handle.isEmpty) return;
     _pause();
-    await openUserProfile(context, _current.label);
+    await openUserProfile(
+      context,
+      handle,
+      seed: PublicUserProfile.skeleton(
+        username: handle,
+        name: _current.label,
+        avatarPath: _current.avatarPath,
+        userId: _current.userId ?? '',
+        hasActiveStory: true,
+      ),
+    );
     if (mounted) _resume();
   }
 
-  void _onTapUp(TapUpDetails details) {
-    final width = MediaQuery.sizeOf(context).width;
-    if (details.localPosition.dx < width * 0.35) {
-      _goPrevious();
-    } else if (details.localPosition.dx > width * 0.65) {
-      _goNext();
+  Widget _buildMedia(StoryMediaItem item) {
+    if (item.isNetworkImage) {
+      return Image.network(
+        item.imagePath,
+        fit: BoxFit.cover,
+        width: double.infinity,
+        height: double.infinity,
+        errorBuilder: (_, _, _) => const ColoredBox(color: AppColors.black),
+      );
     }
+    return Image.asset(
+      item.imagePath,
+      fit: BoxFit.cover,
+      width: double.infinity,
+      height: double.infinity,
+    );
   }
 
   @override
@@ -166,13 +321,7 @@ class _StoryDetailViewState extends State<StoryDetailView>
                 itemCount: _items.length,
                 onPageChanged: _onPageChanged,
                 itemBuilder: (context, index) {
-                  final item = _items[index];
-                  return Image.asset(
-                    item.imagePath,
-                    fit: BoxFit.cover,
-                    width: double.infinity,
-                    height: double.infinity,
-                  );
+                  return _buildMedia(_items[index]);
                 },
               ),
             ),
@@ -220,7 +369,10 @@ class _StoryDetailViewState extends State<StoryDetailView>
               bottom: 0,
               child: _BottomOverlay(
                 item: _current,
-                liked: _liked.contains(_index),
+                liked: _current.likedByMe,
+                likeCount: _current.likeCount,
+                showLikeCount: _current.storyId != null &&
+                    _current.storyId!.trim().isNotEmpty,
                 onLike: _toggleLike,
                 onProfileTap: _openProfile,
               ),
@@ -229,6 +381,15 @@ class _StoryDetailViewState extends State<StoryDetailView>
         ),
       ),
     );
+  }
+
+  void _onTapUp(TapUpDetails details) {
+    final width = MediaQuery.sizeOf(context).width;
+    if (details.localPosition.dx < width * 0.35) {
+      _goPrevious();
+    } else if (details.localPosition.dx > width * 0.65) {
+      _goNext();
+    }
   }
 }
 
@@ -263,12 +424,16 @@ class _BottomOverlay extends StatelessWidget {
   const _BottomOverlay({
     required this.item,
     required this.liked,
+    required this.likeCount,
+    required this.showLikeCount,
     required this.onLike,
     required this.onProfileTap,
   });
 
   final StoryMediaItem item;
   final bool liked;
+  final int likeCount;
+  final bool showLikeCount;
   final VoidCallback onLike;
   final VoidCallback onProfileTap;
 
@@ -299,22 +464,9 @@ class _BottomOverlay extends StatelessWidget {
                     behavior: HitTestBehavior.opaque,
                     child: Row(
                       children: [
-                        Container(
-                          width: 34,
-                          height: 34,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            border: Border.all(
-                              color: const Color(0xFFB6B6B6),
-                              width: 2,
-                            ),
-                          ),
-                          child: ClipOval(
-                            child: Image.asset(
-                              item.avatarPath,
-                              fit: BoxFit.cover,
-                            ),
-                          ),
+                        ProfileAvatar(
+                          path: item.avatarPath,
+                          size: 34,
                         ),
                         const SizedBox(width: 10),
                         Flexible(
@@ -338,24 +490,31 @@ class _BottomOverlay extends StatelessWidget {
                       ],
                     ),
                   ),
-                  const SizedBox(height: 10),
-                  Text(
-                    item.caption,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w500,
-                      height: 1,
-                      letterSpacing: -0.28,
-                      color: AppColors.white.withValues(alpha: 0.65),
+                  if (item.caption.trim().isNotEmpty) ...[
+                    const SizedBox(height: 10),
+                    Text(
+                      item.caption,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                        height: 1,
+                        letterSpacing: -0.28,
+                        color: AppColors.white.withValues(alpha: 0.65),
+                      ),
                     ),
-                  ),
+                  ],
                 ],
               ),
             ),
             const SizedBox(width: 12),
-            _LikeButton(liked: liked, onLike: onLike),
+            _LikeButton(
+              liked: liked,
+              likeCount: likeCount,
+              showCount: showLikeCount,
+              onLike: onLike,
+            ),
           ],
         ),
       ),
@@ -364,9 +523,16 @@ class _BottomOverlay extends StatelessWidget {
 }
 
 class _LikeButton extends StatefulWidget {
-  const _LikeButton({required this.liked, required this.onLike});
+  const _LikeButton({
+    required this.liked,
+    required this.likeCount,
+    required this.showCount,
+    required this.onLike,
+  });
 
   final bool liked;
+  final int likeCount;
+  final bool showCount;
   final VoidCallback onLike;
 
   @override
@@ -448,42 +614,60 @@ class _LikeButtonState extends State<_LikeButton>
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      width: 44,
-      height: 44,
-      child: Stack(
-        clipBehavior: Clip.none,
-        alignment: Alignment.center,
-        children: [
-          for (final heart in _hearts)
-            _FloatingHeart(
-              key: ValueKey(heart.id),
-              data: heart,
-              onCompleted: () => _removeHeart(heart.id),
-            ),
-          GestureDetector(
-            onTap: _handleTap,
-            behavior: HitTestBehavior.opaque,
-            child: Container(
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: AppColors.black.withValues(alpha: 0.35),
-              ),
-              alignment: Alignment.center,
-              child: ScaleTransition(
-                scale: _scale,
-                child: AppIcon(
-                  AssetPaths.iconHeart2,
-                  size: 20,
-                  color: widget.liked ? AppColors.zoviOrange : null,
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        SizedBox(
+          width: 44,
+          height: 44,
+          child: Stack(
+            clipBehavior: Clip.none,
+            alignment: Alignment.center,
+            children: [
+              for (final heart in _hearts)
+                _FloatingHeart(
+                  key: ValueKey(heart.id),
+                  data: heart,
+                  onCompleted: () => _removeHeart(heart.id),
+                ),
+              GestureDetector(
+                onTap: _handleTap,
+                behavior: HitTestBehavior.opaque,
+                child: Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: AppColors.black.withValues(alpha: 0.35),
+                  ),
+                  alignment: Alignment.center,
+                  child: ScaleTransition(
+                    scale: _scale,
+                    child: AppIcon(
+                      AssetPaths.iconHeart2,
+                      size: 20,
+                      color: widget.liked ? AppColors.zoviOrange : null,
+                    ),
+                  ),
                 ),
               ),
+            ],
+          ),
+        ),
+        if (widget.showCount) ...[
+          const SizedBox(height: 4),
+          Text(
+            '${widget.likeCount}',
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              height: 1,
+              letterSpacing: -0.2,
+              color: AppColors.white.withValues(alpha: 0.9),
             ),
           ),
         ],
-      ),
+      ],
     );
   }
 }

@@ -3,6 +3,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:zovi/core/snackbar/app_snackbar.dart';
 import 'package:zovi/core/theme/app_colors.dart';
 import 'package:zovi/core/utils/constants/asset_paths.dart';
 import 'package:zovi/core/widgets/app_button.dart';
@@ -35,7 +36,9 @@ class _BirthdayViewState extends State<BirthdayView> with BirthdayViewMixin {
       body: SafeArea(
         child: BlocConsumer<BirthdayBloc, BirthdayState>(
           listener: (context, state) {
-            if (state is BirthdaySuccess) {
+            if (state is BirthdayError) {
+              showErrorSnackbar(state.message);
+            } else if (state is BirthdaySuccess) {
               context.go(
                 state.navigateTo,
                 extra: NotificationPermissionRouteArgs(

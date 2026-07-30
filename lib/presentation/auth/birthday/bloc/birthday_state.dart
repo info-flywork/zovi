@@ -47,3 +47,16 @@ final class BirthdaySuccess extends BirthdayState {
   @override
   List<Object?> get props => [signupFlow, birthDate, navigateTo];
 }
+
+final class BirthdayError extends BirthdayState {
+  const BirthdayError({
+    required this.message,
+    required super.signupFlow,
+    required super.birthDate,
+  });
+
+  final String message;
+
+  @override
+  List<Object?> get props => [signupFlow, birthDate, message];
+}

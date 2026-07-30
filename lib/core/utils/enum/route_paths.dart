@@ -22,6 +22,7 @@ enum RoutePaths {
   profile('/profile'),
   profileConnections('/profile/connections'),
   userProfile('/profile/user'),
+  publicProfile('/u/:username'),
   editProfile('/profile/edit'),
   editProfileField('/profile/edit/field'),
   editProfileLinks('/profile/edit/links'),

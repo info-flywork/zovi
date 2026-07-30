@@ -23,13 +23,15 @@ mixin StoriesViewMixin on State<StoriesView> {
     context.push(RoutePaths.chat.path);
   }
 
-  void onOpenStory(List<StoryMediaItem> items, int index) {
-    context.push(
+  Future<void> onOpenStory(List<StoryMediaItem> items, int index) async {
+    await context.push(
       RoutePaths.storyDetail.path,
       extra: StoryDetailRouteArgs(
         items: items,
         initialIndex: index,
       ),
     );
+    if (!mounted) return;
+    context.read<StoriesBloc>().add(const StoriesRefreshRequested());
   }
 }

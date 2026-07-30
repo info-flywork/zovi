@@ -16,6 +16,7 @@ import 'package:zovi/core/utils/enum/route_paths.dart';
 import 'package:zovi/core/utils/extensions/future_extensions.dart';
 import 'package:zovi/core/utils/navigation/open_user_profile.dart';
 import 'package:zovi/core/widgets/app_icon.dart';
+import 'package:zovi/core/widgets/stamp_image.dart';
 import 'package:zovi/presentation/chat/model/chat_detail_route_args.dart';
 import 'package:zovi/presentation/chat/model/group_info_route_args.dart';
 import 'package:zovi/presentation/chat/view/widgets/chat_media_viewer.dart';
@@ -629,8 +630,8 @@ class _MessageBubble extends StatelessWidget {
             _openMedia(context, heroTag: heroTag, assetPath: message.stampPath),
         child: Hero(
           tag: heroTag,
-          child: Image.asset(
-            message.stampPath!,
+          child: StampImage(
+            path: message.stampPath!,
             width: 140,
             height: 140,
             fit: BoxFit.contain,

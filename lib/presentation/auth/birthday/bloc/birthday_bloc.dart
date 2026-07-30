@@ -1,13 +1,15 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:zovi/core/utils/enum/route_paths.dart';
+import 'package:zovi/domain/auth/auth_repository.dart';
 import 'package:zovi/presentation/auth/birthday/bloc/birthday_event.dart';
 import 'package:zovi/presentation/auth/birthday/bloc/birthday_state.dart';
 import 'package:zovi/presentation/auth/model/signup_flow.dart';
 
 class BirthdayBloc extends Bloc<BirthdayEvent, BirthdayState> {
-  BirthdayBloc(
-    {
+  BirthdayBloc({
     required SignupFlow signupFlow,
+    required this._authRepository,
     DateTime? initialBirthDate,
   }) : super(
           BirthdayInitial(
@@ -18,6 +20,8 @@ class BirthdayBloc extends Bloc<BirthdayEvent, BirthdayState> {
     on<BirthdayDateChanged>(_onDateChanged);
     on<BirthdayContinueTapped>(_onContinue);
   }
+
+  final AuthRepository _authRepository;
 
   void _onDateChanged(BirthdayDateChanged event, Emitter<BirthdayState> emit) {
     emit(
@@ -39,14 +43,23 @@ class BirthdayBloc extends Bloc<BirthdayEvent, BirthdayState> {
       ),
     );
 
-    await Future<void>.delayed(const Duration(milliseconds: 600));
-
-    emit(
-      BirthdaySuccess(
-        navigateTo: RoutePaths.notificationPermission.path,
-        signupFlow: state.signupFlow,
-        birthDate: state.birthDate,
-      ),
-    );
+    try {
+      await _authRepository.saveProfile(birthDate: state.birthDate);
+      emit(
+        BirthdaySuccess(
+          navigateTo: RoutePaths.notificationPermission.path,
+          signupFlow: state.signupFlow,
+          birthDate: state.birthDate,
+        ),
+      );
+    } catch (_) {
+      emit(
+        BirthdayError(
+          message: 'error_save_birthdate_failed'.tr(),
+          signupFlow: state.signupFlow,
+          birthDate: state.birthDate,
+        ),
+      );
+    }
   }
 }

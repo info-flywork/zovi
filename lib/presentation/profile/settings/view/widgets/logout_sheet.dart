@@ -61,23 +61,24 @@ class LogoutSheet extends StatelessWidget {
             ),
             const SizedBox(height: 24),
             AppButton(
-              label: 'cancel'.tr(),
-              onPressed: () => Navigator.of(context).pop(false),
+              label: 'logout_sheet_confirm'.tr(),
+              backgroundColor: AppColors.logoutRed,
+              onPressed: () => Navigator.of(context).pop(true),
             ),
             const SizedBox(height: 14),
             GestureDetector(
-              onTap: () => Navigator.of(context).pop(true),
+              onTap: () => Navigator.of(context).pop(false),
               behavior: HitTestBehavior.opaque,
               child: Padding(
                 padding: const EdgeInsets.symmetric(vertical: 6),
                 child: Text(
-                  'logout_sheet_confirm'.tr(),
+                  'cancel'.tr(),
                   textAlign: TextAlign.center,
                   style: const TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
                     height: 20 / 16,
-                    color: AppColors.black,
+                    color: AppColors.deepRoast,
                   ),
                 ),
               ),

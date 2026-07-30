@@ -1,11 +1,15 @@
 import 'package:easy_localization/easy_localization.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:shimmer/shimmer.dart';
+import 'package:zovi/core/di/injection.dart';
 import 'package:zovi/core/theme/app_colors.dart';
 import 'package:zovi/core/utils/constants/asset_paths.dart';
 import 'package:zovi/core/utils/enum/route_paths.dart';
 import 'package:zovi/core/widgets/app_icon.dart';
 import 'package:zovi/core/widgets/app_search_field.dart';
+import 'package:zovi/domain/user/user_repository.dart';
 import 'package:zovi/presentation/profile/add_plan/model/add_plan_details_route_args.dart';
 import 'package:zovi/presentation/profile/add_plan/model/add_plan_place.dart';
 
@@ -35,133 +39,18 @@ class _AddPlanViewState extends State<AddPlanView> {
   _PlanCategory _selectedCategory = _PlanCategory.all;
   String _searchQuery = '';
   AddPlanPlace? _selectedPlace;
+  List<AddPlanPlace> _plans = const [];
+  var _isLoadingPlans = true;
 
-  static const List<AddPlanPlace> _mockPlans = [
-    AddPlanPlace(
-      categoryKey: 'music',
-      placeName: 'Babylon istanbul',
-      subtitle: 'Konser · Beyoglu',
-      distanceLabel: '800m',
-      friendAvatars: [
-        AssetPaths.avatarLyra,
-        AssetPaths.avatarSona,
-        AssetPaths.avatarJessica,
-      ],
-      friendsLabel: '5',
-    ),
-    AddPlanPlace(
-      categoryKey: 'music',
-      placeName: 'Salon IKSV',
-      subtitle: 'Konser · Sisane',
-      distanceLabel: '1.2km',
-      friendAvatars: [
-        AssetPaths.avatarLyra,
-        AssetPaths.avatarSona,
-        AssetPaths.avatarJessica,
-      ],
-      friendsLabel: '5',
-    ),
-    AddPlanPlace(
-      categoryKey: 'cafe',
-      placeName: 'Blue Bottle Coffee',
-      subtitle: 'Cafe · Karakoy',
-      distanceLabel: '600m',
-      friendAvatars: [
-        AssetPaths.avatarJessica,
-        AssetPaths.avatarNova,
-        AssetPaths.avatarJulia,
-      ],
-      friendsLabel: '3',
-    ),
-    AddPlanPlace(
-      categoryKey: 'cafe',
-      placeName: 'MOC Istanbul',
-      subtitle: 'Cafe · Nisantasi',
-      distanceLabel: '1.8km',
-      friendAvatars: [
-        AssetPaths.avatarNova,
-        AssetPaths.avatarLyra,
-        AssetPaths.avatarSona,
-      ],
-      friendsLabel: '2',
-    ),
-    AddPlanPlace(
-      categoryKey: 'park',
-      placeName: 'Maçka Parki',
-      subtitle: 'Park · Sisli',
-      distanceLabel: '900m',
-      friendAvatars: [
-        AssetPaths.avatarSona,
-        AssetPaths.avatarJessica,
-        AssetPaths.avatarNova,
-      ],
-      friendsLabel: '4',
-    ),
-    AddPlanPlace(
-      categoryKey: 'park',
-      placeName: 'Gulhane Parki',
-      subtitle: 'Park · Fatih',
-      distanceLabel: '2.1km',
-      friendAvatars: [
-        AssetPaths.avatarNova,
-        AssetPaths.avatarLyra,
-        AssetPaths.avatarJessica,
-      ],
-      friendsLabel: '3',
-    ),
-    AddPlanPlace(
-      categoryKey: 'culture',
-      placeName: 'Pera Muzesi',
-      subtitle: 'Kultur · Beyoglu',
-      distanceLabel: '1.0km',
-      friendAvatars: [
-        AssetPaths.avatarJulia,
-        AssetPaths.avatarSona,
-        AssetPaths.avatarLyra,
-      ],
-      friendsLabel: '6',
-    ),
-    AddPlanPlace(
-      categoryKey: 'culture',
-      placeName: 'Arter',
-      subtitle: 'Kultur · Dolapdere',
-      distanceLabel: '2.4km',
-      friendAvatars: [
-        AssetPaths.avatarJessica,
-        AssetPaths.avatarNova,
-        AssetPaths.avatarSona,
-      ],
-      friendsLabel: '2',
-    ),
-    AddPlanPlace(
-      categoryKey: 'restaurant',
-      placeName: 'Ciya Sofrasi',
-      subtitle: 'Restaurant · Kadikoy',
-      distanceLabel: '1.9km',
-      friendAvatars: [
-        AssetPaths.avatarLyra,
-        AssetPaths.avatarJulia,
-        AssetPaths.avatarSona,
-      ],
-      friendsLabel: '7',
-    ),
-    AddPlanPlace(
-      categoryKey: 'restaurant',
-      placeName: 'Mikla',
-      subtitle: 'Restaurant · Beyoglu',
-      distanceLabel: '2.7km',
-      friendAvatars: [
-        AssetPaths.avatarNova,
-        AssetPaths.avatarJessica,
-        AssetPaths.avatarJulia,
-      ],
-      friendsLabel: '4',
-    ),
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _loadNearbyPlans();
+  }
 
   List<AddPlanPlace> get _filteredPlans {
     final normalizedQuery = _searchQuery.trim().toLowerCase();
-    return _mockPlans.where((plan) {
+    return _plans.where((plan) {
       final matchesCategory =
           _selectedCategory == _PlanCategory.all ||
           plan.categoryKey == _selectedCategory.name;
@@ -171,6 +60,65 @@ class _AddPlanViewState extends State<AddPlanView> {
           plan.subtitle.toLowerCase().contains(normalizedQuery);
       return matchesCategory && matchesQuery;
     }).toList();
+  }
+
+  Future<void> _loadNearbyPlans() async {
+    setState(() => _isLoadingPlans = true);
+    try {
+      final repo = getIt<UserRepository>();
+      final firstBatch = await repo.getNearbyAddPlanPlaces(limit: 10);
+      if (!mounted) return;
+      setState(() {
+        _plans = firstBatch
+            .map(
+              (item) => AddPlanPlace(
+                categoryKey: item.categoryKey,
+                placeName: item.placeName,
+                subtitle: item.subtitle,
+                distanceLabel: item.distanceLabel,
+                friendAvatars: item.friendAvatars,
+                friendsLabel: item.friendsLabel,
+              ),
+            )
+            .toList();
+        _isLoadingPlans = false;
+      });
+      _loadRemainingNearbyPlans();
+    } catch (_) {
+      if (kDebugMode) {
+        debugPrint('AddPlanView: nearby places fetch failed');
+      }
+      if (!mounted) return;
+      setState(() {
+        _plans = const [];
+        _isLoadingPlans = false;
+      });
+    }
+  }
+
+  Future<void> _loadRemainingNearbyPlans() async {
+    try {
+      final fetched = await getIt<UserRepository>().getNearbyAddPlanPlaces(
+        limit: 20,
+      );
+      if (!mounted) return;
+      setState(() {
+        _plans = fetched
+            .map(
+              (item) => AddPlanPlace(
+                categoryKey: item.categoryKey,
+                placeName: item.placeName,
+                subtitle: item.subtitle,
+                distanceLabel: item.distanceLabel,
+                friendAvatars: item.friendAvatars,
+                friendsLabel: item.friendsLabel,
+              ),
+            )
+            .toList();
+      });
+    } catch (_) {
+      // Keep first batch visible.
+    }
   }
 
   void _onTapPlan(AddPlanPlace place) {
@@ -195,65 +143,83 @@ class _AddPlanViewState extends State<AddPlanView> {
     return Scaffold(
       backgroundColor: AppColors.white,
       body: SafeArea(
+        bottom: false,
         child: Column(
           children: [
             const _AddPlanHeader(),
             Expanded(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-                child: Column(
-                  children: [
-                    AppSearchField(
-                      hintText: 'search_places_hint'.tr(),
-                      onDebouncedChanged: (value) {
-                        setState(() => _searchQuery = value);
-                      },
+              child: Stack(
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                    child: Column(
+                      children: [
+                        AppSearchField(
+                          hintText: 'search_places_hint'.tr(),
+                          onDebouncedChanged: (value) {
+                            setState(() => _searchQuery = value);
+                          },
+                        ),
+                        const SizedBox(height: 16),
+                        _CategoryFilterRow(
+                          selectedCategory: _selectedCategory,
+                          onCategoryTap: (category) {
+                            setState(() => _selectedCategory = category);
+                          },
+                        ),
+                        const SizedBox(height: 20),
+                        const _NearbyTitle(),
+                        const SizedBox(height: 12),
+                        Expanded(
+                          child: AnimatedSwitcher(
+                            duration: const Duration(milliseconds: 260),
+                            switchInCurve: Curves.easeOutCubic,
+                            switchOutCurve: Curves.easeInCubic,
+                            transitionBuilder: (child, animation) {
+                              final offsetAnimation = Tween<Offset>(
+                                begin: const Offset(0.04, 0),
+                                end: Offset.zero,
+                              ).animate(animation);
+                              return FadeTransition(
+                                opacity: animation,
+                                child: SlideTransition(
+                                  position: offsetAnimation,
+                                  child: child,
+                                ),
+                              );
+                            },
+                            child: _isLoadingPlans
+                                ? const _PlanListShimmer(
+                                    key: ValueKey('loading_plan_state'),
+                                  )
+                                : _filteredPlans.isEmpty
+                                ? const _EmptyPlanState(
+                                    key: ValueKey('empty_plan_state'),
+                                  )
+                                : _PlanList(
+                                    key: ValueKey(_selectedCategory),
+                                    plans: _filteredPlans,
+                                    selectedPlaceName:
+                                        _selectedPlace?.placeName,
+                                    onTapPlan: _onTapPlan,
+                                  ),
+                          ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 16),
-                    _CategoryFilterRow(
-                      selectedCategory: _selectedCategory,
-                      onCategoryTap: (category) {
-                        setState(() => _selectedCategory = category);
-                      },
+                  ),
+                  Positioned(
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    child: _ContinueButton(
+                      enabled: _selectedPlace != null,
+                      onTap: _continue,
                     ),
-                    const SizedBox(height: 20),
-                    const _NearbyTitle(),
-                    const SizedBox(height: 12),
-                    Expanded(
-                      child: AnimatedSwitcher(
-                        duration: const Duration(milliseconds: 260),
-                        switchInCurve: Curves.easeOutCubic,
-                        switchOutCurve: Curves.easeInCubic,
-                        transitionBuilder: (child, animation) {
-                          final offsetAnimation = Tween<Offset>(
-                            begin: const Offset(0.04, 0),
-                            end: Offset.zero,
-                          ).animate(animation);
-                          return FadeTransition(
-                            opacity: animation,
-                            child: SlideTransition(
-                              position: offsetAnimation,
-                              child: child,
-                            ),
-                          );
-                        },
-                        child: _filteredPlans.isEmpty
-                            ? const _EmptyPlanState(
-                                key: ValueKey('empty_plan_state'),
-                              )
-                            : _PlanList(
-                                key: ValueKey(_selectedCategory),
-                                plans: _filteredPlans,
-                                selectedPlaceName: _selectedPlace?.placeName,
-                                onTapPlan: _onTapPlan,
-                              ),
-                      ),
-                    ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ),
-            _ContinueButton(enabled: _selectedPlace != null, onTap: _continue),
           ],
         ),
       ),
@@ -364,8 +330,8 @@ class _CategoryFilterRow extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   if (category.emoji.isNotEmpty) ...[
-                    Text(category.emoji),
-                    const SizedBox(width: 10),
+                    Text(category.emoji, style: const TextStyle(fontSize: 16)),
+                    const SizedBox(width: 8),
                   ],
                   Text(
                     category.label,
@@ -427,6 +393,7 @@ class _PlanList extends StatelessWidget {
   Widget build(BuildContext context) {
     return ListView.separated(
       physics: const ClampingScrollPhysics(),
+      padding: const EdgeInsets.only(bottom: 140),
       itemCount: plans.length,
       separatorBuilder: (_, _) => const SizedBox(height: 12),
       itemBuilder: (context, index) {
@@ -437,6 +404,31 @@ class _PlanList extends StatelessWidget {
           onTap: () => onTapPlan(plan),
         );
       },
+    );
+  }
+}
+
+class _PlanListShimmer extends StatelessWidget {
+  const _PlanListShimmer({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Shimmer.fromColors(
+      baseColor: const Color(0xFFEDEDED),
+      highlightColor: const Color(0xFFF8F8F8),
+      child: ListView.separated(
+        physics: const NeverScrollableScrollPhysics(),
+        itemCount: 6,
+        separatorBuilder: (_, _) => const SizedBox(height: 12),
+        itemBuilder: (_, _) => Container(
+          height: 104,
+          decoration: BoxDecoration(
+            color: AppColors.white,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: const Color(0xFFE2E2E2)),
+          ),
+        ),
+      ),
     );
   }
 }
@@ -460,6 +452,11 @@ class _NearbyPlanCard extends StatelessWidget {
     final backgroundColor = isSelected
         ? AppColors.zoviOrange.withValues(alpha: 0.10)
         : AppColors.white;
+
+    final hasFriends = plan.friendAvatars.isNotEmpty;
+    final friendsText = hasFriends
+        ? 'friends_are_joining'.tr(namedArgs: {'count': plan.friendsLabel})
+        : 'no_friends_joining'.tr();
 
     return GestureDetector(
       onTap: onTap,
@@ -518,7 +515,7 @@ class _NearbyPlanCard extends StatelessWidget {
             _AvatarPile(avatars: plan.friendAvatars),
             const SizedBox(width: 8),
             Text(
-              'friends_are_joining'.tr(namedArgs: {'count': plan.friendsLabel}),
+              friendsText,
               textAlign: TextAlign.left,
               style: const TextStyle(
                 fontSize: 12,
@@ -542,6 +539,9 @@ class _AvatarPile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (avatars.isEmpty) {
+      return const SizedBox.shrink();
+    }
     const size = 34.0;
     const overlap = 11.0;
     final shown = avatars.take(3).toList();
@@ -581,34 +581,36 @@ class _ContinueButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SafeArea(
-      top: false,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-        child: SizedBox(
-          width: double.infinity,
-          height: 54,
-          child: GestureDetector(
-            onTap: enabled ? onTap : null,
-            behavior: HitTestBehavior.opaque,
-            child: AnimatedOpacity(
-              duration: const Duration(milliseconds: 180),
-              opacity: enabled ? 1 : 0.4,
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  color: AppColors.deepRoast,
-                  borderRadius: BorderRadius.circular(999),
-                ),
-                child: Center(
-                  child: Text(
-                    'continue'.tr(),
-                    style: const TextStyle(
-                      fontSize: 34 / 2,
-                      fontWeight: FontWeight.w600,
-                      height: 1,
-                      letterSpacing: -0.34,
-                      color: AppColors.white,
-                    ),
+    return Padding(
+      padding: EdgeInsets.fromLTRB(
+        16,
+        8,
+        16,
+        MediaQuery.paddingOf(context).bottom + 8,
+      ),
+      child: SizedBox(
+        width: double.infinity,
+        height: 54,
+        child: GestureDetector(
+          onTap: enabled ? onTap : null,
+          behavior: HitTestBehavior.opaque,
+          child: AnimatedOpacity(
+            duration: const Duration(milliseconds: 180),
+            opacity: enabled ? 1 : 0.4,
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                color: AppColors.deepRoast,
+                borderRadius: BorderRadius.circular(999),
+              ),
+              child: Center(
+                child: Text(
+                  'continue'.tr(),
+                  style: const TextStyle(
+                    fontSize: 34 / 2,
+                    fontWeight: FontWeight.w600,
+                    height: 1,
+                    letterSpacing: -0.34,
+                    color: AppColors.white,
                   ),
                 ),
               ),

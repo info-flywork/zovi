@@ -8,6 +8,8 @@ class ProfilePlans extends StatelessWidget {
   static String _localizedFriendsLabel(String friendsLabel) {
     final match = RegExp(r'^(\d+)').firstMatch(friendsLabel.trim());
     if (match != null) {
+      final count = int.tryParse(match.group(1)!) ?? 0;
+      if (count <= 0) return 'no_friends_joining'.tr();
       return 'friends_are_joining'.tr(namedArgs: {'count': match.group(1)!});
     }
     return friendsLabel;
@@ -15,6 +17,7 @@ class ProfilePlans extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final hasPlans = plans.isNotEmpty;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Column(
@@ -59,10 +62,55 @@ class ProfilePlans extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 12),
-          ...plans.map(
-            (plan) => Padding(
-              padding: const EdgeInsets.only(bottom: 10),
-              child: _PlanCard(plan: plan),
+          if (!hasPlans)
+            _EmptyProfileSection(
+              icon: AssetPaths.iconCalendarDate,
+              text: 'empty_plans'.tr(),
+            )
+          else
+            ...plans.map(
+              (plan) => Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: _PlanCard(plan: plan),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _EmptyProfileSection extends StatelessWidget {
+  const _EmptyProfileSection({
+    required this.icon,
+    required this.text,
+  });
+
+  final String icon;
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceGray,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.borderGray),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          AppIcon(icon, size: 24, color: AppColors.mutedGray),
+          const SizedBox(height: 8),
+          Text(
+            text,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+              color: AppColors.textSecondary,
             ),
           ),
         ],
@@ -78,6 +126,13 @@ class _PlanCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final countMatch =
+        RegExp(r'^(\d+)').firstMatch(plan.friendsLabel.trim());
+    final joiningCount =
+        int.tryParse(countMatch?.group(1) ?? '') ??
+        (plan.friendAvatars.isNotEmpty ? plan.friendAvatars.length : 0);
+    final hasJoiningFriends = joiningCount > 0;
+
     return Container(
       padding: const EdgeInsets.fromLTRB(8, 16, 8, 16),
       decoration: BoxDecoration(
@@ -132,19 +187,23 @@ class _PlanCard extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 10),
-          _OverlappingAvatars(avatars: plan.friendAvatars),
-          const SizedBox(width: 6),
-          Text(
-            ProfilePlans._localizedFriendsLabel(plan.friendsLabel),
-            textAlign: TextAlign.center,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w500,
-              height: 1.15,
-              letterSpacing: -0.24,
-              color: AppColors.deepRoast.withValues(alpha: 0.65),
+          if (hasJoiningFriends && plan.friendAvatars.isNotEmpty) ...[
+            _OverlappingAvatars(avatars: plan.friendAvatars),
+            const SizedBox(width: 6),
+          ],
+          Flexible(
+            child: Text(
+              ProfilePlans._localizedFriendsLabel(plan.friendsLabel),
+              textAlign: TextAlign.center,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+                height: 1.15,
+                letterSpacing: -0.24,
+                color: AppColors.deepRoast.withValues(alpha: 0.65),
+              ),
             ),
           ),
         ],

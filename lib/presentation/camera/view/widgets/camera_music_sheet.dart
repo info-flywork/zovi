@@ -1,12 +1,17 @@
+import 'dart:async';
 import 'dart:math' as math;
 import 'dart:ui';
 
+import 'package:audioplayers/audioplayers.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
+import 'package:zovi/core/cache/music_audio_cache.dart';
+import 'package:zovi/core/di/injection.dart';
 import 'package:zovi/core/theme/app_colors.dart';
 import 'package:zovi/core/utils/constants/asset_paths.dart';
 import 'package:zovi/core/widgets/app_icon.dart';
 import 'package:zovi/core/widgets/app_search_field.dart';
+import 'package:zovi/domain/auth/auth_repository.dart';
 
 class CameraMusicTrack {
   const CameraMusicTrack({
@@ -15,17 +20,37 @@ class CameraMusicTrack {
     required this.artist,
     required this.genre,
     required this.duration,
-    required this.coverPath,
+    required this.coverUrl,
+    required this.audioUrl,
   });
+
+  factory CameraMusicTrack.fromItem(MusicTrackItem item) {
+    return CameraMusicTrack(
+      id: item.id,
+      title: item.title,
+      artist: item.artist,
+      genre: item.genre,
+      duration: Duration(milliseconds: item.durationMs),
+      coverUrl: item.coverUrl,
+      audioUrl: item.audioUrl,
+    );
+  }
 
   final String id;
   final String title;
   final String artist;
   final String genre;
   final Duration duration;
-  final String coverPath;
+  final String coverUrl;
+  final String audioUrl;
 
-  String get artistGenre => '$artist | $genre';
+  String get artistGenre {
+    if (genre.trim().isEmpty) return artist;
+    return '$artist | $genre';
+  }
+
+  bool get hasNetworkCover =>
+      coverUrl.startsWith('http://') || coverUrl.startsWith('https://');
 }
 
 class CameraMusicSelection {
@@ -39,49 +64,6 @@ class CameraMusicSelection {
   final Duration clipStart;
   final Duration clipDuration;
 }
-
-const _mockTracks = [
-  CameraMusicTrack(
-    id: 'neria',
-    title: 'Neria',
-    artist: 'Heyson',
-    genre: 'House',
-    duration: Duration(minutes: 3, seconds: 13),
-    coverPath: AssetPaths.stamp13,
-  ),
-  CameraMusicTrack(
-    id: 'outside',
-    title: 'Can You Come Outside to Play?',
-    artist: 'Heyson',
-    genre: 'House',
-    duration: Duration(minutes: 3, seconds: 13),
-    coverPath: AssetPaths.stamp10,
-  ),
-  CameraMusicTrack(
-    id: 'midnight',
-    title: 'Midnight Walk',
-    artist: 'Heyson',
-    genre: 'House',
-    duration: Duration(minutes: 2, seconds: 48),
-    coverPath: AssetPaths.stamp4,
-  ),
-  CameraMusicTrack(
-    id: 'afterglow',
-    title: 'Afterglow',
-    artist: 'Nova',
-    genre: 'Indie',
-    duration: Duration(minutes: 3, seconds: 42),
-    coverPath: AssetPaths.stamp1,
-  ),
-  CameraMusicTrack(
-    id: 'soft_pulse',
-    title: 'Soft Pulse',
-    artist: 'Kite',
-    genre: 'Electronic',
-    duration: Duration(minutes: 4, seconds: 5),
-    coverPath: AssetPaths.stamp7,
-  ),
-];
 
 Future<CameraMusicSelection?> showCameraMusicSheet(BuildContext context) {
   return showModalBottomSheet<CameraMusicSelection>(
@@ -101,20 +83,104 @@ class CameraMusicSheet extends StatefulWidget {
 }
 
 class _CameraMusicSheetState extends State<CameraMusicSheet> {
+  static const _pageSize = 10;
+
   var _query = '';
   CameraMusicTrack? _trimming;
+  List<CameraMusicTrack> _tracks = const [];
+  var _nextOffset = 0;
+  var _hasMore = true;
+  var _isLoading = true;
+  var _isLoadingMore = false;
+  var _hasError = false;
+  var _requestId = 0;
 
-  List<CameraMusicTrack> get _filtered {
-    final q = _query.trim().toLowerCase();
-    if (q.isEmpty) return _mockTracks;
-    return _mockTracks
-        .where(
-          (t) =>
-              t.title.toLowerCase().contains(q) ||
-              t.artist.toLowerCase().contains(q) ||
-              t.genre.toLowerCase().contains(q),
-        )
-        .toList(growable: false);
+  @override
+  void initState() {
+    super.initState();
+    _loadTracks(reset: true);
+  }
+
+  Future<void> _loadTracks({required bool reset}) async {
+    if (!reset && (!_hasMore || _isLoadingMore || _isLoading)) return;
+
+    final requestId = ++_requestId;
+    final query = _query;
+    final offset = reset ? 0 : _nextOffset;
+    final repo = getIt<AuthRepository>();
+    final cached = repo.peekMusicTracks(
+      query: query,
+      offset: offset,
+      limit: _pageSize,
+    );
+
+    setState(() {
+      if (reset) {
+        _hasError = false;
+        _hasMore = true;
+        _nextOffset = 0;
+        if (cached != null && cached.tracks.isNotEmpty) {
+          _tracks = cached.tracks
+              .map(CameraMusicTrack.fromItem)
+              .toList(growable: false);
+          _hasMore = cached.hasMore;
+          _nextOffset = cached.nextOffset;
+          _isLoading = false;
+        } else {
+          _isLoading = true;
+        }
+      } else {
+        _isLoadingMore = true;
+      }
+    });
+
+    try {
+      var page = await repo.fetchMusicTracks(
+        query: query,
+        offset: offset,
+        limit: _pageSize,
+      );
+
+      // Backend may be generating in background — poll until tracks arrive
+      // or expand finishes without new rows.
+      var polls = 0;
+      while (!reset &&
+          page.tracks.isEmpty &&
+          page.hasMore &&
+          page.expanding &&
+          polls < 40) {
+        await Future<void>.delayed(const Duration(seconds: 5));
+        if (!mounted || requestId != _requestId) return;
+        page = await repo.fetchMusicTracks(
+          query: query,
+          offset: offset,
+          limit: _pageSize,
+        );
+        polls += 1;
+      }
+
+      if (!mounted || requestId != _requestId) return;
+      final mapped = page.tracks
+          .map(CameraMusicTrack.fromItem)
+          .toList(growable: false);
+      setState(() {
+        _tracks = reset ? mapped : [..._tracks, ...mapped];
+        _hasMore = page.hasMore;
+        _nextOffset = page.nextOffset;
+        _isLoading = false;
+        _isLoadingMore = false;
+        _hasError = false;
+      });
+    } catch (_) {
+      if (!mounted || requestId != _requestId) return;
+      setState(() {
+        if (reset && _tracks.isEmpty) {
+          _hasError = true;
+        }
+        _isLoading = false;
+        _isLoadingMore = false;
+      });
+    }
   }
 
   @override
@@ -126,9 +192,26 @@ class _CameraMusicSheetState extends State<CameraMusicSheet> {
       padding: EdgeInsets.only(bottom: bottomInset),
       child: trimming == null
           ? _MusicListSheet(
-              tracks: _filtered,
-              onQueryChanged: (value) => setState(() => _query = value),
-              onSelect: (track) => setState(() => _trimming = track),
+              tracks: _tracks,
+              isLoading: _isLoading,
+              isLoadingMore: _isLoadingMore,
+              hasMore: _hasMore,
+              hasError: _hasError,
+              onQueryChanged: (value) {
+                _query = value;
+                _loadTracks(reset: true);
+              },
+              onRetry: () => _loadTracks(reset: true),
+              onLoadMore: () => _loadTracks(reset: false),
+              onSelect: (track) {
+                unawaited(
+                  getIt<MusicAudioCache>().prefetch(
+                    trackId: track.id,
+                    url: track.audioUrl,
+                  ),
+                );
+                setState(() => _trimming = track);
+              },
             )
           : _MusicTrimSheet(
               track: trimming,
@@ -139,16 +222,58 @@ class _CameraMusicSheetState extends State<CameraMusicSheet> {
   }
 }
 
-class _MusicListSheet extends StatelessWidget {
+class _MusicListSheet extends StatefulWidget {
   const _MusicListSheet({
     required this.tracks,
+    required this.isLoading,
+    required this.isLoadingMore,
+    required this.hasMore,
+    required this.hasError,
     required this.onQueryChanged,
+    required this.onRetry,
+    required this.onLoadMore,
     required this.onSelect,
   });
 
   final List<CameraMusicTrack> tracks;
+  final bool isLoading;
+  final bool isLoadingMore;
+  final bool hasMore;
+  final bool hasError;
   final ValueChanged<String> onQueryChanged;
+  final VoidCallback onRetry;
+  final VoidCallback onLoadMore;
   final ValueChanged<CameraMusicTrack> onSelect;
+
+  @override
+  State<_MusicListSheet> createState() => _MusicListSheetState();
+}
+
+class _MusicListSheetState extends State<_MusicListSheet> {
+  ScrollController? _scrollController;
+
+  @override
+  void dispose() {
+    _scrollController?.removeListener(_onScroll);
+    super.dispose();
+  }
+
+  void _attachScroll(ScrollController controller) {
+    if (identical(_scrollController, controller)) return;
+    _scrollController?.removeListener(_onScroll);
+    _scrollController = controller;
+    _scrollController?.addListener(_onScroll);
+  }
+
+  void _onScroll() {
+    final controller = _scrollController;
+    if (controller == null || !controller.hasClients) return;
+    if (!widget.hasMore || widget.isLoadingMore || widget.isLoading) return;
+    final position = controller.position;
+    if (position.pixels >= position.maxScrollExtent - 120) {
+      widget.onLoadMore();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -158,6 +283,7 @@ class _MusicListSheet extends StatelessWidget {
       maxChildSize: 0.85,
       expand: false,
       builder: (context, scrollController) {
+        _attachScroll(scrollController);
         return ClipRRect(
           borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
           child: BackdropFilter(
@@ -182,14 +308,35 @@ class _MusicListSheet extends StatelessWidget {
                         AppSearchField(
                           hintText: 'search'.tr(),
                           isDark: true,
-                          onDebouncedChanged: onQueryChanged,
+                          onDebouncedChanged: widget.onQueryChanged,
                         ),
                         const SizedBox(height: 8),
                       ],
                     ),
                   ),
                   Expanded(
-                    child: tracks.isEmpty
+                    child: widget.isLoading
+                        ? const Center(
+                            child: SizedBox(
+                              width: 28,
+                              height: 28,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2.4,
+                                color: AppColors.white,
+                              ),
+                            ),
+                          )
+                        : widget.hasError
+                        ? Center(
+                            child: TextButton(
+                              onPressed: widget.onRetry,
+                              child: Text(
+                                'camera_music_retry'.tr(),
+                                style: const TextStyle(color: AppColors.white),
+                              ),
+                            ),
+                          )
+                        : widget.tracks.isEmpty
                         ? CustomScrollView(
                             controller: scrollController,
                             physics: const ClampingScrollPhysics(),
@@ -204,14 +351,31 @@ class _MusicListSheet extends StatelessWidget {
                             controller: scrollController,
                             physics: const ClampingScrollPhysics(),
                             padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-                            itemCount: tracks.length,
+                            itemCount:
+                                widget.tracks.length +
+                                (widget.isLoadingMore ? 1 : 0),
                             separatorBuilder: (_, _) =>
                                 const SizedBox(height: 16),
                             itemBuilder: (context, index) {
-                              final track = tracks[index];
+                              if (index >= widget.tracks.length) {
+                                return const Padding(
+                                  padding: EdgeInsets.symmetric(vertical: 8),
+                                  child: Center(
+                                    child: SizedBox(
+                                      width: 22,
+                                      height: 22,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2.2,
+                                        color: AppColors.white,
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              }
+                              final track = widget.tracks[index];
                               return _MusicTrackTile(
                                 track: track,
-                                onTap: () => onSelect(track),
+                                onTap: () => widget.onSelect(track),
                               );
                             },
                           ),
@@ -258,6 +422,41 @@ class _MusicEmptyState extends StatelessWidget {
   }
 }
 
+class _MusicTrackCover extends StatelessWidget {
+  const _MusicTrackCover({required this.track});
+
+  final CameraMusicTrack track;
+
+  @override
+  Widget build(BuildContext context) {
+    const size = 68.0;
+    final fallback = Image.asset(
+      AssetPaths.stamp13,
+      width: size,
+      height: size,
+      fit: BoxFit.cover,
+    );
+
+    if (!track.hasNetworkCover) {
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(8),
+        child: fallback,
+      );
+    }
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(8),
+      child: Image.network(
+        track.coverUrl,
+        width: size,
+        height: size,
+        fit: BoxFit.cover,
+        errorBuilder: (_, _, _) => fallback,
+      ),
+    );
+  }
+}
+
 class _MusicTrackTile extends StatelessWidget {
   const _MusicTrackTile({required this.track, required this.onTap});
 
@@ -271,15 +470,7 @@ class _MusicTrackTile extends StatelessWidget {
       behavior: HitTestBehavior.opaque,
       child: Row(
         children: [
-          ClipRRect(
-            borderRadius: BorderRadius.circular(8),
-            child: Image.asset(
-              track.coverPath,
-              width: 68,
-              height: 68,
-              fit: BoxFit.cover,
-            ),
-          ),
+          _MusicTrackCover(track: track),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -353,6 +544,13 @@ class _MusicTrimSheetState extends State<_MusicTrimSheet> {
   late double _startNorm;
   late double _endNorm;
 
+  final _player = AudioPlayer();
+  StreamSubscription<Duration>? _positionSub;
+  StreamSubscription<void>? _completeSub;
+  var _seeking = false;
+  var _sourceReady = false;
+  Timer? _rangeDebounce;
+
   Duration get _clipStart => Duration(
     milliseconds: (_startNorm * widget.track.duration.inMilliseconds).round(),
   );
@@ -381,9 +579,89 @@ class _MusicTrimSheetState extends State<_MusicTrimSheet> {
     );
     _startNorm = total == 0 ? 0 : startMs / total;
     _endNorm = total == 0 ? 1 : (startMs + clipMs) / total;
+    unawaited(_startPreview());
+  }
+
+  @override
+  void dispose() {
+    _rangeDebounce?.cancel();
+    unawaited(_tearDownPlayer());
+    super.dispose();
+  }
+
+  Future<void> _tearDownPlayer() async {
+    await _positionSub?.cancel();
+    await _completeSub?.cancel();
+    _positionSub = null;
+    _completeSub = null;
+    try {
+      await _player.stop();
+    } catch (_) {}
+    try {
+      await _player.dispose();
+    } catch (_) {}
+  }
+
+  Future<void> _startPreview() async {
+    final url = widget.track.audioUrl.trim();
+    if (url.isEmpty) return;
+
+    try {
+      await _player.setReleaseMode(ReleaseMode.stop);
+      final source = await getIt<MusicAudioCache>().resolveSource(
+        trackId: widget.track.id,
+        url: url,
+      );
+      await _player.setSource(source);
+      _sourceReady = true;
+
+      _positionSub = _player.onPositionChanged.listen((pos) async {
+        if (_seeking || !mounted) return;
+        if (pos < _clipEnd) return;
+        _seeking = true;
+        try {
+          await _player.seek(_clipStart);
+        } finally {
+          _seeking = false;
+        }
+      });
+
+      _completeSub = _player.onPlayerComplete.listen((_) async {
+        if (_seeking || !mounted) return;
+        _seeking = true;
+        try {
+          await _player.seek(_clipStart);
+          await _player.resume();
+        } finally {
+          _seeking = false;
+        }
+      });
+
+      await _player.seek(_clipStart);
+      await _player.resume();
+    } catch (_) {
+      _sourceReady = false;
+    }
+  }
+
+  Future<void> _seekToClipStart() async {
+    if (!_sourceReady) return;
+    _seeking = true;
+    try {
+      await _player.seek(_clipStart);
+      final state = _player.state;
+      if (state != PlayerState.playing) {
+        await _player.resume();
+      }
+    } catch (_) {
+      // ignore preview seek errors
+    } finally {
+      _seeking = false;
+    }
   }
 
   void _onRangeChanged(double start, double end) {
+    final previousStart = _startNorm;
     setState(() {
       _startNorm = start.clamp(0.0, 1.0);
       _endNorm = end.clamp(_startNorm + _minNorm, 1.0);
@@ -391,6 +669,34 @@ class _MusicTrimSheetState extends State<_MusicTrimSheet> {
         _startNorm = (_endNorm - _minNorm).clamp(0.0, 1.0);
       }
     });
+
+    // Sadece clip başlangıcı değişince başa sar; bitiş sürüklenince devam etsin.
+    final startChanged = (_startNorm - previousStart).abs() > 0.0005;
+    if (!startChanged) return;
+
+    _rangeDebounce?.cancel();
+    _rangeDebounce = Timer(const Duration(milliseconds: 120), () {
+      unawaited(_seekToClipStart());
+    });
+  }
+
+  Future<void> _handleBack() async {
+    try {
+      await _player.stop();
+    } catch (_) {}
+    widget.onBack();
+  }
+
+  Future<void> _handleSave() async {
+    final selection = CameraMusicSelection(
+      track: widget.track,
+      clipStart: _clipStart,
+      clipDuration: _clipDuration,
+    );
+    try {
+      await _player.stop();
+    } catch (_) {}
+    widget.onSave(selection);
   }
 
   @override
@@ -426,7 +732,7 @@ class _MusicTrimSheetState extends State<_MusicTrimSheet> {
                 Row(
                   children: [
                     GestureDetector(
-                      onTap: widget.onBack,
+                      onTap: _handleBack,
                       behavior: HitTestBehavior.opaque,
                       child: const Padding(
                         padding: EdgeInsets.only(right: 8),
@@ -437,15 +743,7 @@ class _MusicTrimSheetState extends State<_MusicTrimSheet> {
                         ),
                       ),
                     ),
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(8),
-                      child: Image.asset(
-                        track.coverPath,
-                        width: 68,
-                        height: 68,
-                        fit: BoxFit.cover,
-                      ),
-                    ),
+                    _MusicTrackCover(track: track),
                     const SizedBox(width: 12),
                     Expanded(
                       child: Column(
@@ -502,13 +800,7 @@ class _MusicTrimSheetState extends State<_MusicTrimSheet> {
                 ),
                 const SizedBox(height: 20),
                 GestureDetector(
-                  onTap: () => widget.onSave(
-                    CameraMusicSelection(
-                      track: track,
-                      clipStart: start,
-                      clipDuration: clipDuration,
-                    ),
-                  ),
+                  onTap: _handleSave,
                   behavior: HitTestBehavior.opaque,
                   child: Container(
                     width: double.infinity,
@@ -722,4 +1014,3 @@ String _formatDuration(Duration value) {
   final seconds = value.inSeconds.remainder(60).toString().padLeft(2, '0');
   return '$minutes:$seconds';
 }
-

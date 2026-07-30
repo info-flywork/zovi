@@ -12,8 +12,8 @@ enum EditProfileFieldType {
   };
 
   int get maxLength => switch (this) {
-    EditProfileFieldType.name => 25,
-    EditProfileFieldType.username => 25,
+    EditProfileFieldType.name => 50,
+    EditProfileFieldType.username => 15,
     EditProfileFieldType.bio => 150,
   };
 

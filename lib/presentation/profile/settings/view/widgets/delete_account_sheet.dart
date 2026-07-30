@@ -6,9 +6,9 @@ import 'package:zovi/core/widgets/app_button.dart';
 const _createRequestRed = Color(0xFFEC1C24);
 
 /// Hesap silme talebi bottom sheet'i.
-/// `true` dönerse istek gönderildi.
-Future<bool> showDeleteAccountSheet(BuildContext context) async {
-  final result = await showModalBottomSheet<bool>(
+/// Sebep string döner (boş olabilir); iptalde `null`.
+Future<String?> showDeleteAccountSheet(BuildContext context) async {
+  final result = await showModalBottomSheet<String>(
     context: context,
     isScrollControlled: true,
     backgroundColor: AppColors.white,
@@ -17,7 +17,7 @@ Future<bool> showDeleteAccountSheet(BuildContext context) async {
     ),
     builder: (context) => const DeleteAccountSheet(),
   );
-  return result ?? false;
+  return result;
 }
 
 class DeleteAccountSheet extends StatefulWidget {
@@ -42,7 +42,7 @@ class _DeleteAccountSheetState extends State<DeleteAccountSheet> {
       setState(() => _step = 1);
       return;
     }
-    Navigator.of(context).pop(true);
+    Navigator.of(context).pop(_reasonController.text.trim());
   }
 
   @override
@@ -178,7 +178,7 @@ class _DeleteAccountSheetState extends State<DeleteAccountSheet> {
                 const SizedBox(height: 24),
                 AppButton(
                   label: 'cancel'.tr(),
-                  onPressed: () => Navigator.of(context).pop(false),
+                  onPressed: () => Navigator.of(context).pop(),
                 ),
                 const SizedBox(height: 14),
                 GestureDetector(

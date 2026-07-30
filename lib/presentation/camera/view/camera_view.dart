@@ -265,13 +265,21 @@ class _CameraViewState extends State<CameraView> with WidgetsBindingObserver {
     await _initCamera(preferredLens: next);
   }
 
-  Future<void> _openCompose(String imagePath) async {
+  Future<void> _openCompose(
+    String imagePath, {
+    bool fromDraft = false,
+    String? draftId,
+  }) async {
     if (!mounted) return;
     await _setLastPhoto(imagePath);
     if (!mounted) return;
     await context.push(
       RoutePaths.cameraCompose.path,
-      extra: CameraComposeRouteArgs(imagePath: imagePath),
+      extra: CameraComposeRouteArgs(
+        imagePath: imagePath,
+        fromDraft: fromDraft,
+        draftId: draftId,
+      ),
     );
     if (!mounted) return;
     // Compose'tan dönünce preview çoğu zaman dispose olmuş olur.
@@ -315,14 +323,18 @@ class _CameraViewState extends State<CameraView> with WidgetsBindingObserver {
 
   Future<void> _openDraft() async {
     setState(() => _mode = _CameraMode.draft);
-    final path = await showCameraDraftsSheet(context);
+    final pick = await showCameraDraftsSheet(context);
     if (!mounted) return;
-    if (path == null) {
+    if (pick == null) {
       setState(() => _mode = _CameraMode.story);
       return;
     }
-    await _setLastPhoto(path);
-    await _openCompose(path);
+    await _setLastPhoto(pick.imagePath);
+    await _openCompose(
+      pick.imagePath,
+      fromDraft: true,
+      draftId: pick.draftId,
+    );
   }
 
   Widget _buildGalleryThumb() {

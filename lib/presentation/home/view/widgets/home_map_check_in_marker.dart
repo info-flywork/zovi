@@ -1,5 +1,16 @@
 part of '../home_view.dart';
 
+String _selfAvatarPath(String stored) {
+  if (stored.isNotEmpty &&
+      (stored.startsWith('http') ||
+          stored.startsWith('/') ||
+          stored.startsWith('file:'))) {
+    return stored;
+  }
+  final user = getIt<UserRepository>().currentUserListenable.value;
+  return user?.hasPhoto == true ? user!.avatarPath : '';
+}
+
 class HomeMapCheckInMarker extends StatelessWidget {
   const HomeMapCheckInMarker({
     required this.avatarPath,
@@ -10,7 +21,7 @@ class HomeMapCheckInMarker extends StatelessWidget {
   });
 
   HomeMapCheckInMarker.fromActive(ActiveMapCheckIn checkIn, {super.key})
-    : avatarPath = checkIn.avatarPath,
+    : avatarPath = _selfAvatarPath(checkIn.avatarPath),
       photoPaths = checkIn.photoPaths,
       stampImagePath = checkIn.stampImagePath,
       photoIndexListenable =
@@ -98,7 +109,7 @@ class HomeMapTitleMarker extends StatelessWidget {
   });
 
   HomeMapTitleMarker.fromActive(ActiveMapCheckIn checkIn, {super.key})
-    : avatarPath = checkIn.avatarPath,
+    : avatarPath = _selfAvatarPath(checkIn.avatarPath),
       photoPaths = checkIn.photoPaths,
       titleLabel = checkIn.titleLabel ?? '',
       photoIndexListenable =
@@ -220,9 +231,7 @@ class _CircleImage extends StatelessWidget {
         ],
       ),
       child: ClipOval(
-        child: isFile
-            ? Image.file(File(path), fit: BoxFit.cover)
-            : Image.asset(path, fit: BoxFit.cover),
+        child: ProfileAvatar(path: path, size: size - HomeMapCheckInMarker.border * 2),
       ),
     );
   }

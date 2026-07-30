@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:zovi/core/theme/app_colors.dart';
+import 'package:zovi/core/widgets/stamp_image.dart';
 
 Future<void> showChatMediaViewer(
   BuildContext context, {
@@ -69,7 +70,7 @@ class ChatMediaViewer extends StatelessWidget {
                 child: Hero(
                   tag: heroTag,
                   child: assetPath != null
-                      ? Image.asset(assetPath!, fit: BoxFit.contain)
+                      ? StampImage(path: assetPath!, fit: BoxFit.contain)
                       : Image.file(File(filePath!), fit: BoxFit.contain),
                 ),
               ),

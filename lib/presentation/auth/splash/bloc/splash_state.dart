@@ -16,10 +16,11 @@ final class SplashLoading extends SplashState {
 }
 
 final class SplashNavigateTo extends SplashState {
-  const SplashNavigateTo(this.destination);
+  const SplashNavigateTo(this.destination, {this.extra});
 
   final String destination;
+  final Object? extra;
 
   @override
-  List<Object?> get props => [destination];
+  List<Object?> get props => [destination, extra];
 }

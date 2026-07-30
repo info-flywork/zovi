@@ -7,8 +7,13 @@ import 'package:zovi/core/widgets/app_search_field.dart';
 import 'package:zovi/core/widgets/profile_avatar.dart';
 
 class BlockedUser {
-  const BlockedUser({required this.username, required this.avatarPath});
+  const BlockedUser({
+    this.userId = '',
+    required this.username,
+    required this.avatarPath,
+  });
 
+  final String userId;
   final String username;
   final String avatarPath;
 }

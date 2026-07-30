@@ -52,6 +52,7 @@ import 'package:zovi/presentation/profile/connections/model/profile_connections_
 import 'package:zovi/presentation/profile/connections/view/profile_connections_view.dart';
 import 'package:zovi/presentation/profile/user_profile/model/user_profile_route_args.dart';
 import 'package:zovi/presentation/profile/user_profile/view/user_profile_view.dart';
+import 'package:zovi/presentation/profile/user_profile/view/public_profile_loader_view.dart';
 import 'package:zovi/presentation/profile/edit/model/edit_profile_field_route_args.dart';
 import 'package:zovi/presentation/profile/edit/model/edit_profile_links_route_args.dart';
 import 'package:zovi/presentation/profile/edit/model/edit_profile_route_args.dart';
@@ -80,9 +81,33 @@ abstract final class AppRouter {
   static final GlobalKey<NavigatorState> rootKey = GlobalKey<NavigatorState>();
   static final GlobalKey<NavigatorState> shellKey = GlobalKey<NavigatorState>();
 
+  /// Firebase phone auth reCAPTCHA callback deep link — native SDK handles it.
+  static bool _isFirebaseAuthCallback(Uri uri) {
+    final raw = uri.toString();
+    if (raw.contains('firebaseauth') ||
+        raw.contains('recaptchaToken') ||
+        raw.contains('__/auth/callback') ||
+        uri.host == 'firebaseauth' ||
+        uri.scheme.startsWith('com.googleusercontent.apps')) {
+      return true;
+    }
+    // Flutter sometimes strips the custom scheme → `/link?...`
+    if (uri.path == '/link' || uri.path.endsWith('/link')) {
+      final q = uri.queryParameters;
+      if (q.containsKey('deep_link_id') || q.containsKey('recaptchaToken')) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   static final GoRouter router = GoRouter(
     navigatorKey: rootKey,
     initialLocation: RoutePaths.splash.path,
+    onException: (context, state, router) {
+      // Keep current screen; Firebase Auth consumes the URL natively.
+      if (_isFirebaseAuthCallback(state.uri)) return;
+    },
     routes: [
       GoRoute(
         path: RoutePaths.splash.path,
@@ -146,7 +171,10 @@ abstract final class AppRouter {
         builder: (context, state) {
           final args = state.extra! as CreateProfileRouteArgs;
           return BlocProvider(
-            create: (_) => CreateProfileBloc(signupFlow: args.signupFlow),
+            create: (_) => CreateProfileBloc(
+              signupFlow: args.signupFlow,
+              authRepository: getIt(),
+            ),
             child: CreateProfileView(signupFlow: args.signupFlow),
           );
         },
@@ -163,7 +191,10 @@ abstract final class AppRouter {
         builder: (context, state) {
           final args = state.extra! as BirthdayRouteArgs;
           return BlocProvider(
-            create: (_) => BirthdayBloc(signupFlow: args.signupFlow),
+            create: (_) => BirthdayBloc(
+              signupFlow: args.signupFlow,
+              authRepository: getIt(),
+            ),
             child: BirthdayView(signupFlow: args.signupFlow),
           );
         },
@@ -232,41 +263,60 @@ abstract final class AppRouter {
           return CameraComposeView(args: args);
         },
       ),
-      ShellRoute(
-        navigatorKey: shellKey,
-        builder: (context, state, child) => MainWrapper(child: child),
-        routes: [
-          GoRoute(
-            path: RoutePaths.home.path,
-            name: RoutePaths.home.name,
-            builder: (context, state) => BlocProvider(
-              create: (_) => getIt<HomeBloc>(),
-              child: const HomeView(),
-            ),
+      // IndexedStack keeps each tab (notably the live map) mounted, so
+      // switching tabs never re-initialises it.
+      StatefulShellRoute.indexedStack(
+        builder: (context, state, navigationShell) =>
+            MainWrapper(navigationShell: navigationShell),
+        branches: [
+          StatefulShellBranch(
+            navigatorKey: shellKey,
+            routes: [
+              GoRoute(
+                path: RoutePaths.home.path,
+                name: RoutePaths.home.name,
+                builder: (context, state) => BlocProvider.value(
+                  value: getIt<HomeBloc>(),
+                  child: const HomeView(),
+                ),
+              ),
+            ],
           ),
-          GoRoute(
-            path: RoutePaths.stories.path,
-            name: RoutePaths.stories.name,
-            builder: (context, state) => BlocProvider(
-              create: (_) => getIt<StoriesBloc>(),
-              child: const StoriesView(),
-            ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: RoutePaths.stories.path,
+                name: RoutePaths.stories.name,
+                builder: (context, state) => BlocProvider.value(
+                  value: getIt<StoriesBloc>(),
+                  child: const StoriesView(),
+                ),
+              ),
+            ],
           ),
-          GoRoute(
-            path: RoutePaths.chat.path,
-            name: RoutePaths.chat.name,
-            builder: (context, state) => BlocProvider(
-              create: (_) => getIt<ChatBloc>(),
-              child: const ChatView(),
-            ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: RoutePaths.chat.path,
+                name: RoutePaths.chat.name,
+                builder: (context, state) => BlocProvider(
+                  create: (_) => getIt<ChatBloc>(),
+                  child: const ChatView(),
+                ),
+              ),
+            ],
           ),
-          GoRoute(
-            path: RoutePaths.profile.path,
-            name: RoutePaths.profile.name,
-            builder: (context, state) => BlocProvider(
-              create: (_) => getIt<ProfileBloc>(),
-              child: const ProfileView(),
-            ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: RoutePaths.profile.path,
+                name: RoutePaths.profile.name,
+                builder: (context, state) => BlocProvider.value(
+                  value: getIt<ProfileBloc>(),
+                  child: const ProfileView(),
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -279,9 +329,29 @@ abstract final class AppRouter {
           }
           return null;
         },
-        builder: (context, state) {
+        pageBuilder: (context, state) {
           final args = state.extra! as StoryDetailRouteArgs;
-          return StoryDetailView(args: args);
+          return CustomTransitionPage<void>(
+            key: state.pageKey,
+            child: StoryDetailView(args: args),
+            transitionDuration: const Duration(milliseconds: 280),
+            reverseTransitionDuration: const Duration(milliseconds: 220),
+            transitionsBuilder:
+                (context, animation, secondaryAnimation, child) {
+              final curved = CurvedAnimation(
+                parent: animation,
+                curve: Curves.easeOutCubic,
+                reverseCurve: Curves.easeInCubic,
+              );
+              return FadeTransition(
+                opacity: curved,
+                child: ScaleTransition(
+                  scale: Tween<double>(begin: 0.88, end: 1).animate(curved),
+                  child: child,
+                ),
+              );
+            },
+          );
         },
       ),
       GoRoute(
@@ -310,6 +380,14 @@ abstract final class AppRouter {
         builder: (context, state) {
           final args = state.extra! as UserProfileRouteArgs;
           return UserProfileView(args: args);
+        },
+      ),
+      GoRoute(
+        path: '/u/:username',
+        name: RoutePaths.publicProfile.name,
+        builder: (context, state) {
+          final username = state.pathParameters['username'] ?? '';
+          return PublicProfileLoaderView(username: username);
         },
       ),
       GoRoute(
@@ -395,6 +473,8 @@ abstract final class AppRouter {
           return AddPlanSuccessView(
             friendAvatars: args.place.friendAvatars,
             friendsLabel: args.place.friendsLabel,
+            showToFriends: args.showToFriends,
+            showToNearby: args.showToNearby,
           );
         },
       ),

@@ -1,1 +1,1 @@
-enum RequestType { get, post, patch, delete }
+enum RequestType { get, post, patch, put, delete }

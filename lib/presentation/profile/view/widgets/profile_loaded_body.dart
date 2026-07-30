@@ -65,10 +65,10 @@ class _ProfileLoadedBodyState extends State<ProfileLoadedBody> {
       final place = placemarks.first;
       final city = (place.locality ?? place.subLocality)?.trim();
       final region = (place.administrativeArea ?? place.country)?.trim();
-      final parts = [city, region]
-          .whereType<String>()
-          .where((e) => e.isNotEmpty)
-          .toList();
+      final parts = [
+        city,
+        region,
+      ].whereType<String>().where((e) => e.isNotEmpty).toList();
       if (parts.isEmpty) return null;
       return parts.take(2).join(', ');
     } catch (_) {
@@ -132,6 +132,10 @@ class _ProfileLoadedBodyState extends State<ProfileLoadedBody> {
         return 16 + rows * cardHeight + (rows - 1) * spacing;
       case 2:
       default:
+        if (checkInCount == 0) {
+          // Empty-state kartının görünmesi için minimum yükseklik.
+          return 180;
+        }
         return 16 + checkInCount * 80.0;
     }
   }
@@ -145,7 +149,9 @@ class _ProfileLoadedBodyState extends State<ProfileLoadedBody> {
       physics: const ClampingScrollPhysics(),
       padding: EdgeInsets.only(
         bottom:
-            MainWrapper.navBarHeight + MediaQuery.paddingOf(context).bottom + 16,
+            MainWrapper.navBarHeight +
+            MediaQuery.paddingOf(context).bottom +
+            16,
       ),
       children: [
         ProfileHeader(
@@ -161,34 +167,42 @@ class _ProfileLoadedBodyState extends State<ProfileLoadedBody> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const AppIcon(AssetPaths.iconLocationDark, size: 18),
+                  AppIcon(AssetPaths.iconLocationDark, size: 18),
                   const SizedBox(width: 4),
                   Flexible(
                     child: Text(
                       locationLabel,
                       textAlign: TextAlign.center,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w500,
                         height: 1,
                         letterSpacing: -0.28,
-                        color: AppColors.black,
+                        color: Color(0x001a1714).withValues(alpha: 0.6),
                       ),
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 12),
-              Text(
-                user.bio,
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w500,
-                  letterSpacing: -0.32,
-                  color: AppColors.deepRoast,
+              if (user.bio.trim().isNotEmpty) ...[
+                const SizedBox(height: 12),
+                Text(
+                  user.bio,
+                  maxLines: 3,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
+                    letterSpacing: -0.32,
+                    color: AppColors.deepRoast,
+                  ),
                 ),
-              ),
+              ],
+              if (user.links.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                _ProfileLinksRow(links: user.links),
+              ],
               const SizedBox(height: 16),
               Row(
                 children: [
@@ -285,6 +299,52 @@ class _ProfileLoadedBodyState extends State<ProfileLoadedBody> {
           ),
         ),
       ],
+    );
+  }
+}
+
+class _ProfileLinksRow extends StatelessWidget {
+  const _ProfileLinksRow({required this.links});
+
+  final List<ProfileLink> links;
+
+  @override
+  Widget build(BuildContext context) {
+    final isSingle = links.length == 1;
+    final label = isSingle ? links.first.displayUrl : 'my_links'.tr();
+
+    return GestureDetector(
+      onTap: () {
+        if (isSingle) {
+          openProfileLink(links.first.url);
+          return;
+        }
+        showProfileLinksSheet(context, links: links);
+      },
+      behavior: HitTestBehavior.opaque,
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const AppIcon(AssetPaths.iconLink, size: 20),
+          const SizedBox(width: 6),
+          Flexible(
+            child: Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                height: 1,
+                letterSpacing: -0.32,
+                color: AppColors.black,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
