@@ -14,6 +14,7 @@ import 'package:zovi/core/theme/app_colors.dart';
 import 'package:zovi/core/utils/constants/asset_paths.dart';
 import 'package:zovi/core/utils/enum/route_paths.dart';
 import 'package:zovi/core/widgets/app_icon.dart';
+import 'package:zovi/core/widgets/app_loading.dart';
 import 'package:zovi/presentation/camera/model/camera_compose_route_args.dart';
 import 'package:zovi/presentation/camera/view/widgets/camera_drafts_sheet.dart';
 
@@ -330,11 +331,7 @@ class _CameraViewState extends State<CameraView> with WidgetsBindingObserver {
       return;
     }
     await _setLastPhoto(pick.imagePath);
-    await _openCompose(
-      pick.imagePath,
-      fromDraft: true,
-      draftId: pick.draftId,
-    );
+    await _openCompose(pick.imagePath, fromDraft: true, draftId: pick.draftId);
   }
 
   Widget _buildGalleryThumb() {
@@ -351,10 +348,8 @@ class _CameraViewState extends State<CameraView> with WidgetsBindingObserver {
         File(_lastPhotoPath!),
         fit: BoxFit.cover,
         key: ValueKey(_lastPhotoPath),
-        errorBuilder: (_, _, _) => Image.asset(
-          AssetPaths.mapSecond,
-          fit: BoxFit.cover,
-        ),
+        errorBuilder: (_, _, _) =>
+            Image.asset(AssetPaths.mapSecond, fit: BoxFit.cover),
       );
     }
     return Image.asset(AssetPaths.mapSecond, fit: BoxFit.cover);
@@ -365,7 +360,7 @@ class _CameraViewState extends State<CameraView> with WidgetsBindingObserver {
     final bottomInset = MediaQuery.viewPaddingOf(context).bottom;
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: SystemUiOverlayStyle.light,
+      value: SystemUiOverlayStyle.dark,
       child: Scaffold(
         backgroundColor: AppColors.black,
         body: Stack(
@@ -382,10 +377,7 @@ class _CameraViewState extends State<CameraView> with WidgetsBindingObserver {
                       children: [
                         GestureDetector(
                           onTap: () => context.pop(),
-                          child: const AppIcon(
-                            AssetPaths.iconCloose,
-                            size: 32,
-                          ),
+                          child: const AppIcon(AssetPaths.iconCloose, size: 32),
                         ),
                         const Spacer(),
                         GestureDetector(
@@ -523,7 +515,7 @@ class _CameraViewState extends State<CameraView> with WidgetsBindingObserver {
     if (!ready) {
       return const ColoredBox(
         color: AppColors.black,
-        child: Center(child: CircularProgressIndicator(color: AppColors.white)),
+        child: AppLoading(),
       );
     }
 

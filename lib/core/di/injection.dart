@@ -3,16 +3,21 @@ import 'package:get_it/get_it.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:zovi/core/cache/music_audio_cache.dart';
 import 'package:zovi/core/cache/music_catalog_cache.dart';
+import 'package:zovi/core/cache/chat_messages_cache.dart';
 import 'package:zovi/core/cache/stamp_catalog_cache.dart';
 import 'package:zovi/core/cache/stamp_image_cache.dart';
 import 'package:zovi/core/cache/story_catalog_cache.dart';
 import 'package:zovi/core/cache/story_draft_cache.dart';
 import 'package:zovi/core/deep_link/deep_link_service.dart';
+import 'package:zovi/core/push/push_notification_service.dart';
 import 'package:zovi/core/managers/auth_cache_manager.dart';
 import 'package:zovi/core/managers/shared_pref_manager.dart';
 import 'package:zovi/core/network/dio_client.dart';
 import 'package:zovi/core/network/network_manager.dart';
+import 'package:zovi/core/notifications/notification_inbox_watcher.dart';
+import 'package:zovi/core/notifications/chat_notification_watcher.dart';
 import 'package:zovi/domain/auth/auth_repository.dart';
+import 'package:zovi/domain/chat/chat_repository.dart';
 import 'package:zovi/domain/user/user_repository.dart';
 import 'package:zovi/presentation/auth/create_profile/bloc/create_profile_bloc.dart';
 import 'package:zovi/presentation/auth/intro/bloc/intro_bloc.dart';
@@ -31,7 +36,18 @@ Future<void> configureDependencies() async {
     await getIt.unregister<CreateProfileBloc>();
   }
 
-  if (getIt.isRegistered<AuthRepository>()) return;
+  if (!getIt.isRegistered<ChatMessagesCache>()) {
+    getIt.registerLazySingleton(ChatMessagesCache.new);
+  }
+
+  if (getIt.isRegistered<AuthRepository>()) {
+    if (!getIt.isRegistered<ChatNotificationWatcher>()) {
+      getIt.registerLazySingleton(
+        () => ChatNotificationWatcher(getIt(), getIt()),
+      );
+    }
+    return;
+  }
 
   final prefs = await SharedPreferences.getInstance();
 
@@ -61,11 +77,15 @@ Future<void> configureDependencies() async {
       ),
     )
     ..registerLazySingleton(() => UserRepository(getIt()))
+    ..registerLazySingleton(() => ChatRepository(getIt()))
     ..registerLazySingleton(() => DeepLinkService(getIt()))
+    ..registerLazySingleton(PushNotificationService.new)
+    ..registerLazySingleton(() => NotificationInboxWatcher(getIt()))
+    ..registerLazySingleton(() => ChatNotificationWatcher(getIt(), getIt()))
     ..registerFactory(() => SplashBloc(getIt(), getIt()))
     ..registerFactory(() => IntroBloc(getIt()))
     ..registerFactory(() => OnboardingBloc(getIt()))
-    ..registerLazySingleton(() => HomeBloc(getIt()))
+    ..registerLazySingleton(() => HomeBloc(getIt(), getIt()))
     ..registerLazySingleton(() => StoriesBloc(getIt()))
     ..registerFactory(() => ChatBloc())
     ..registerLazySingleton(() => ProfileBloc(getIt()))
@@ -83,5 +103,11 @@ Future<void> resetUserScopedSingletons() async {
   }
   if (getIt.isRegistered<ProfileBloc>()) {
     await getIt.resetLazySingleton<ProfileBloc>();
+  }
+  if (getIt.isRegistered<ChatRepository>()) {
+    getIt<ChatRepository>().clearDmCache();
+  }
+  if (getIt.isRegistered<ChatMessagesCache>()) {
+    getIt<ChatMessagesCache>().clear();
   }
 }

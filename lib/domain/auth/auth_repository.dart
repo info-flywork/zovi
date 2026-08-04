@@ -16,6 +16,7 @@ import 'package:zovi/core/cache/story_draft_cache.dart';
 import 'package:zovi/core/managers/auth_cache_manager.dart';
 import 'package:zovi/core/managers/shared_pref_manager.dart';
 import 'package:zovi/core/network/network_manager.dart';
+import 'package:zovi/core/push/push_notification_service.dart';
 import 'package:zovi/core/utils/enum/request_type.dart';
 import 'package:zovi/domain/auth/models/auth_session.dart';
 import 'package:zovi/domain/auth/models/story_draft_item.dart';
@@ -57,6 +58,8 @@ class AuthRepository {
   List<StampCatalogItem>? _cachedMyStamps;
   List<UserStickerItem>? _cachedMyStickers;
   List<StampCatalogItem>? _cachedOwnedPickerStamps;
+  final _followingCache = <String, ({List<ConnectionUser> users, DateTime at})>{};
+  static const _followingCacheTtl = Duration(minutes: 5);
 
   /// Splash /auth/me sonrası doldurulur; PersonalInfo loading göstermesin.
   CachedPersonalInfo? get cachedPersonalInfo => _cachedPersonalInfo;
@@ -74,6 +77,7 @@ class AuthRepository {
     _cachedMyStamps = null;
     _cachedMyStickers = null;
     _cachedOwnedPickerStamps = null;
+    _followingCache.clear();
   }
 
   /// Web client ID from `google-services.json` (client_type 3) — needed for
@@ -86,14 +90,9 @@ class AuthRepository {
   Future<bool> isIntroDone() => _prefs.isIntroDone();
 
   Future<bool> isAuthenticated() async {
-    final user = _firebaseAuth.currentUser;
-    if (user != null) {
-      final token = await user.getIdToken();
-      if (token != null && token.isNotEmpty) {
-        await _authCache.saveAccessToken(token);
-        return true;
-      }
-    }
+    // currentUser varsa token'ı burada zorlamaya gerek yok — splash / sync
+    // zaten soft getIdToken ile kaydeder. Çift Firebase round-trip'i önler.
+    if (_firebaseAuth.currentUser != null) return true;
     final cached = await _authCache.getAccessToken();
     return cached != null && cached.isNotEmpty;
   }
@@ -211,7 +210,30 @@ class AuthRepository {
     return _persistIdToken();
   }
 
-  Future<AuthSession> syncSession() => _persistIdToken();
+  /// Cold-start / session restore. Soft token (force refresh yok).
+  /// Onboarding bitmişse `/auth/sync` arka planda kalır — splash beklemez.
+  Future<AuthSession> resumeSessionForSplash() async {
+    await _ensureAccessToken(forceRefresh: false);
+
+    if (await isOnboardingDone()) {
+      unawaited(
+        _syncBackendUser().then<void>((_) {}, onError: (_) {}),
+      );
+      return AuthSession(
+        nextStep: 'home',
+        isProfileComplete: true,
+        onboardingDone: true,
+        userId: _backendUserId ?? '',
+      );
+    }
+
+    // Profil / onboarding yarım — nextStep için sync şart.
+    return _syncBackendUser();
+  }
+
+  /// Login sonrası ve bilinçli yenilemeler. Varsayılan: force token refresh.
+  Future<AuthSession> syncSession({bool forceRefreshToken = true}) =>
+      _persistIdToken(forceRefresh: forceRefreshToken);
 
   Future<void> completeOnboarding({String? mockToken}) async {
     if (mockToken != null) {
@@ -240,6 +262,8 @@ class AuthRepository {
     _googleInitialized = false;
     _phoneVerificationId = null;
     _phoneResendToken = null;
+    _backendUserId = null;
+    unawaited(_pushService?.logout() ?? Future<void>.value());
     clearSessionCaches();
   }
 
@@ -251,13 +275,17 @@ class AuthRepository {
     _googleInitialized = true;
   }
 
-  Future<AuthSession> _persistIdToken() async {
-    final token = await _firebaseAuth.currentUser?.getIdToken(true);
+  Future<AuthSession> _persistIdToken({bool forceRefresh = true}) async {
+    await _ensureAccessToken(forceRefresh: forceRefresh);
+    return _syncBackendUser();
+  }
+
+  Future<void> _ensureAccessToken({required bool forceRefresh}) async {
+    final token = await _firebaseAuth.currentUser?.getIdToken(forceRefresh);
     if (token == null || token.isEmpty) {
       throw StateError('Firebase user has no ID token.');
     }
     await _authCache.saveAccessToken(token);
-    return _syncBackendUser();
   }
 
   /// Upserts the Firebase user into MySQL via Node API.
@@ -275,8 +303,27 @@ class AuthRepository {
       await _prefs.setIntroDone();
       await _prefs.setFirstLaunchDone();
     }
+    _backendUserId = result.userId;
+    // Every auth path lands here, so this is the one place that guarantees
+    // the OneSignal external id matches the MySQL user.
+    unawaited(_pushService?.login(result.userId) ?? Future<void>.value());
     return result;
   }
+
+  PushNotificationService? _pushService;
+
+  /// Injected after DI setup to avoid a construction-order cycle.
+  // ignore: use_setters_to_change_properties
+  void attachPushService(PushNotificationService service) {
+    _pushService = service;
+  }
+
+  String? _backendUserId;
+
+  String? get backendUserId =>
+      (_backendUserId != null && _backendUserId!.isNotEmpty)
+          ? _backendUserId
+          : null;
 
   Future<UsernameAvailability> checkUsernameAvailability(String username) async {
     final result = await _network.send<UsernameAvailability>(
@@ -404,6 +451,7 @@ class AuthRepository {
     String? username,
     DateTime? birthDate,
     String? bio,
+    String? locationText,
     String? accountPrivacy,
   }) async {
     try {
@@ -417,6 +465,7 @@ class AuthRepository {
         data['birthDate'] = '$y-$m-$d';
       }
       if (bio != null) data['bio'] = bio.trim();
+      if (locationText != null) data['locationText'] = locationText.trim();
       if (accountPrivacy != null && accountPrivacy.trim().isNotEmpty) {
         data['accountPrivacy'] = accountPrivacy.trim().toLowerCase();
       }
@@ -582,7 +631,7 @@ class AuthRepository {
   List<StampCatalogItem>? peekOwnedPickerStamps() => _cachedOwnedPickerStamps;
 
   /// Stickers the user created + stamps they earned (Blue Tick, etc.).
-  /// Used by story/chat sticker sheets — never the full public catalog.
+  /// Profile "My creations" — not the full public catalog.
   Future<List<StampCatalogItem>> fetchOwnedPickerStamps({
     String? locale,
     bool forceRefresh = false,
@@ -622,6 +671,49 @@ class AuthRepository {
 
     _cachedOwnedPickerStamps = items;
     unawaited(_prefetchStampImages(items));
+    return items;
+  }
+
+  /// Chat/camera sticker sheet: own creations + earned + full Zovi catalog.
+  Future<List<StampCatalogItem>> fetchChatPickerStamps({
+    String? locale,
+    bool forceRefresh = false,
+  }) async {
+    final localeKey = (locale ?? 'en').trim();
+    final ownedFuture = fetchOwnedPickerStamps(
+      locale: localeKey,
+      forceRefresh: forceRefresh,
+    ).catchError((_) => const <StampCatalogItem>[]);
+    final catalogFuture = fetchStampCatalog(
+      locale: localeKey,
+      forceRefresh: forceRefresh,
+    ).catchError((_) => const <StampCatalogItem>[]);
+
+    final owned = await ownedFuture;
+    final catalog = await catalogFuture;
+
+    final seen = <String>{};
+    final items = <StampCatalogItem>[];
+    // Own stickers first, then Zovi catalog.
+    for (final item in [...owned, ...catalog]) {
+      if (item.imageUrl.isEmpty || !seen.add(item.id)) continue;
+      items.add(item);
+    }
+    unawaited(_prefetchStampImages(items));
+    return items;
+  }
+
+  List<StampCatalogItem> peekChatPickerStamps({String? locale}) {
+    final owned = peekOwnedPickerStamps() ?? const <StampCatalogItem>[];
+    final catalog =
+        peekStampCatalog(locale: locale) ?? const <StampCatalogItem>[];
+    if (owned.isEmpty && catalog.isEmpty) return const [];
+    final seen = <String>{};
+    final items = <StampCatalogItem>[];
+    for (final item in [...owned, ...catalog]) {
+      if (item.imageUrl.isEmpty || !seen.add(item.id)) continue;
+      items.add(item);
+    }
     return items;
   }
 
@@ -798,6 +890,246 @@ class AuthRepository {
       throw StateError('Story publish failed.');
     }
     return PublishedStory.fromJson(Map<String, dynamic>.from(raw));
+  }
+
+  Future<Map<String, dynamic>> createPulse({
+    required String imagePath,
+    String audience = 'public',
+    String sourceType = 'direct',
+    String? placeName,
+    double? lat,
+    double? lng,
+    String? caption,
+  }) async {
+    final result = await _network.uploadFile<Map<String, dynamic>>(
+      path: '/pulses',
+      filePath: imagePath,
+      fieldName: 'image',
+      data: {
+        'audience': audience,
+        'sourceType': sourceType,
+        if (placeName != null && placeName.trim().isNotEmpty)
+          'placeName': placeName.trim(),
+        if (lat != null) 'lat': '$lat',
+        if (lng != null) 'lng': '$lng',
+        if (caption != null && caption.trim().isNotEmpty)
+          'caption': caption.trim(),
+      },
+      parserModel: (json) => json,
+    );
+    final raw = result?['pulse'];
+    if (raw is! Map) {
+      throw StateError('Pulse create failed.');
+    }
+    return Map<String, dynamic>.from(raw);
+  }
+
+  Future<List<Map<String, dynamic>>> fetchMyPulses({int limit = 60}) async {
+    final result = await _network.send<Map<String, dynamic>>(
+      path: '/pulses/me',
+      method: RequestType.get,
+      queryParameters: {'limit': '$limit'},
+      parserModel: (json) => json,
+    );
+    final raw = result?['pulses'];
+    if (raw is! List) return const [];
+    return [
+      for (final item in raw)
+        if (item is Map) Map<String, dynamic>.from(item),
+    ];
+  }
+
+  Future<List<Map<String, dynamic>>> fetchUserPulsesByUsername(
+    String username, {
+    int limit = 60,
+  }) async {
+    final u = username.trim();
+    if (u.isEmpty) return const [];
+    final result = await _network.send<Map<String, dynamic>>(
+      path: '/users/by-username/${Uri.encodeComponent(u)}/pulses',
+      method: RequestType.get,
+      queryParameters: {'limit': '$limit'},
+      parserModel: (json) => json,
+    );
+    final raw = result?['pulses'];
+    if (raw is! List) return const [];
+    return [
+      for (final item in raw)
+        if (item is Map) Map<String, dynamic>.from(item),
+    ];
+  }
+
+  Future<void> upsertMapPresence({
+    required double lat,
+    required double lng,
+    double? accuracyM,
+    String? locationLabel,
+    bool isAnonymous = false,
+  }) async {
+    await _network.send<Map<String, dynamic>>(
+      path: '/map/presence',
+      method: RequestType.put,
+      data: {
+        'lat': lat,
+        'lng': lng,
+        if (accuracyM != null) 'accuracyM': accuracyM,
+        if (locationLabel != null && locationLabel.trim().isNotEmpty)
+          'locationLabel': locationLabel.trim(),
+        'isAnonymous': isAnonymous,
+      },
+      parserModel: (json) => json,
+    );
+  }
+
+  Future<List<Map<String, dynamic>>> fetchMapNearby({
+    required double lat,
+    required double lng,
+    String filter = 'friends',
+    double radiusKm = 50,
+  }) async {
+    final result = await _network.send<Map<String, dynamic>>(
+      path: '/map/nearby',
+      method: RequestType.get,
+      queryParameters: {
+        'lat': '$lat',
+        'lng': '$lng',
+        'filter': filter,
+        'radiusKm': '$radiusKm',
+      },
+      parserModel: (json) => json,
+    );
+    final raw = result?['items'];
+    if (raw is! List) return const [];
+    return [
+      for (final item in raw)
+        if (item is Map) Map<String, dynamic>.from(item),
+    ];
+  }
+
+  /// Submit a check-in and earn DB-driven coin rewards + pair streaks.
+  Future<Map<String, dynamic>> submitCheckIn({
+    required String placeName,
+    required double lat,
+    required double lng,
+    String? caption,
+    String photoPrivacy = 'public',
+    List<String> taggedUserIds = const [],
+    List<String> photoUrls = const [],
+    String? category,
+  }) async {
+    final result = await _network.send<Map<String, dynamic>>(
+      path: '/check-ins',
+      method: RequestType.post,
+      data: {
+        'placeName': placeName.trim(),
+        'lat': lat,
+        'lng': lng,
+        if (caption != null && caption.trim().isNotEmpty)
+          'caption': caption.trim(),
+        'photoPrivacy': photoPrivacy,
+        'taggedUserIds': taggedUserIds,
+        if (photoUrls.isNotEmpty) 'photoUrls': photoUrls,
+        if (category != null && category.trim().isNotEmpty)
+          'category': category.trim(),
+      },
+      parserModel: (json) => json,
+    );
+    if (result == null) {
+      throw StateError('Check-in submit failed.');
+    }
+    return result;
+  }
+
+  /// Accept founder stamp + equip Kurucu Kral title for a venue-first check-in.
+  Future<Map<String, dynamic>> acceptFounderReward(String checkInId) async {
+    final id = checkInId.trim();
+    if (id.isEmpty) {
+      throw StateError('Missing check-in id.');
+    }
+    final result = await _network.send<Map<String, dynamic>>(
+      path: '/check-ins/$id/accept-founder',
+      method: RequestType.post,
+      parserModel: (json) => json,
+    );
+    if (result == null) {
+      throw StateError('Accept founder failed.');
+    }
+    return result;
+  }
+
+  /// Snapchat-style shared lifestyle streaks with tagged friends.
+  Future<List<Map<String, dynamic>>> fetchFriendshipStreaks({
+    int limit = 50,
+  }) async {
+    final result = await _network.send<Map<String, dynamic>>(
+      path: '/check-ins/streaks',
+      method: RequestType.get,
+      queryParameters: {'limit': '$limit'},
+      parserModel: (json) => json,
+    );
+    final raw = result?['items'];
+    if (raw is! List) return const [];
+    return [
+      for (final item in raw)
+        if (item is Map) Map<String, dynamic>.from(item),
+    ];
+  }
+
+  /// Active map check-in for the signed-in user (survives app restart).
+  Future<Map<String, dynamic>?> fetchActiveCheckIn() async {
+    final result = await _network.send<Map<String, dynamic>>(
+      path: '/check-ins/active',
+      method: RequestType.get,
+      parserModel: (json) => json,
+    );
+    final raw = result?['active'];
+    if (raw is! Map) return null;
+    return Map<String, dynamic>.from(raw);
+  }
+
+  Future<List<Map<String, dynamic>>> fetchMyCheckIns({
+    int limit = 60,
+    int offset = 0,
+  }) async {
+    final result = await _network.send<Map<String, dynamic>>(
+      path: '/check-ins/me',
+      method: RequestType.get,
+      queryParameters: {
+        'limit': '$limit',
+        'offset': '$offset',
+      },
+      parserModel: (json) => json,
+    );
+    final raw = result?['checkIns'];
+    if (raw is! List) return const [];
+    return [
+      for (final item in raw)
+        if (item is Map) Map<String, dynamic>.from(item),
+    ];
+  }
+
+  Future<List<Map<String, dynamic>>> fetchUserCheckInsByUsername(
+    String username, {
+    int limit = 60,
+    int offset = 0,
+  }) async {
+    final u = username.trim().replaceFirst(RegExp(r'^@'), '');
+    if (u.isEmpty) return const [];
+    final result = await _network.send<Map<String, dynamic>>(
+      path: '/users/by-username/${Uri.encodeComponent(u)}/check-ins',
+      method: RequestType.get,
+      queryParameters: {
+        'limit': '$limit',
+        'offset': '$offset',
+      },
+      parserModel: (json) => json,
+    );
+    final raw = result?['checkIns'];
+    if (raw is! List) return const [];
+    return [
+      for (final item in raw)
+        if (item is Map) Map<String, dynamic>.from(item),
+    ];
   }
 
   List<StoryDraftItem>? peekStoryDrafts() => _storyDraftCache.peek();
@@ -1032,9 +1364,42 @@ class AuthRepository {
     return users;
   }
 
+  Future<void> blockUser(String blockedUserId, {String? reason}) async {
+    final id = blockedUserId.trim();
+    if (id.isEmpty) return;
+    await _network.send<Map<String, dynamic>>(
+      path: '/users/me/blocked/$id',
+      method: RequestType.post,
+      data: {
+        if (reason != null && reason.trim().isNotEmpty) 'reason': reason.trim(),
+      },
+      parserModel: (json) => json,
+    );
+  }
+
   Future<void> unblockUser(String blockedUserId) async {
     await _network.send<Map<String, dynamic>>(
       path: '/users/me/blocked/$blockedUserId',
+      method: RequestType.delete,
+      parserModel: (json) => json,
+    );
+  }
+
+  Future<void> restrictUser(String userId) async {
+    final id = userId.trim();
+    if (id.isEmpty) return;
+    await _network.send<Map<String, dynamic>>(
+      path: '/users/me/restricted/$id',
+      method: RequestType.post,
+      parserModel: (json) => json,
+    );
+  }
+
+  Future<void> unrestrictUser(String userId) async {
+    final id = userId.trim();
+    if (id.isEmpty) return;
+    await _network.send<Map<String, dynamic>>(
+      path: '/users/me/restricted/$id',
       method: RequestType.delete,
       parserModel: (json) => json,
     );
@@ -1091,6 +1456,152 @@ class AuthRepository {
       items.add(UserPlanItem.fromJson(Map<String, dynamic>.from(item)));
     }
     return items;
+  }
+
+  Future<FollowActionResult> followUser(String userId) async {
+    final id = userId.trim();
+    final result = await _network.send<Map<String, dynamic>>(
+      path: '/social/follow/${Uri.encodeComponent(id)}',
+      method: RequestType.post,
+      parserModel: (json) => json,
+    );
+    _invalidateFollowingCache();
+    return FollowActionResult.fromJson(result ?? const {});
+  }
+
+  Future<FollowActionResult> unfollowUser(String userId) async {
+    final id = userId.trim();
+    final result = await _network.send<Map<String, dynamic>>(
+      path: '/social/follow/${Uri.encodeComponent(id)}',
+      method: RequestType.delete,
+      parserModel: (json) => json,
+    );
+    _invalidateFollowingCache();
+    return FollowActionResult.fromJson(result ?? const {});
+  }
+
+  Future<FollowActionResult> acceptFollowRequest(String requestId) async {
+    final id = requestId.trim();
+    final result = await _network.send<Map<String, dynamic>>(
+      path: '/social/follow-requests/${Uri.encodeComponent(id)}/accept',
+      method: RequestType.post,
+      parserModel: (json) => json,
+    );
+    _invalidateFollowingCache();
+    return FollowActionResult.fromJson(result ?? const {});
+  }
+
+  Future<FollowActionResult> rejectFollowRequest(String requestId) async {
+    final id = requestId.trim();
+    final result = await _network.send<Map<String, dynamic>>(
+      path: '/social/follow-requests/${Uri.encodeComponent(id)}/reject',
+      method: RequestType.post,
+      parserModel: (json) => json,
+    );
+    return FollowActionResult.fromJson(result ?? const {});
+  }
+
+  Future<List<ConnectionUser>> fetchFollowers(String userId) async {
+    final id = userId.trim();
+    if (id.isEmpty) return const [];
+    final result = await _network.send<Map<String, dynamic>>(
+      path: '/social/${Uri.encodeComponent(id)}/followers',
+      method: RequestType.get,
+      parserModel: (json) => json,
+    );
+    return _mapConnectionUsers(result?['users']);
+  }
+
+  /// Warm following list without a network round-trip (null if cold/stale).
+  List<ConnectionUser>? peekFollowing(String userId) {
+    final id = userId.trim();
+    if (id.isEmpty) return null;
+    final cached = _followingCache[id];
+    if (cached == null) return null;
+    if (DateTime.now().difference(cached.at) >= _followingCacheTtl) {
+      return null;
+    }
+    return cached.users;
+  }
+
+  Future<List<ConnectionUser>> fetchFollowing(
+    String userId, {
+    bool forceRefresh = false,
+  }) async {
+    final id = userId.trim();
+    if (id.isEmpty) return const [];
+    if (!forceRefresh) {
+      final cached = peekFollowing(id);
+      if (cached != null) return cached;
+    }
+    final result = await _network.send<Map<String, dynamic>>(
+      path: '/social/${Uri.encodeComponent(id)}/following',
+      method: RequestType.get,
+      parserModel: (json) => json,
+    );
+    final users = _mapConnectionUsers(result?['users']);
+    _followingCache[id] = (users: users, at: DateTime.now());
+    return users;
+  }
+
+  void _invalidateFollowingCache() {
+    final me = _backendUserId?.trim();
+    if (me != null && me.isNotEmpty) {
+      _followingCache.remove(me);
+    } else {
+      _followingCache.clear();
+    }
+  }
+
+  Future<void> removeFollower(String followerUserId) async {
+    final id = followerUserId.trim();
+    if (id.isEmpty) return;
+    await _network.send<Map<String, dynamic>>(
+      path: '/social/followers/${Uri.encodeComponent(id)}',
+      method: RequestType.delete,
+      parserModel: (json) => json,
+    );
+  }
+
+  List<ConnectionUser> _mapConnectionUsers(Object? raw) {
+    if (raw is! List) return const [];
+    return [
+      for (final item in raw)
+        if (item is Map)
+          ConnectionUser.fromJson(Map<String, dynamic>.from(item)),
+    ];
+  }
+
+  Future<List<AppNotificationItem>> fetchNotifications({
+    int limit = 50,
+    int offset = 0,
+  }) async {
+    final result = await _network.send<Map<String, dynamic>>(
+      path: '/social/notifications',
+      method: RequestType.get,
+      queryParameters: {
+        'limit': '$limit',
+        'offset': '$offset',
+      },
+      parserModel: (json) => json,
+    );
+    final raw = result?['notifications'];
+    if (raw is! List) return const [];
+    return [
+      for (final item in raw)
+        if (item is Map)
+          AppNotificationItem.fromJson(Map<String, dynamic>.from(item)),
+    ];
+  }
+
+  Future<void> deleteNotification(String notificationId) async {
+    final id = notificationId.trim();
+    if (id.isEmpty) return;
+    await _network.send<Map<String, dynamic>>(
+      path: '/social/notifications/${Uri.encodeComponent(id)}',
+      method: RequestType.delete,
+      parserModel: (json) => json,
+    );
   }
 
   static String _toE164({required String dialCode, required String phone}) {
@@ -1497,3 +2008,176 @@ class PublishedStory {
     return 'User';
   }
 }
+
+class ConnectionUser {
+  const ConnectionUser({
+    required this.userId,
+    required this.username,
+    required this.fullName,
+    required this.avatarUrl,
+  });
+
+  factory ConnectionUser.fromJson(Map<String, dynamic> json) {
+    return ConnectionUser(
+      userId: (json['userId'] as String?)?.trim() ?? '',
+      username: (json['username'] as String?)?.trim() ?? '',
+      fullName: (json['fullName'] as String?)?.trim() ?? '',
+      avatarUrl: (json['avatarUrl'] as String?)?.trim() ?? '',
+    );
+  }
+
+  final String userId;
+  final String username;
+  final String fullName;
+  final String avatarUrl;
+}
+
+class FollowRelationship {
+  const FollowRelationship({
+    this.following = false,
+    this.followedBy = false,
+    this.outgoingRequest = false,
+    this.incomingRequest = false,
+    this.outgoingRequestId,
+    this.incomingRequestId,
+  });
+
+  factory FollowRelationship.fromJson(Map<String, dynamic>? json) {
+    if (json == null) return const FollowRelationship();
+    return FollowRelationship(
+      following: json['following'] == true,
+      followedBy: json['followedBy'] == true,
+      outgoingRequest: json['outgoingRequest'] == true,
+      incomingRequest: json['incomingRequest'] == true,
+      outgoingRequestId: (json['outgoingRequestId'] as String?)?.trim(),
+      incomingRequestId: (json['incomingRequestId'] as String?)?.trim(),
+    );
+  }
+
+  final bool following;
+  final bool followedBy;
+  final bool outgoingRequest;
+  final bool incomingRequest;
+  final String? outgoingRequestId;
+  final String? incomingRequestId;
+
+  FollowRelationship copyWith({
+    bool? following,
+    bool? followedBy,
+    bool? outgoingRequest,
+    bool? incomingRequest,
+    String? outgoingRequestId,
+    String? incomingRequestId,
+    bool clearOutgoingRequestId = false,
+    bool clearIncomingRequestId = false,
+  }) {
+    return FollowRelationship(
+      following: following ?? this.following,
+      followedBy: followedBy ?? this.followedBy,
+      outgoingRequest: outgoingRequest ?? this.outgoingRequest,
+      incomingRequest: incomingRequest ?? this.incomingRequest,
+      outgoingRequestId: clearOutgoingRequestId
+          ? null
+          : (outgoingRequestId ?? this.outgoingRequestId),
+      incomingRequestId: clearIncomingRequestId
+          ? null
+          : (incomingRequestId ?? this.incomingRequestId),
+    );
+  }
+}
+
+class FollowActionResult {
+  const FollowActionResult({
+    required this.status,
+    this.relationship = const FollowRelationship(),
+    this.requestId,
+  });
+
+  factory FollowActionResult.fromJson(Map<String, dynamic> json) {
+    final rel = json['relationship'];
+    return FollowActionResult(
+      status: (json['status'] as String?)?.trim() ?? 'none',
+      relationship: FollowRelationship.fromJson(
+        rel is Map ? Map<String, dynamic>.from(rel) : null,
+      ),
+      requestId: (json['requestId'] as String?)?.trim(),
+    );
+  }
+
+  final String status;
+  final FollowRelationship relationship;
+  final String? requestId;
+}
+
+class AppNotificationItem {
+  const AppNotificationItem({
+    required this.id,
+    required this.type,
+    required this.action,
+    required this.createdAt,
+    this.actorId,
+    this.actorName,
+    this.actorUsername,
+    this.actorAvatarUrl,
+    this.objectId,
+    this.objectType,
+    this.thumbnailUrl,
+    this.bodyKey,
+    this.readAt,
+    this.aggCount,
+  });
+
+  factory AppNotificationItem.fromJson(Map<String, dynamic> json) {
+    final actor = json['actor'];
+    final actorMap = actor is Map ? Map<String, dynamic>.from(actor) : null;
+    final aggRaw = json['aggCount'];
+    final agg = aggRaw is num
+        ? aggRaw.toInt()
+        : int.tryParse('${aggRaw ?? ''}');
+    return AppNotificationItem(
+      id: (json['id'] as String?)?.trim() ?? '',
+      type: (json['type'] as String?)?.trim() ?? '',
+      action: (json['action'] as String?)?.trim() ?? 'none',
+      createdAt: _parseApiDate(json['createdAt']),
+      actorId: (json['actorId'] as String?)?.trim() ??
+          (actorMap?['userId'] as String?)?.trim(),
+      actorName: (actorMap?['name'] as String?)?.trim(),
+      actorUsername: (actorMap?['username'] as String?)?.trim(),
+      actorAvatarUrl: (actorMap?['avatarUrl'] as String?)?.trim(),
+      objectId: (json['objectId'] as String?)?.trim(),
+      objectType: (json['objectType'] as String?)?.trim(),
+      thumbnailUrl: (json['thumbnailUrl'] as String?)?.trim(),
+      bodyKey: (json['bodyKey'] as String?)?.trim(),
+      readAt: _parseApiDate(json['readAt']),
+      aggCount: agg != null && agg > 0 ? agg : null,
+    );
+  }
+
+  /// Server stores UTC; accept ISO with/without `Z` and MySQL datetime strings.
+  static DateTime? _parseApiDate(Object? raw) {
+    if (raw == null) return null;
+    final s = '$raw'.trim();
+    if (s.isEmpty) return null;
+    var normalized = s.contains('T') ? s : s.replaceFirst(' ', 'T');
+    final hasZone = normalized.endsWith('Z') ||
+        RegExp(r'[+-]\d{2}:?\d{2}$').hasMatch(normalized);
+    if (!hasZone) normalized = '${normalized}Z';
+    return DateTime.tryParse(normalized)?.toLocal();
+  }
+
+  final String id;
+  final String type;
+  final String action;
+  final DateTime? createdAt;
+  final String? actorId;
+  final String? actorName;
+  final String? actorUsername;
+  final String? actorAvatarUrl;
+  final String? objectId;
+  final String? objectType;
+  final String? thumbnailUrl;
+  final String? bodyKey;
+  final DateTime? readAt;
+  final int? aggCount;
+}
+

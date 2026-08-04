@@ -97,29 +97,44 @@ class MusicCatalogCache {
     if (offset == 0) {
       items
         ..clear()
-        ..addAll(page.tracks);
+        ..addAll(_dedupe(page.tracks));
       return;
     }
 
     if (offset > items.length) {
-      items.addAll(page.tracks);
+      items.addAll(_dedupe(page.tracks, existing: items));
       return;
     }
 
-    // Replace/append from offset without duplicating by id.
-    final known = {for (final t in items) t.id};
-    final merged = items.take(offset).toList();
-    for (final track in page.tracks) {
-      if (known.contains(track.id) &&
-          merged.any((e) => e.id == track.id)) {
-        continue;
-      }
-      merged.add(track);
-      known.add(track.id);
-    }
+    final head = items.take(offset).toList();
+    final incoming = _dedupe(page.tracks, existing: head);
     items
       ..clear()
-      ..addAll(merged);
+      ..addAll(head)
+      ..addAll(incoming);
+  }
+
+  List<MusicTrackItem> _dedupe(
+    List<MusicTrackItem> tracks, {
+    List<MusicTrackItem> existing = const [],
+  }) {
+    final seenIds = {for (final t in existing) t.id.trim()}
+      ..removeWhere((id) => id.isEmpty);
+    final seenTitles = {
+      for (final t in existing) t.title.trim().toLowerCase(),
+    }..removeWhere((t) => t.isEmpty);
+
+    final out = <MusicTrackItem>[];
+    for (final track in tracks) {
+      final id = track.id.trim();
+      final titleKey = track.title.trim().toLowerCase();
+      if (id.isNotEmpty && seenIds.contains(id)) continue;
+      if (titleKey.isNotEmpty && seenTitles.contains(titleKey)) continue;
+      if (id.isNotEmpty) seenIds.add(id);
+      if (titleKey.isNotEmpty) seenTitles.add(titleKey);
+      out.add(track);
+    }
+    return out;
   }
 }
 

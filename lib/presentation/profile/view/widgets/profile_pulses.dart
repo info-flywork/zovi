@@ -1,12 +1,24 @@
 part of '../profile_view.dart';
 
 class ProfilePulses extends StatelessWidget {
-  const ProfilePulses({required this.pulses, super.key});
+  const ProfilePulses({
+    required this.pulses,
+    this.isLoading = false,
+    super.key,
+  });
 
   final List<PulseItem> pulses;
+  final bool isLoading;
 
   @override
   Widget build(BuildContext context) {
+    if (isLoading) {
+      return const Padding(
+        padding: EdgeInsets.fromLTRB(16, 16, 16, 0),
+        child: _PulseGridShimmer(),
+      );
+    }
+
     if (pulses.isEmpty) {
       return Padding(
         padding: const EdgeInsets.fromLTRB(16, 24, 16, 0),
@@ -33,12 +45,56 @@ class ProfilePulses extends StatelessWidget {
                 SizedBox(
                   width: itemWidth,
                   height: itemHeight,
-                  child: _PulseCard(imagePath: pulse.imagePath),
+                  child: GestureDetector(
+                    onTap: () => showPulseMediaViewer(
+                      context,
+                      imagePath: pulse.imagePath,
+                      heroTag:
+                          'pulse_${pulse.id.isNotEmpty ? pulse.id : pulse.imagePath}',
+                    ),
+                    child: Hero(
+                      tag:
+                          'pulse_${pulse.id.isNotEmpty ? pulse.id : pulse.imagePath}',
+                      child: _PulseCard(imagePath: pulse.imagePath),
+                    ),
+                  ),
                 ),
             ],
           );
         },
       ),
+    );
+  }
+}
+
+class _PulseGridShimmer extends StatelessWidget {
+  const _PulseGridShimmer();
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        const spacing = 10.0;
+        final itemWidth = (constraints.maxWidth - spacing * 2) / 3;
+        final itemHeight = itemWidth * (200 / 126);
+        return Wrap(
+          spacing: spacing,
+          runSpacing: spacing,
+          children: [
+            for (var i = 0; i < 3; i++)
+              SizedBox(
+                width: itemWidth,
+                height: itemHeight,
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: AppColors.surfaceGray,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              ),
+          ],
+        );
+      },
     );
   }
 }
@@ -87,11 +143,46 @@ class _PulseCard extends StatelessWidget {
 
   final String imagePath;
 
+  bool get _isNetwork =>
+      imagePath.startsWith('http://') || imagePath.startsWith('https://');
+
+  bool get _isFile =>
+      imagePath.startsWith('/') || imagePath.startsWith('file:');
+
   @override
   Widget build(BuildContext context) {
+    final Widget image;
+    if (_isNetwork) {
+      image = Image.network(
+        imagePath,
+        fit: BoxFit.cover,
+        gaplessPlayback: true,
+        filterQuality: FilterQuality.low,
+        errorBuilder: (_, _, _) =>
+            const ColoredBox(color: AppColors.surfaceGray),
+      );
+    } else if (_isFile) {
+      image = Image.file(
+        File(imagePath.replaceFirst('file://', '')),
+        fit: BoxFit.cover,
+        gaplessPlayback: true,
+        errorBuilder: (_, _, _) =>
+            const ColoredBox(color: AppColors.surfaceGray),
+      );
+    } else if (imagePath.isNotEmpty) {
+      image = Image.asset(
+        imagePath,
+        fit: BoxFit.cover,
+        errorBuilder: (_, _, _) =>
+            const ColoredBox(color: AppColors.surfaceGray),
+      );
+    } else {
+      image = const ColoredBox(color: AppColors.surfaceGray);
+    }
+
     return ClipRRect(
       borderRadius: BorderRadius.circular(12),
-      child: Image.asset(imagePath, fit: BoxFit.cover),
+      child: image,
     );
   }
 }

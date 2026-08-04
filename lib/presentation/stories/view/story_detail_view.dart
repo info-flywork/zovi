@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:ui' as ui;
 
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
@@ -31,7 +32,6 @@ class _StoryDetailViewState extends State<StoryDetailView>
   late final AnimationController _progressController;
   late int _index;
   late List<StoryMediaItem> _items;
-  late Set<int> _unviewedAtOpen;
   var _paused = false;
   var _likeInFlight = false;
 
@@ -42,13 +42,59 @@ class _StoryDetailViewState extends State<StoryDetailView>
 
   StoryMediaItem get _current => _items[_index];
 
+  String _ownerKey(StoryMediaItem item, int fallbackIndex) {
+    final userId = item.userId?.trim() ?? '';
+    if (userId.isNotEmpty) return 'id:$userId';
+    final username = item.username?.trim().toLowerCase() ?? '';
+    if (username.isNotEmpty) return 'username:$username';
+    final avatar = item.avatarPath.trim();
+    if (avatar.isNotEmpty) return 'avatar:$avatar';
+    return 'story:${item.storyId ?? item.imagePath}:$fallbackIndex';
+  }
+
+  List<StoryMediaItem> _groupByOwner(List<StoryMediaItem> source) {
+    final groups = <String, List<StoryMediaItem>>{};
+    for (var i = 0; i < source.length; i++) {
+      final item = source[i];
+      groups.putIfAbsent(_ownerKey(item, i), () => []).add(item);
+    }
+    return [for (final group in groups.values) ...group];
+  }
+
+  bool _isSameStory(StoryMediaItem a, StoryMediaItem b) {
+    final aId = a.storyId?.trim() ?? '';
+    final bId = b.storyId?.trim() ?? '';
+    if (aId.isNotEmpty && bId.isNotEmpty) return aId == bId;
+    return identical(a, b) ||
+        (a.imagePath == b.imagePath &&
+            a.userId == b.userId &&
+            a.username == b.username);
+  }
+
+  ({int start, int length, int localIndex}) get _currentGroup {
+    final key = _ownerKey(_current, _index);
+    var start = _index;
+    while (start > 0 && _ownerKey(_items[start - 1], start - 1) == key) {
+      start--;
+    }
+    var end = _index + 1;
+    while (end < _items.length && _ownerKey(_items[end], end) == key) {
+      end++;
+    }
+    return (start: start, length: end - start, localIndex: _index - start);
+  }
+
   @override
   void initState() {
     super.initState();
-    _items = List<StoryMediaItem>.of(widget.args.items);
-    _index = widget.args.initialIndex.clamp(0, _items.length - 1);
-    _unviewedAtOpen = _resolveUnviewedIndexes();
+    final source = List<StoryMediaItem>.of(widget.args.items);
+    final sourceIndex = widget.args.initialIndex.clamp(0, source.length - 1);
+    final initiallySelected = source[sourceIndex];
+    _items = _groupByOwner(source);
+    _index = _items.indexWhere((item) => _isSameStory(item, initiallySelected));
+    if (_index < 0) _index = 0;
     _pageController = PageController(initialPage: _index);
+    _pageController.addListener(_onPageScroll);
     _progressController = AnimationController(
       vsync: this,
       duration: _storyDuration,
@@ -131,39 +177,15 @@ class _StoryDetailViewState extends State<StoryDetailView>
     _progressController
       ..removeStatusListener(_onProgressStatus)
       ..dispose();
-    _pageController.dispose();
+    _pageController
+      ..removeListener(_onPageScroll)
+      ..dispose();
     super.dispose();
-  }
-
-  /// Stories already seen before this session opened — used to stop playback
-  /// once nothing new is left.
-  Set<int> _resolveUnviewedIndexes() {
-    final repo = getIt<UserRepository>();
-    return {
-      for (var i = 0; i < _items.length; i++)
-        if (!_wasAlreadyViewed(repo, _items[i])) i,
-    };
-  }
-
-  bool _wasAlreadyViewed(UserRepository repo, StoryMediaItem item) {
-    final storyId = item.storyId?.trim() ?? '';
-    if (storyId.isNotEmpty) return item.isViewed;
-    return repo.isStoryViewed(item.avatarPath);
   }
 
   void _onProgressStatus(AnimationStatus status) {
     if (status != AnimationStatus.completed || _paused) return;
-    _advanceToNextUnviewed();
-  }
-
-  void _advanceToNextUnviewed() {
-    for (var i = _index + 1; i < _items.length; i++) {
-      if (_unviewedAtOpen.contains(i)) {
-        _goTo(i);
-        return;
-      }
-    }
-    if (mounted) context.pop();
+    _goNext();
   }
 
   void _startProgress() {
@@ -171,6 +193,23 @@ class _StoryDetailViewState extends State<StoryDetailView>
     _progressController
       ..reset()
       ..forward();
+  }
+
+  /// Empties the active segment as soon as a transition begins, so the next
+  /// story never briefly inherits the previous one's fill.
+  void _resetProgress() {
+    if (_progressController.value == 0) return;
+    _progressController
+      ..stop()
+      ..value = 0;
+  }
+
+  /// A swipe moves the page well before [_onPageChanged] fires; keep the bar
+  /// in sync with the page the user is dragging towards.
+  void _onPageScroll() {
+    final page = _pageController.page;
+    if (page == null) return;
+    if ((page - _index).abs() > 0.02) _resetProgress();
   }
 
   void _pause() {
@@ -196,6 +235,7 @@ class _StoryDetailViewState extends State<StoryDetailView>
       _startProgress();
       return;
     }
+    _resetProgress();
     setState(() => _index = index);
     unawaited(_markCurrentViewed());
     unawaited(_syncMusic());
@@ -210,7 +250,8 @@ class _StoryDetailViewState extends State<StoryDetailView>
   void _goNext() => _goTo(_index + 1);
 
   void _goPrevious() {
-    if (_progressController.value > 0.2) {
+    // Nothing before the first story — replay it instead of closing.
+    if (_index == 0) {
       _startProgress();
       return;
     }
@@ -305,7 +346,7 @@ class _StoryDetailViewState extends State<StoryDetailView>
   @override
   Widget build(BuildContext context) {
     return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: SystemUiOverlayStyle.light,
+      value: SystemUiOverlayStyle.dark,
       child: Scaffold(
         backgroundColor: AppColors.black,
         body: Stack(
@@ -317,7 +358,7 @@ class _StoryDetailViewState extends State<StoryDetailView>
               onLongPressEnd: (_) => _resume(),
               child: PageView.builder(
                 controller: _pageController,
-                scrollDirection: Axis.vertical,
+                scrollDirection: Axis.horizontal,
                 itemCount: _items.length,
                 onPageChanged: _onPageChanged,
                 itemBuilder: (context, index) {
@@ -336,26 +377,38 @@ class _StoryDetailViewState extends State<StoryDetailView>
                   child: AnimatedBuilder(
                     animation: _progressController,
                     builder: (context, _) {
-                      return Row(
+                      final group = _currentGroup;
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Expanded(
-                            child: _ProgressBar(
-                              progress: _progressController.value,
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          GestureDetector(
-                            onTap: () => context.pop(),
-                            behavior: HitTestBehavior.opaque,
-                            child: const Padding(
-                              padding: EdgeInsets.only(left: 4),
-                              child: Icon(
-                                Icons.close,
-                                color: AppColors.white,
-                                size: 28,
+                          Row(
+                            children: [
+                              Expanded(
+                                child: _SegmentedProgressBar(
+                                  segmentCount: group.length,
+                                  activeIndex: group.localIndex,
+                                  progress: _progressController.value,
+                                ),
                               ),
-                            ),
+                              const SizedBox(width: 10),
+                              GestureDetector(
+                                onTap: () => context.pop(),
+                                behavior: HitTestBehavior.opaque,
+                                child: const Padding(
+                                  padding: EdgeInsets.only(left: 4),
+                                  child: Icon(
+                                    Icons.close,
+                                    color: AppColors.white,
+                                    size: 28,
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
+                          if (_current.hasMusic) ...[
+                            const SizedBox(height: 10),
+                            _StoryMusicPill(item: _current),
+                          ],
                         ],
                       );
                     },
@@ -371,7 +424,8 @@ class _StoryDetailViewState extends State<StoryDetailView>
                 item: _current,
                 liked: _current.likedByMe,
                 likeCount: _current.likeCount,
-                showLikeCount: _current.storyId != null &&
+                showLikeCount:
+                    _current.storyId != null &&
                     _current.storyId!.trim().isNotEmpty,
                 onLike: _toggleLike,
                 onProfileTap: _openProfile,
@@ -393,8 +447,148 @@ class _StoryDetailViewState extends State<StoryDetailView>
   }
 }
 
-class _ProgressBar extends StatelessWidget {
-  const _ProgressBar({required this.progress});
+class _StoryMusicPill extends StatelessWidget {
+  const _StoryMusicPill({required this.item});
+
+  final StoryMediaItem item;
+
+  String get _title {
+    final title = item.musicTitle?.trim() ?? '';
+    if (title.isNotEmpty) return title;
+    return 'Music';
+  }
+
+  String get _subtitle {
+    final raw = item.musicArtist?.trim() ?? '';
+    if (raw.isEmpty) return '';
+    return raw
+        .replaceFirst(
+          RegExp(r'^(suno(\s*ai)?|udio)\s*[|\-–—:]\s*', caseSensitive: false),
+          '',
+        )
+        .trim();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final cover = item.musicCoverUrl?.trim() ?? '';
+    final subtitle = _subtitle;
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(999),
+      child: BackdropFilter(
+        filter: ui.ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+        child: Container(
+          height: 36,
+          padding: const EdgeInsets.fromLTRB(4, 4, 12, 4),
+          decoration: BoxDecoration(
+            color: AppColors.white.withValues(alpha: 0.20),
+            borderRadius: BorderRadius.circular(999),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ClipOval(
+                child: cover.startsWith('http')
+                    ? Image.network(
+                        cover,
+                        width: 28,
+                        height: 28,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, _, _) => Image.asset(
+                          AssetPaths.stamp13,
+                          width: 28,
+                          height: 28,
+                          fit: BoxFit.cover,
+                        ),
+                      )
+                    : Image.asset(
+                        cover.isEmpty ? AssetPaths.stamp13 : cover,
+                        width: 28,
+                        height: 28,
+                        fit: BoxFit.cover,
+                      ),
+              ),
+              const SizedBox(width: 8),
+              ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 140),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      _title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontFamily: 'SF Pro',
+                        fontSize: 14,
+                        fontWeight: FontWeight.w400,
+                        height: 16 / 14,
+                        letterSpacing: -0.28,
+                        color: AppColors.white,
+                      ),
+                    ),
+                    if (subtitle.isNotEmpty)
+                      Text(
+                        subtitle,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontFamily: 'SF Pro',
+                          fontSize: 10,
+                          fontWeight: FontWeight.w500,
+                          height: 12 / 10,
+                          letterSpacing: -0.2,
+                          color: Color(0xFFB3B3B3),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _SegmentedProgressBar extends StatelessWidget {
+  const _SegmentedProgressBar({
+    required this.segmentCount,
+    required this.activeIndex,
+    required this.progress,
+  });
+
+  final int segmentCount;
+  final int activeIndex;
+  final double progress;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        for (var i = 0; i < segmentCount; i++) ...[
+          if (i > 0) const SizedBox(width: 4),
+          Expanded(
+            child: _ProgressSegment(
+              progress: i < activeIndex
+                  ? 1
+                  : i == activeIndex
+                  ? progress
+                  : 0,
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+class _ProgressSegment extends StatelessWidget {
+  const _ProgressSegment({required this.progress});
 
   final double progress;
 
@@ -464,10 +658,7 @@ class _BottomOverlay extends StatelessWidget {
                     behavior: HitTestBehavior.opaque,
                     child: Row(
                       children: [
-                        ProfileAvatar(
-                          path: item.avatarPath,
-                          size: 34,
-                        ),
+                        ProfileAvatar(path: item.avatarPath, size: 34),
                         const SizedBox(width: 10),
                         Flexible(
                           child: Text(

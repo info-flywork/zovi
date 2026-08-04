@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:zovi/core/di/injection.dart';
+import 'package:zovi/core/push/push_notification_service.dart';
 import 'package:zovi/core/theme/app_colors.dart';
 import 'package:zovi/core/utils/constants/asset_paths.dart';
 import 'package:zovi/core/utils/enum/route_paths.dart';
@@ -259,7 +260,10 @@ class _SettingsViewState extends State<SettingsView>
     final confirmed = await showLogoutSheet(context);
     if (!confirmed || !mounted) return;
     try {
-      await getIt<AuthRepository>().logout().withLoading(context);
+      final logout = getIt<AuthRepository>().logout();
+      await getIt<PushNotificationService>().logout();
+      if (!mounted) return;
+      await logout.withLoading(context);
       getIt<UserRepository>().clearSessionCache();
       if (!mounted) return;
       context.go(RoutePaths.onboarding.path);

@@ -6,15 +6,21 @@ class ProfileStats extends StatelessWidget {
   final UserProfile user;
 
   void _openConnections(BuildContext context, ProfileConnectionsTab tab) {
-    context.push(
-      RoutePaths.profileConnections.path,
-      extra: ProfileConnectionsRouteArgs(
-        username: user.usernameHandle,
-        followersCount: user.followers,
-        friendsCount: user.friends,
-        initialTab: tab,
-      ),
-    );
+    final userId = getIt<AuthRepository>().backendUserId?.trim() ?? '';
+    final bloc = context.read<ProfileBloc>();
+    context
+        .push(
+          RoutePaths.profileConnections.path,
+          extra: ProfileConnectionsRouteArgs(
+            name: user.name,
+            userId: userId,
+            followersCount: user.followers,
+            friendsCount: user.friends,
+            isOwnProfile: true,
+            initialTab: tab,
+          ),
+        )
+        .then((_) => bloc.add(const ProfileRefreshRequested()));
   }
 
   @override

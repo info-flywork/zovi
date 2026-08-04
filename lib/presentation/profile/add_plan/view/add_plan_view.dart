@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -19,7 +21,8 @@ enum _PlanCategory {
   cafe('category_cafe', '☕'),
   park('category_park', '🏞️'),
   culture('category_culture', '🏛️'),
-  restaurant('category_restaurant', '🍕');
+  restaurant('category_restaurant', '🍕'),
+  gym('category_gym', '🏋️');
 
   const _PlanCategory(this.labelKey, this.emoji);
   final String labelKey;
@@ -45,7 +48,27 @@ class _AddPlanViewState extends State<AddPlanView> {
   @override
   void initState() {
     super.initState();
-    _loadNearbyPlans();
+    final cached = getIt<UserRepository>().peekNearbyAddPlanPlaces(limit: 40);
+    if (cached.isNotEmpty) {
+      _plans = [
+        for (final item in cached) _mapNearbyPlace(item),
+      ];
+      _isLoadingPlans = false;
+    }
+    unawaited(_loadNearbyPlans(silent: cached.isNotEmpty));
+  }
+
+  static AddPlanPlace _mapNearbyPlace(NearbyAddPlanPlace item) {
+    return AddPlanPlace(
+      categoryKey: item.categoryKey,
+      placeName: item.placeName,
+      subtitle: item.subtitle,
+      distanceLabel: item.distanceLabel,
+      friendAvatars: item.friendAvatars,
+      friendsLabel: item.friendsLabel,
+      lat: item.lat,
+      lng: item.lng,
+    );
   }
 
   List<AddPlanPlace> get _filteredPlans {
@@ -62,62 +85,26 @@ class _AddPlanViewState extends State<AddPlanView> {
     }).toList();
   }
 
-  Future<void> _loadNearbyPlans() async {
-    setState(() => _isLoadingPlans = true);
+  Future<void> _loadNearbyPlans({bool silent = false}) async {
+    if (!silent && mounted) {
+      setState(() => _isLoadingPlans = true);
+    }
     try {
       final repo = getIt<UserRepository>();
-      final firstBatch = await repo.getNearbyAddPlanPlaces(limit: 10);
+      final fetched = await repo.getNearbyAddPlanPlaces(limit: 40);
       if (!mounted) return;
       setState(() {
-        _plans = firstBatch
-            .map(
-              (item) => AddPlanPlace(
-                categoryKey: item.categoryKey,
-                placeName: item.placeName,
-                subtitle: item.subtitle,
-                distanceLabel: item.distanceLabel,
-                friendAvatars: item.friendAvatars,
-                friendsLabel: item.friendsLabel,
-              ),
-            )
-            .toList();
+        if (fetched.isNotEmpty) {
+          _plans = [for (final item in fetched) _mapNearbyPlace(item)];
+        }
         _isLoadingPlans = false;
       });
-      _loadRemainingNearbyPlans();
     } catch (_) {
       if (kDebugMode) {
         debugPrint('AddPlanView: nearby places fetch failed');
       }
       if (!mounted) return;
-      setState(() {
-        _plans = const [];
-        _isLoadingPlans = false;
-      });
-    }
-  }
-
-  Future<void> _loadRemainingNearbyPlans() async {
-    try {
-      final fetched = await getIt<UserRepository>().getNearbyAddPlanPlaces(
-        limit: 20,
-      );
-      if (!mounted) return;
-      setState(() {
-        _plans = fetched
-            .map(
-              (item) => AddPlanPlace(
-                categoryKey: item.categoryKey,
-                placeName: item.placeName,
-                subtitle: item.subtitle,
-                distanceLabel: item.distanceLabel,
-                friendAvatars: item.friendAvatars,
-                friendsLabel: item.friendsLabel,
-              ),
-            )
-            .toList();
-      });
-    } catch (_) {
-      // Keep first batch visible.
+      setState(() => _isLoadingPlans = false);
     }
   }
 

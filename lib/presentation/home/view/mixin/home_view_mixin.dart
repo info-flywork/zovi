@@ -1,46 +1,8 @@
 part of '../home_view.dart';
 
 mixin HomeViewMixin on State<HomeView> {
-  static bool _didShowDemoFriendCheckIn = false;
-
   void showErrorSnackbar(String message) {
     AppSnackbar.instance.show(context, message, isError: true);
-  }
-
-  void maybeShowDemoFriendCheckIn() {
-    if (_didShowDemoFriendCheckIn) return;
-    _didShowDemoFriendCheckIn = true;
-
-    Future<void>.delayed(const Duration(seconds: 4), () {
-      if (!mounted) return;
-      final repo = getIt<UserRepository>();
-      final updated = repo.applyFriendCheckIn(
-        name: 'Sona',
-        checkIn: const FriendMapCheckIn(
-          photoPaths: [AssetPaths.mapSecond, AssetPaths.pulse2],
-          stampImagePath: AssetPaths.stamp7,
-          placeName: 'Babylon Istanbul',
-        ),
-        distanceMeters: 800,
-        etaMinutes: 12,
-      );
-      if (updated == null) return;
-
-      AppInAppNotification.instance.show(
-        InAppNotificationData(
-          username: updated.name,
-          displayName: updated.name,
-          messageKey: 'in_app_checked_in_at',
-          messageNamedArgs: {'place': updated.checkIn!.placeName},
-          subtitleKey: 'in_app_meters_away',
-          subtitleNamedArgs: {
-            'meters': '${updated.distanceMeters ?? 800}',
-          },
-          avatarPath: updated.avatarPath,
-          showGradientRing: true,
-        ),
-      );
-    });
   }
 
   Future<void> onStoryTap(StoryPreview story) async {
@@ -83,9 +45,14 @@ mixin HomeViewMixin on State<HomeView> {
     context.read<HomeBloc>().add(const HomeStoriesRefreshRequested());
   }
 
-  void onAddTap() async {
-    final continued = await showFirstCheckInSheet(context);
-    if (continued != true || !mounted) return;
+  Future<void> onAddTap() async {
+    final user = getIt<UserRepository>().currentUserListenable.value;
+    final isFirstCheckIn = (user?.checkIns ?? 0) <= 0;
+
+    if (isFirstCheckIn) {
+      final continued = await showFirstCheckInSheet(context);
+      if (continued != true || !mounted) return;
+    }
 
     await showCheckInCreateSheet(context);
   }

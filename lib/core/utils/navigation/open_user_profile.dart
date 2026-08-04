@@ -7,6 +7,8 @@ import 'package:zovi/presentation/profile/user_profile/model/user_profile_route_
 
 /// Pushes the public profile immediately (no await on network).
 /// [seed] fills avatar/name from story/chat so the first frame isn't empty.
+/// Completes when the profile route is popped, so callers (e.g. the story
+/// viewer) can keep their media paused for as long as the profile is on top.
 Future<void> openUserProfile(
   BuildContext context,
   String usernameOrName, {
@@ -24,7 +26,7 @@ Future<void> openUserProfile(
       PublicUserProfile.skeleton(username: handle);
 
   if (!context.mounted) return;
-  context.push(
+  await context.push(
     RoutePaths.userProfile.path,
     extra: UserProfileRouteArgs(user: initial),
   );

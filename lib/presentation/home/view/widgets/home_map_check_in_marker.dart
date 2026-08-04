@@ -32,7 +32,9 @@ class HomeMapCheckInMarker extends StatelessWidget {
       photoPaths = friend.checkIn?.photoPaths ?? const [],
       stampImagePath = friend.checkIn?.stampImagePath ?? AssetPaths.stamp1,
       photoIndexListenable = getIt<UserRepository>()
-          .friendCheckInPhotoIndexListenable(friend.name);
+          .friendCheckInPhotoIndexListenable(
+            friend.userId.isNotEmpty ? friend.userId : friend.name,
+          );
 
   final String avatarPath;
   final List<String> photoPaths;
@@ -334,9 +336,22 @@ class _CheckInCyclingPhotoState extends State<CheckInCyclingPhoto> {
             (outerRadius.topLeft.x - pad).clamp(0.0, 999.0),
           );
 
-    final image = ActiveMapCheckIn.isFilePath(path)
-        ? Image.file(File(path), fit: BoxFit.cover)
-        : Image.asset(path, fit: BoxFit.cover);
+    final image = path.startsWith('http://') || path.startsWith('https://')
+        ? Image.network(
+            path,
+            fit: BoxFit.cover,
+            errorBuilder: (_, _, _) => ColoredBox(
+              color: AppColors.surfaceGray,
+              child: Icon(
+                Icons.image_outlined,
+                color: AppColors.mutedGray,
+                size: widget.size * 0.4,
+              ),
+            ),
+          )
+        : ActiveMapCheckIn.isFilePath(path)
+            ? Image.file(File(path), fit: BoxFit.cover)
+            : Image.asset(path, fit: BoxFit.cover);
 
     final clipped = widget.shape == BoxShape.circle
         ? ClipOval(child: image)

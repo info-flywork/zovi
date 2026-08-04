@@ -42,17 +42,18 @@ class HomeMapVenueMarker extends StatelessWidget {
                   color: AppColors.black,
                 ),
               ),
-              Text(
-                'map_venue_people'.tr(
-                  namedArgs: {'count': '${venue.peopleCount}'},
+              if (venue.peopleCount > 0)
+                Text(
+                  'map_venue_people'.tr(
+                    namedArgs: {'count': '${venue.peopleCount}'},
+                  ),
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                    height: 16 / 12,
+                    color: AppColors.black.withValues(alpha: 0.65),
+                  ),
                 ),
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w500,
-                  height: 16 / 12,
-                  color: AppColors.black.withValues(alpha: 0.65),
-                ),
-              ),
             ],
           ),
         ],

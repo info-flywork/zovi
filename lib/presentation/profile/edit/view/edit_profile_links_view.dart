@@ -29,12 +29,13 @@ class _EditProfileLinksViewState extends State<EditProfileLinksView> {
   }
 
   Future<void> _addLink() async {
-    final link = await context.push<ProfileLink>(
+    final updatedLinks = await context.push<List<ProfileLink>>(
       RoutePaths.addProfileLink.path,
+      extra: _links,
     );
-    if (link == null || !mounted) return;
+    if (updatedLinks == null || !mounted) return;
 
-    setState(() => _links = [..._links, link]);
+    setState(() => _links = updatedLinks);
     AppSnackbar.instance.showLinkAdded(
       context,
       'link_added_snackbar'.tr(),

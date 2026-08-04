@@ -5,11 +5,9 @@ import 'package:go_router/go_router.dart';
 import 'package:zovi/core/in_app_notification/in_app_notification_banner.dart';
 import 'package:zovi/core/in_app_notification/in_app_notification_data.dart';
 import 'package:zovi/core/router/app_router.dart';
-import 'package:zovi/core/utils/constants/asset_paths.dart';
 import 'package:zovi/core/utils/enum/route_paths.dart';
-import 'package:zovi/domain/user/user_repository.dart';
+import 'package:zovi/core/utils/navigation/open_story_by_id.dart';
 import 'package:zovi/presentation/chat/model/chat_detail_route_args.dart';
-import 'package:zovi/presentation/stories/model/story_detail_route_args.dart';
 
 class AppInAppNotification {
   AppInAppNotification._();
@@ -21,17 +19,19 @@ class AppInAppNotification {
 
   bool get isVisible => _entry != null;
 
-  void show(
+  /// Returns false when there is no overlay to draw into, so push handlers can
+  /// fall back to the system notification instead of swallowing it.
+  bool show(
     InAppNotificationData data, {
     Duration displayDuration = const Duration(seconds: 4),
     Alignment alignment = Alignment.topCenter,
   }) {
     final context = AppRouter.rootKey.currentContext;
-    if (context == null) return;
+    if (context == null) return false;
 
     final overlay = Overlay.maybeOf(context, rootOverlay: true) ??
         AppRouter.rootKey.currentState?.overlay;
-    if (overlay == null) return;
+    if (overlay == null) return false;
 
     // Önceki banner’ı senkron kaldır; async race olmasın.
     _autoHide?.cancel();
@@ -55,6 +55,7 @@ class AppInAppNotification {
     overlay.insert(_entry!);
 
     _autoHide = Timer(displayDuration, hide);
+    return true;
   }
 
   Future<void> hide({bool immediate = false}) async {
@@ -97,25 +98,16 @@ class AppInAppNotification {
             name: data.displayName ?? data.username,
             username: data.username,
             avatarPath: data.avatarPath,
+            userId: data.userId,
+            conversationId: data.conversationId,
+            isRequest: data.isRequest,
           ),
         );
       case InAppNotificationAction.openStory:
         hide(immediate: true);
-        final imagePath = data.storyImagePath ?? AssetPaths.storyJulia;
-        context.push(
-          RoutePaths.storyDetail.path,
-          extra: StoryDetailRouteArgs(
-            items: [
-              StoryMediaItem(
-                imagePath: imagePath,
-                label: data.displayName ?? data.username,
-                avatarPath: data.avatarPath,
-                isReel: false,
-              ),
-            ],
-            initialIndex: 0,
-          ),
-        );
+        final storyId = data.storyId.trim();
+        if (storyId.isEmpty) return;
+        unawaited(openStoryById(context, storyId: storyId));
       case InAppNotificationAction.none:
         break;
     }

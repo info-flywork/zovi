@@ -3,6 +3,38 @@ import 'package:zovi/core/theme/app_colors.dart';
 import 'package:zovi/core/utils/constants/asset_paths.dart';
 import 'package:zovi/core/widgets/app_icon.dart';
 
+/// Height + fade insert/remove without [SizeTransition]'s ClipRect, so
+/// horizontal swipe overflow stays visible.
+class ChatListItemTransition extends StatelessWidget {
+  const ChatListItemTransition({
+    required this.animation,
+    required this.child,
+    super.key,
+  });
+
+  final Animation<double> animation;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return FadeTransition(
+      opacity: animation,
+      child: AnimatedBuilder(
+        animation: animation,
+        builder: (context, child) {
+          final t = animation.value.clamp(0.0, 1.0);
+          return Align(
+            alignment: Alignment.topCenter,
+            heightFactor: t <= 0 ? 0.0001 : t,
+            child: child,
+          );
+        },
+        child: child,
+      ),
+    );
+  }
+}
+
 /// Sola kaydırınca kart kayar, sağda yuvarlatılmış çöp alanı açılır ve açık kalır.
 class ChatSwipeDeleteTile extends StatefulWidget {
   const ChatSwipeDeleteTile({
@@ -62,52 +94,51 @@ class _ChatSwipeDeleteTileState extends State<ChatSwipeDeleteTile> {
 
   @override
   Widget build(BuildContext context) {
-    return ClipRect(
-      child: Stack(
-        alignment: Alignment.centerRight,
-        children: [
-          Positioned(
-            right: 0,
-            top: 0,
-            bottom: 0,
-            child: GestureDetector(
-              onTap: widget.onDeleteTap,
-              behavior: HitTestBehavior.opaque,
-              child: Container(
-                width: ChatSwipeDeleteTile.actionWidth,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFEC1C24),
-                  borderRadius: BorderRadius.circular(18),
-                ),
-                alignment: Alignment.center,
-                child: Opacity(
-                  opacity: (_offset / ChatSwipeDeleteTile.actionWidth)
-                      .clamp(0.0, 1.0),
-                  child: const AppIcon(
-                    AssetPaths.iconTrash,
-                    size: 26,
-                    color: AppColors.white,
-                  ),
+    return Stack(
+      clipBehavior: Clip.none,
+      alignment: Alignment.centerRight,
+      children: [
+        Positioned(
+          right: 0,
+          top: 0,
+          bottom: 0,
+          child: GestureDetector(
+            onTap: widget.onDeleteTap,
+            behavior: HitTestBehavior.opaque,
+            child: Container(
+              width: ChatSwipeDeleteTile.actionWidth,
+              decoration: BoxDecoration(
+                color: const Color(0xFFEC1C24),
+                borderRadius: BorderRadius.circular(18),
+              ),
+              alignment: Alignment.center,
+              child: Opacity(
+                opacity: (_offset / ChatSwipeDeleteTile.actionWidth)
+                    .clamp(0.0, 1.0),
+                child: const AppIcon(
+                  AssetPaths.iconTrash,
+                  size: 26,
+                  color: AppColors.white,
                 ),
               ),
             ),
           ),
-          GestureDetector(
-            onHorizontalDragUpdate: _onDragUpdate,
-            onHorizontalDragEnd: _onDragEnd,
-            child: Transform.translate(
-              offset: Offset(-_offset, 0),
-              child: ColoredBox(
-                color: AppColors.white,
-                child: SizedBox(
-                  width: double.infinity,
-                  child: widget.child,
-                ),
+        ),
+        GestureDetector(
+          onHorizontalDragUpdate: _onDragUpdate,
+          onHorizontalDragEnd: _onDragEnd,
+          child: Transform.translate(
+            offset: Offset(-_offset, 0),
+            child: ColoredBox(
+              color: AppColors.white,
+              child: SizedBox(
+                width: double.infinity,
+                child: widget.child,
               ),
             ),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }

@@ -6,6 +6,7 @@ import 'package:zovi/core/di/injection.dart';
 import 'package:zovi/core/theme/app_colors.dart';
 import 'package:zovi/core/utils/constants/asset_paths.dart';
 import 'package:zovi/core/widgets/app_icon.dart';
+import 'package:zovi/core/widgets/app_loading.dart';
 import 'package:zovi/core/widgets/stamp_image.dart';
 import 'package:zovi/domain/auth/auth_repository.dart';
 import 'package:zovi/presentation/camera/utils/camera_drafts.dart';
@@ -147,11 +148,9 @@ class _CameraDraftsSheetState extends State<CameraDraftsSheet> {
                   ),
                   Expanded(
                     child: _loading || _opening
-                        ? const Center(
-                            child: CircularProgressIndicator(
-                              color: AppColors.white,
-                              strokeWidth: 2,
-                            ),
+                        ? const AppLoading(
+                            color: AppColors.white,
+                            strokeWidth: 2,
                           )
                         : _loadFailed
                         ? CustomScrollView(

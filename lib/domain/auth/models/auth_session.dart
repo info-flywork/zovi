@@ -10,6 +10,7 @@ class AuthSession {
     required this.onboardingDone,
     this.created = false,
     this.primaryAuth = '',
+    this.userId = '',
   });
 
   factory AuthSession.fromJson(Map<String, dynamic> json) {
@@ -26,6 +27,7 @@ class AuthSession {
       isProfileComplete: profileMap?['isProfileComplete'] == true,
       onboardingDone: onboardingMap?['onboardingDone'] == true,
       primaryAuth: (userMap?['primaryAuth'] as String?)?.trim() ?? '',
+      userId: (userMap?['id'] as String?)?.trim() ?? '',
     );
   }
 
@@ -34,6 +36,7 @@ class AuthSession {
   final bool isProfileComplete;
   final bool onboardingDone;
   final String primaryAuth;
+  final String userId;
 
   SignupFlow get signupFlow =>
       primaryAuth == 'phone' ? SignupFlow.phone : SignupFlow.social;

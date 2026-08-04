@@ -10,6 +10,7 @@ import 'package:zovi/core/di/injection.dart';
 import 'package:zovi/core/theme/app_colors.dart';
 import 'package:zovi/core/utils/constants/asset_paths.dart';
 import 'package:zovi/core/widgets/app_icon.dart';
+import 'package:zovi/core/widgets/app_loading.dart';
 import 'package:zovi/core/widgets/app_search_field.dart';
 import 'package:zovi/domain/auth/auth_repository.dart';
 
@@ -45,12 +46,35 @@ class CameraMusicTrack {
   final String audioUrl;
 
   String get artistGenre {
-    if (genre.trim().isEmpty) return artist;
-    return '$artist | $genre';
+    final g = _stripMusicProviderPrefix(genre);
+    if (g.isNotEmpty) return g;
+    final a = _stripMusicProviderPrefix(artist);
+    if (_isGenericMusicProvider(a)) return '';
+    return a;
   }
 
   bool get hasNetworkCover =>
       coverUrl.startsWith('http://') || coverUrl.startsWith('https://');
+}
+
+String _stripMusicProviderPrefix(String value) {
+  return value
+      .trim()
+      .replaceFirst(
+        RegExp(r'^(suno(\s*ai)?|udio)\s*[|\-–—:]\s*', caseSensitive: false),
+        '',
+      )
+      .trim();
+}
+
+bool _isGenericMusicProvider(String value) {
+  final n = value.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '');
+  return n.isEmpty ||
+      n == 'suno' ||
+      n == 'sunoai' ||
+      n.startsWith('suno') ||
+      n == 'udio' ||
+      n == 'ai';
 }
 
 class CameraMusicSelection {
@@ -120,9 +144,9 @@ class _CameraMusicSheetState extends State<CameraMusicSheet> {
         _hasMore = true;
         _nextOffset = 0;
         if (cached != null && cached.tracks.isNotEmpty) {
-          _tracks = cached.tracks
-              .map(CameraMusicTrack.fromItem)
-              .toList(growable: false);
+          _tracks = _dedupeTracks(
+            cached.tracks.map(CameraMusicTrack.fromItem),
+          );
           _hasMore = cached.hasMore;
           _nextOffset = cached.nextOffset;
           _isLoading = false;
@@ -164,7 +188,9 @@ class _CameraMusicSheetState extends State<CameraMusicSheet> {
           .map(CameraMusicTrack.fromItem)
           .toList(growable: false);
       setState(() {
-        _tracks = reset ? mapped : [..._tracks, ...mapped];
+        _tracks = reset
+            ? _dedupeTracks(mapped)
+            : _dedupeTracks([..._tracks, ...mapped]);
         _hasMore = page.hasMore;
         _nextOffset = page.nextOffset;
         _isLoading = false;
@@ -181,6 +207,22 @@ class _CameraMusicSheetState extends State<CameraMusicSheet> {
         _isLoadingMore = false;
       });
     }
+  }
+
+  /// Keeps first occurrence per id / normalized title (Suno often returns
+  /// multiple clips of the same song with different durations).
+  List<CameraMusicTrack> _dedupeTracks(Iterable<CameraMusicTrack> tracks) {
+    final seenIds = <String>{};
+    final seenTitles = <String>{};
+    final out = <CameraMusicTrack>[];
+    for (final track in tracks) {
+      final id = track.id.trim();
+      final titleKey = track.title.trim().toLowerCase();
+      if (id.isNotEmpty && !seenIds.add(id)) continue;
+      if (titleKey.isNotEmpty && !seenTitles.add(titleKey)) continue;
+      out.add(track);
+    }
+    return List<CameraMusicTrack>.unmodifiable(out);
   }
 
   @override
@@ -316,15 +358,10 @@ class _MusicListSheetState extends State<_MusicListSheet> {
                   ),
                   Expanded(
                     child: widget.isLoading
-                        ? const Center(
-                            child: SizedBox(
-                              width: 28,
-                              height: 28,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2.4,
-                                color: AppColors.white,
-                              ),
-                            ),
+                        ? const AppLoading(
+                            size: 28,
+                            strokeWidth: 2.4,
+                            color: AppColors.white,
                           )
                         : widget.hasError
                         ? Center(
@@ -360,15 +397,10 @@ class _MusicListSheetState extends State<_MusicListSheet> {
                               if (index >= widget.tracks.length) {
                                 return const Padding(
                                   padding: EdgeInsets.symmetric(vertical: 8),
-                                  child: Center(
-                                    child: SizedBox(
-                                      width: 22,
-                                      height: 22,
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 2.2,
-                                        color: AppColors.white,
-                                      ),
-                                    ),
+                                  child: AppLoading(
+                                    size: 22,
+                                    strokeWidth: 2.2,
+                                    color: AppColors.white,
                                   ),
                                 );
                               }

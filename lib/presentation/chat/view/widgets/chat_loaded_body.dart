@@ -2,6 +2,8 @@ part of '../chat_view.dart';
 
 class _ChatPreview {
   const _ChatPreview({
+    required this.conversationId,
+    required this.userId,
     required this.name,
     required this.username,
     required this.avatarPath,
@@ -9,18 +11,37 @@ class _ChatPreview {
     required this.isUnread,
   });
 
+  factory _ChatPreview.fromConversation(ChatConversation c) {
+    final name = c.peer.name.trim().isNotEmpty
+        ? c.peer.name.trim()
+        : (c.peer.username.trim().isNotEmpty ? c.peer.username : 'user');
+    return _ChatPreview(
+      conversationId: c.id,
+      userId: c.peer.userId,
+      name: name,
+      username: c.peer.username,
+      avatarPath: c.peer.avatarUrl,
+      preview: c.lastMessagePreview,
+      isUnread: c.isUnread,
+    );
+  }
+
+  final String conversationId;
+  final String userId;
   final String name;
   final String username;
   final String avatarPath;
   final String preview;
   final bool isUnread;
 
-  _ChatPreview copyWith({bool? isUnread}) {
+  _ChatPreview copyWith({bool? isUnread, String? preview}) {
     return _ChatPreview(
+      conversationId: conversationId,
+      userId: userId,
       name: name,
       username: username,
       avatarPath: avatarPath,
-      preview: preview,
+      preview: preview ?? this.preview,
       isUnread: isUnread ?? this.isUnread,
     );
   }
@@ -33,45 +54,80 @@ class ChatLoadedBody extends StatefulWidget {
   State<ChatLoadedBody> createState() => _ChatLoadedBodyState();
 }
 
-class _ChatLoadedBodyState extends State<ChatLoadedBody> {
+class _ChatLoadedBodyState extends State<ChatLoadedBody>
+    with WidgetsBindingObserver {
   static const _removeDuration = Duration(milliseconds: 280);
+  static const _pollInterval = Duration(seconds: 8);
 
-  late final List<_ChatPreview> _chats = [
-    const _ChatPreview(
-      name: 'Sona Iglesias',
-      username: 'sonaiglesias',
-      avatarPath: AssetPaths.avatarSona,
-      preview: 'Hey!',
-      isUnread: true,
-    ),
-    const _ChatPreview(
-      name: 'Jessica Blues',
-      username: 'jessicablues',
-      avatarPath: AssetPaths.avatarJessica,
-      preview: 'Hey! I was about to explode with boredom.',
-      isUnread: false,
-    ),
-  ];
-
-  late List<ChatRequestItem> _requests = [
-    const ChatRequestItem(
-      name: 'Julia Ivanova',
-      username: 'juliaivanova',
-      avatarPath: AssetPaths.avatarJulia,
-      preview:
-          'Hey! I was about to explode with boredom. Your energy has reached me!',
-    ),
-  ];
-
+  final _repo = getIt<ChatRepository>();
+  final List<_ChatPreview> _chats = [];
+  List<ChatRequestItem> _requests = [];
   late List<_ChatPreview> _visibleChats;
   var _listKey = GlobalKey<AnimatedListState>();
   var _query = '';
+  var _loading = true;
   String? _openedSwipeUsername;
+  Timer? _poll;
 
   @override
   void initState() {
     super.initState();
-    _visibleChats = List<_ChatPreview>.from(_chats);
+    WidgetsBinding.instance.addObserver(this);
+    _visibleChats = [];
+    unawaited(_refresh());
+    _poll = Timer.periodic(
+      _pollInterval,
+      (_) => unawaited(_refresh(silent: true)),
+    );
+  }
+
+  @override
+  void dispose() {
+    _poll?.cancel();
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) unawaited(_refresh(silent: true));
+  }
+
+  Future<void> _refresh({bool silent = false}) async {
+    try {
+      final results = await Future.wait([
+        _repo.listConversations(folder: 'inbox'),
+        _repo.listConversations(folder: 'request'),
+      ]);
+      if (!mounted) return;
+      final inbox = results[0];
+      final requests = results[1];
+      setState(() {
+        _chats
+          ..clear()
+          ..addAll(inbox.map(_ChatPreview.fromConversation));
+        _requests = [
+          for (final c in requests)
+            ChatRequestItem(
+              conversationId: c.id,
+              userId: c.peer.userId,
+              name: c.peer.name.trim().isNotEmpty
+                  ? c.peer.name.trim()
+                  : c.peer.username,
+              username: c.peer.username,
+              avatarPath: c.peer.avatarUrl,
+              preview: c.lastMessagePreview,
+              isUnread: c.isUnread,
+            ),
+        ];
+        _visibleChats = _filter(_query);
+        if (!silent) _listKey = GlobalKey<AnimatedListState>();
+        _loading = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      if (!silent) setState(() => _loading = false);
+    }
   }
 
   List<_ChatPreview> _filter(String query) {
@@ -106,20 +162,12 @@ class _ChatLoadedBodyState extends State<ChatLoadedBody> {
         name: chat.name,
         username: chat.username,
         avatarPath: chat.avatarPath,
+        userId: chat.userId,
+        conversationId: chat.conversationId,
       ),
     );
     if (!mounted) return;
-    final index = _chats.indexWhere((c) => c.username == chat.username);
-    if (index < 0 || !_chats[index].isUnread) return;
-    setState(() {
-      _chats[index] = _chats[index].copyWith(isUnread: false);
-      final visibleIndex = _visibleChats.indexWhere(
-        (c) => c.username == chat.username,
-      );
-      if (visibleIndex >= 0) {
-        _visibleChats[visibleIndex] = _chats[index];
-      }
-    });
+    unawaited(_refresh(silent: true));
   }
 
   Future<void> _confirmDeleteChat(_ChatPreview chat) async {
@@ -131,11 +179,13 @@ class _ChatLoadedBodyState extends State<ChatLoadedBody> {
     );
     if (!confirmed || !mounted) return;
 
-    final index = _visibleChats.indexWhere((c) => c.username == chat.username);
+    final index = _visibleChats.indexWhere(
+      (c) => c.conversationId == chat.conversationId,
+    );
     if (index < 0) return;
 
     final removed = _visibleChats.removeAt(index);
-    _chats.removeWhere((c) => c.username == removed.username);
+    _chats.removeWhere((c) => c.conversationId == removed.conversationId);
     _openedSwipeUsername = null;
 
     _listKey.currentState?.removeItem(
@@ -149,6 +199,14 @@ class _ChatLoadedBodyState extends State<ChatLoadedBody> {
       Future<void>.delayed(_removeDuration, () {
         if (mounted) setState(() {});
       });
+    } else {
+      setState(() {});
+    }
+
+    try {
+      await _repo.deleteConversation(chat.conversationId);
+    } catch (_) {
+      unawaited(_refresh());
     }
   }
 
@@ -157,15 +215,18 @@ class _ChatLoadedBodyState extends State<ChatLoadedBody> {
       RoutePaths.chatRequests.path,
       extra: ChatRequestsRouteArgs(requests: _requests),
     );
-    if (!mounted || updated == null) return;
-    setState(() => _requests = updated);
+    if (!mounted) return;
+    if (updated != null) {
+      setState(() => _requests = updated);
+    }
+    unawaited(_refresh(silent: true));
   }
 
   @override
   Widget build(BuildContext context) {
     final requestCount = _requests.length;
     final hasRequests = requestCount > 0;
-    final isEmpty = _visibleChats.isEmpty;
+    final isEmpty = !_loading && _visibleChats.isEmpty;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -232,46 +293,46 @@ class _ChatLoadedBodyState extends State<ChatLoadedBody> {
         ),
         const SizedBox(height: 16),
         Expanded(
-          child: isEmpty
+          child: _loading
+              ? const AppLoading(size: 28)
+              : isEmpty
               ? _ChatEmptyState(isSearching: _query.trim().isNotEmpty)
               : AnimatedList(
                   key: _listKey,
+                  clipBehavior: Clip.none,
                   physics: const ClampingScrollPhysics(),
-                  padding: EdgeInsets.fromLTRB(
-                    16,
-                    0,
-                    16,
-                    MainWrapper.navBarHeight +
+                  padding: EdgeInsets.only(
+                    bottom:
+                        MainWrapper.navBarHeight +
                         MediaQuery.paddingOf(context).bottom,
                   ),
                   initialItemCount: _visibleChats.length,
                   itemBuilder: (context, index, animation) {
                     final chat = _visibleChats[index];
                     return Padding(
-                      padding: EdgeInsets.only(
-                        bottom: index == _visibleChats.length - 1 ? 0 : 16,
+                      padding: EdgeInsets.fromLTRB(
+                        16,
+                        0,
+                        16,
+                        index == _visibleChats.length - 1 ? 0 : 16,
                       ),
-                      child: SizeTransition(
-                        sizeFactor: animation,
-                        alignment: Alignment(-1, 0),
-                        child: FadeTransition(
-                          opacity: animation,
-                          child: ChatSwipeDeleteTile(
-                            isOpen: _openedSwipeUsername == chat.username,
-                            onOpenChanged: (open) {
-                              setState(() {
-                                _openedSwipeUsername = open
-                                    ? chat.username
-                                    : null;
-                              });
-                            },
-                            onDeleteTap: () => _confirmDeleteChat(chat),
-                            child: _ChatTile(
-                              chat: chat,
-                              onTap: () => _openChat(chat),
-                              onAvatarTap: () =>
-                                  openUserProfile(context, chat.username),
-                            ),
+                      child: ChatListItemTransition(
+                        animation: animation,
+                        child: ChatSwipeDeleteTile(
+                          isOpen: _openedSwipeUsername == chat.username,
+                          onOpenChanged: (open) {
+                            setState(() {
+                              _openedSwipeUsername = open
+                                  ? chat.username
+                                  : null;
+                            });
+                          },
+                          onDeleteTap: () => _confirmDeleteChat(chat),
+                          child: _ChatTile(
+                            chat: chat,
+                            onTap: () => _openChat(chat),
+                            onAvatarTap: () =>
+                                openUserProfile(context, chat.username),
                           ),
                         ),
                       ),
@@ -292,20 +353,16 @@ class _ChatRemoveTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SizeTransition(
-      sizeFactor: animation,
-      alignment: Alignment(-1, 0),
-      child: FadeTransition(
-        opacity: animation,
-        child: SlideTransition(
-          position: Tween<Offset>(
-            begin: const Offset(-0.12, 0),
-            end: Offset.zero,
-          ).animate(animation),
-          child: Padding(
-            padding: const EdgeInsets.only(bottom: 16),
-            child: _ChatTile(chat: chat, onTap: () {}, onAvatarTap: () {}),
-          ),
+    return ChatListItemTransition(
+      animation: animation,
+      child: SlideTransition(
+        position: Tween<Offset>(
+          begin: const Offset(-0.12, 0),
+          end: Offset.zero,
+        ).animate(animation),
+        child: Padding(
+          padding: const EdgeInsets.only(bottom: 16),
+          child: _ChatTile(chat: chat, onTap: () {}, onAvatarTap: () {}),
         ),
       ),
     );
@@ -328,7 +385,7 @@ class _ChatEmptyState extends StatelessWidget {
             AppIcon(
               isSearching ? AssetPaths.iconSearch : AssetPaths.iconChat,
               size: 40,
-              color: AppColors.textSecondary,
+              color: AppColors.textTertiary,
             ),
             const SizedBox(height: 12),
             Text(
@@ -337,9 +394,7 @@ class _ChatEmptyState extends StatelessWidget {
               style: const TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w500,
-                height: 1,
-                letterSpacing: -0.32,
-                color: AppColors.textSecondary,
+                color: AppColors.textTertiary,
               ),
             ),
           ],
@@ -366,19 +421,10 @@ class _ChatTile extends StatelessWidget {
       onTap: onTap,
       behavior: HitTestBehavior.opaque,
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           GestureDetector(
             onTap: onAvatarTap,
-            behavior: HitTestBehavior.opaque,
-            child: ClipOval(
-              child: Image.asset(
-                chat.avatarPath,
-                width: 58,
-                height: 58,
-                fit: BoxFit.cover,
-              ),
-            ),
+            child: ProfileAvatar(path: chat.avatarPath, size: 56),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -387,28 +433,20 @@ class _ChatTile extends StatelessWidget {
               children: [
                 Text(
                   chat.name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
-                    height: 1,
+                    height: 1.2,
                     letterSpacing: -0.32,
-                    color: AppColors.deepRoast,
+                    color: AppColors.black,
                   ),
                 ),
                 const SizedBox(height: 4),
-                Text(
-                  chat.preview,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w400,
-                    height: 20 / 16,
-                    letterSpacing: -0.32,
-                    color: chat.isUnread
-                        ? AppColors.black
-                        : AppColors.textSecondary,
-                  ),
+                ChatLastMessagePreview(
+                  preview: chat.preview,
+                  isUnread: chat.isUnread,
                 ),
               ],
             ),
@@ -416,8 +454,8 @@ class _ChatTile extends StatelessWidget {
           if (chat.isUnread) ...[
             const SizedBox(width: 10),
             Container(
-              width: 9,
-              height: 9,
+              width: 10,
+              height: 10,
               decoration: const BoxDecoration(
                 color: AppColors.zoviOrange,
                 shape: BoxShape.circle,

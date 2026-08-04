@@ -21,6 +21,10 @@ class InAppNotificationData {
     this.storyImagePath,
     this.leadingIconPath,
     this.useFullTitle = false,
+    this.conversationId = '',
+    this.userId = '',
+    this.isRequest = false,
+    this.storyId = '',
   });
 
   final String username;
@@ -40,4 +44,12 @@ class InAppNotificationData {
 
   /// `true` ise başlık olarak `messageKey` (username namedArg ile) kullanılır.
   final bool useFullTitle;
+
+  /// Chat deep-link.
+  final String conversationId;
+  final String userId;
+  final bool isRequest;
+
+  /// Story deep-link (liked story).
+  final String storyId;
 }

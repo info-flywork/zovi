@@ -7,6 +7,7 @@ import 'package:zovi/core/theme/app_colors.dart';
 import 'package:zovi/core/utils/constants/asset_paths.dart';
 import 'package:zovi/core/utils/enum/route_paths.dart';
 import 'package:zovi/core/widgets/app_icon.dart';
+import 'package:zovi/core/widgets/app_loading.dart';
 import 'package:zovi/domain/user/user_repository.dart';
 import 'package:zovi/presentation/profile/add_plan/model/add_plan_place.dart';
 import 'package:zovi/presentation/profile/add_plan/model/add_plan_success_route_args.dart';
@@ -501,13 +502,11 @@ class _SaveButton extends StatelessWidget {
               ),
               child: Center(
                 child: isLoading
-                    ? const SizedBox(
-                        width: 22,
-                        height: 22,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2.4,
-                          color: AppColors.white,
-                        ),
+                    ? const AppLoading(
+                        size: 22,
+                        strokeWidth: 2.4,
+                        color: AppColors.white,
+                        centered: false,
                       )
                     : Text(
                         'save_plan'.tr(),

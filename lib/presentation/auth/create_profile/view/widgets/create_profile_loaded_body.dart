@@ -175,11 +175,7 @@ class _UsernameStatusRow extends StatelessWidget {
     return Row(
       children: [
         if (status == UsernameAvailabilityStatus.checking)
-          const SizedBox(
-            width: 14,
-            height: 14,
-            child: CircularProgressIndicator.adaptive(),
-          )
+          const AppLoading(size: 14, centered: false)
         else
           Icon(
             status == UsernameAvailabilityStatus.available

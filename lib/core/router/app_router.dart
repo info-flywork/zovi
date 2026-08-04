@@ -1,8 +1,10 @@
+import 'package:flutter/cupertino.dart' show CupertinoPage;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:zovi/core/di/injection.dart';
 import 'package:zovi/domain/auth/auth_repository.dart';
+import 'package:zovi/domain/user/user_repository.dart';
 import 'package:zovi/core/utils/enum/route_paths.dart';
 import 'package:zovi/core/widgets/bottom_navigation_bar/main_wrapper.dart';
 import 'package:zovi/presentation/auth/intro/bloc/intro_bloc.dart';
@@ -438,7 +440,12 @@ abstract final class AppRouter {
       GoRoute(
         path: RoutePaths.addProfileLink.path,
         name: RoutePaths.addProfileLink.name,
-        builder: (context, state) => const AddProfileLinkView(),
+        builder: (context, state) {
+          final links = state.extra;
+          return AddProfileLinkView(
+            existingLinks: links is List<ProfileLink> ? links : const [],
+          );
+        },
       ),
       GoRoute(
         path: RoutePaths.addPlan.path,
@@ -507,9 +514,13 @@ abstract final class AppRouter {
           }
           return null;
         },
-        builder: (context, state) {
+        pageBuilder: (context, state) {
           final args = state.extra! as ChatDetailRouteArgs;
-          return ChatDetailView(args: args);
+          return CupertinoPage<String?>(
+            key: state.pageKey,
+            name: state.name,
+            child: ChatDetailView(args: args),
+          );
         },
       ),
       GoRoute(
@@ -521,9 +532,13 @@ abstract final class AppRouter {
           }
           return null;
         },
-        builder: (context, state) {
+        pageBuilder: (context, state) {
           final args = state.extra! as ChatRequestsRouteArgs;
-          return ChatRequestsView(requests: args.requests);
+          return CupertinoPage<List<ChatRequestItem>>(
+            key: state.pageKey,
+            name: state.name,
+            child: ChatRequestsView(requests: args.requests),
+          );
         },
       ),
       GoRoute(

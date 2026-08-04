@@ -7,6 +7,7 @@ import 'package:zovi/core/di/injection.dart';
 import 'package:zovi/core/theme/app_colors.dart';
 import 'package:zovi/core/utils/constants/asset_paths.dart';
 import 'package:zovi/core/widgets/app_icon.dart';
+import 'package:zovi/core/widgets/app_loading.dart';
 import 'package:zovi/core/widgets/app_search_field.dart';
 import 'package:zovi/core/widgets/stamp_image.dart';
 import 'package:zovi/domain/auth/auth_repository.dart';
@@ -73,11 +74,10 @@ class _ChatStickerSheetState extends State<ChatStickerSheet> {
 
   Future<void> _loadStamps() async {
     final locale = context.locale.languageCode;
-    final peeked = _authRepository.peekOwnedPickerStamps();
-    if (peeked != null) {
-      final items = peeked.map(StampItem.fromCatalog).toList(growable: false);
+    final peeked = _authRepository.peekChatPickerStamps(locale: locale);
+    if (peeked.isNotEmpty) {
       setState(() {
-        _stamps = items;
+        _stamps = peeked.map(StampItem.fromCatalog).toList(growable: false);
         _loading = false;
         _loadFailed = false;
       });
@@ -92,11 +92,10 @@ class _ChatStickerSheetState extends State<ChatStickerSheet> {
     });
 
     try {
-      final owned = await _authRepository.fetchOwnedPickerStamps(locale: locale);
+      final items = await _authRepository.fetchChatPickerStamps(locale: locale);
       if (!mounted) return;
-      final items = owned.map(StampItem.fromCatalog).toList(growable: false);
       setState(() {
-        _stamps = items;
+        _stamps = items.map(StampItem.fromCatalog).toList(growable: false);
         _loading = false;
         _loadFailed = false;
       });
@@ -111,13 +110,13 @@ class _ChatStickerSheetState extends State<ChatStickerSheet> {
 
   Future<void> _refreshInBackground(String locale) async {
     try {
-      final owned = await _authRepository.fetchOwnedPickerStamps(
+      final items = await _authRepository.fetchChatPickerStamps(
         locale: locale,
         forceRefresh: true,
       );
       if (!mounted) return;
       setState(() {
-        _stamps = owned.map(StampItem.fromCatalog).toList(growable: false);
+        _stamps = items.map(StampItem.fromCatalog).toList(growable: false);
       });
     } catch (_) {
       // Keep peeked list.
@@ -182,14 +181,7 @@ class _ChatStickerSheetState extends State<ChatStickerSheet> {
   Widget _buildBody(ScrollController scrollController, List<StampItem> stamps) {
     if (_loading) {
       return const Center(
-        child: SizedBox(
-          width: 28,
-          height: 28,
-          child: CircularProgressIndicator(
-            strokeWidth: 2.5,
-            color: AppColors.white,
-          ),
-        ),
+        child: SizedBox(width: 28, height: 28, child: AppLoading()),
       );
     }
 
@@ -264,10 +256,7 @@ class _ChatStickerSheetState extends State<ChatStickerSheet> {
 }
 
 class _StampEmptyState extends StatelessWidget {
-  const _StampEmptyState({
-    required this.messageKey,
-    this.onRetry,
-  });
+  const _StampEmptyState({required this.messageKey, this.onRetry});
 
   final String messageKey;
   final VoidCallback? onRetry;
@@ -275,37 +264,40 @@ class _StampEmptyState extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          AppIcon(
-            AssetPaths.iconSearch,
-            size: 40,
-            color: AppColors.white.withValues(alpha: 0.55),
-          ),
-          const SizedBox(height: 12),
-          Text(
-            messageKey.tr(),
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w500,
-              height: 1,
-              letterSpacing: -0.32,
-              color: AppColors.white.withValues(alpha: 0.65),
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            AppIcon(
+              AssetPaths.iconSearch,
+              size: 40,
+              color: AppColors.white.withValues(alpha: 0.55),
             ),
-          ),
-          if (onRetry != null) ...[
-            const SizedBox(height: 16),
-            TextButton(
-              onPressed: onRetry,
-              child: Text(
-                'retry'.tr(),
-                style: const TextStyle(color: AppColors.white),
+            const SizedBox(height: 12),
+            Text(
+              messageKey.tr(),
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+                height: 1,
+                letterSpacing: -0.32,
+                color: AppColors.white.withValues(alpha: 0.65),
               ),
             ),
+            if (onRetry != null) ...[
+              const SizedBox(height: 16),
+              TextButton(
+                onPressed: onRetry,
+                child: Text(
+                  'retry'.tr(),
+                  style: const TextStyle(color: AppColors.white),
+                ),
+              ),
+            ],
           ],
-        ],
+        ),
       ),
     );
   }

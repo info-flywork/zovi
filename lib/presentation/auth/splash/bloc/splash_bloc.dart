@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:zovi/core/utils/enum/route_paths.dart';
 import 'package:zovi/domain/auth/auth_repository.dart';
@@ -7,7 +9,7 @@ import 'package:zovi/presentation/auth/splash/bloc/splash_state.dart';
 
 class SplashBloc extends Bloc<SplashEvent, SplashState> {
   SplashBloc(this._authRepository, this._userRepository)
-      : super(const SplashInitial()) {
+    : super(const SplashInitial()) {
     on<SplashStarted>(_onStarted);
   }
 
@@ -19,7 +21,6 @@ class SplashBloc extends Bloc<SplashEvent, SplashState> {
     Emitter<SplashState> emit,
   ) async {
     emit(const SplashLoading());
-    await Future<void>.delayed(const Duration(milliseconds: 500));
 
     final introDone = await _authRepository.isIntroDone();
     if (!introDone) {
@@ -30,14 +31,27 @@ class SplashBloc extends Bloc<SplashEvent, SplashState> {
     final isAuthenticated = await _authRepository.isAuthenticated();
     if (isAuthenticated) {
       try {
-        final session = await _authRepository.syncSession();
-        // Login ise profili splash'te çek — profil tab'ı loading göstermesin.
-        try {
-          await _userRepository.getCurrentUser();
-        } catch (_) {
-          // Profil fail olsa da auth akışı devam etsin.
-        }
+        final session = await _authRepository.resumeSessionForSplash();
+        // Push login zaten /auth/sync içinde unawaited çalışıyor.
         final dest = session.destination;
+        final goingHome =
+            dest.path == RoutePaths.home.path ||
+            dest.path.startsWith(RoutePaths.home.path);
+
+        if (goingHome) {
+          // Profil + stories + map friends tek Future.wait ile — ana sayfa hazır.
+          try {
+            await _userRepository.warmHomeBootstrap();
+          } catch (_) {}
+        } else {
+          unawaited(
+            _userRepository.getCurrentUser().then<void>(
+              (_) {},
+              onError: (_) {},
+            ),
+          );
+        }
+
         emit(SplashNavigateTo(dest.path, extra: dest.extra));
         return;
       } catch (_) {

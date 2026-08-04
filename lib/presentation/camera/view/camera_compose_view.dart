@@ -19,6 +19,7 @@ import 'package:zovi/core/utils/constants/asset_paths.dart';
 import 'package:zovi/core/utils/enum/route_paths.dart';
 import 'package:zovi/core/widgets/app_confirm_dialog.dart';
 import 'package:zovi/core/widgets/app_icon.dart';
+import 'package:zovi/core/widgets/app_loading.dart';
 import 'package:zovi/core/widgets/stamp_image.dart';
 import 'package:zovi/domain/user/user_repository.dart';
 import 'package:zovi/presentation/camera/model/camera_compose_route_args.dart';
@@ -605,7 +606,7 @@ class _CameraComposeViewState extends State<CameraComposeView> {
     final hideChrome = _isDragging;
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: SystemUiOverlayStyle.light,
+      value: SystemUiOverlayStyle.dark,
       child: PopScope(
         canPop: false,
         onPopInvokedWithResult: (didPop, _) {
@@ -830,13 +831,11 @@ class _CameraComposeViewState extends State<CameraComposeView> {
                                       ),
                                       alignment: Alignment.center,
                                       child: _saving
-                                          ? const SizedBox(
-                                              width: 18,
-                                              height: 18,
-                                              child: CircularProgressIndicator(
-                                                strokeWidth: 2,
-                                                color: AppColors.white,
-                                              ),
+                                          ? const AppLoading(
+                                              size: 18,
+                                              strokeWidth: 2,
+                                              color: AppColors.white,
+                                              centered: false,
                                             )
                                           : const AppIcon(
                                               AssetPaths.iconImportArrow,

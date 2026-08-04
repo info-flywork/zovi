@@ -1,8 +1,10 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
+import 'package:zovi/core/di/injection.dart';
 import 'package:zovi/core/theme/app_colors.dart';
-import 'package:zovi/core/utils/constants/asset_paths.dart';
 import 'package:zovi/core/widgets/app_button.dart';
+import 'package:zovi/core/widgets/profile_avatar.dart';
+import 'package:zovi/domain/user/user_repository.dart';
 
 Future<bool?> showFirstCheckInSheet(BuildContext context) {
   return showModalBottomSheet<bool>(
@@ -25,13 +27,16 @@ class FirstCheckInSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final avatarPath =
+        getIt<UserRepository>().currentUserListenable.value?.avatarPath ?? '';
+
     return SafeArea(
       child: Padding(
         padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            SizedBox(height: 10),
+            const SizedBox(height: 10),
             Container(
               width: 46,
               height: 4,
@@ -65,7 +70,7 @@ class FirstCheckInSheet extends StatelessWidget {
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(20),
                       child: Image.asset(
-                        "assets/icons/island.png",
+                        'assets/icons/island.png',
                         width: 125,
                         height: 127,
                         fit: BoxFit.cover,
@@ -89,12 +94,7 @@ class FirstCheckInSheet extends StatelessWidget {
                           ),
                         ],
                       ),
-                      child: ClipOval(
-                        child: Image.asset(
-                          AssetPaths.avatarYou,
-                          fit: BoxFit.cover,
-                        ),
-                      ),
+                      child: ProfileAvatar(path: avatarPath, size: 41),
                     ),
                   ),
                   Positioned(

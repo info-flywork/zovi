@@ -41,7 +41,10 @@ class HomeMapMarker extends StatelessWidget {
                     color: AppColors.white,
                   ),
                   child: ClipOval(
-                    child: Image.asset(friend.avatarPath, fit: BoxFit.cover),
+                    child: ProfileAvatar(
+                      path: friend.avatarPath,
+                      size: _avatarSize - _ringWidth * 2,
+                    ),
                   ),
                 ),
               ),
@@ -49,7 +52,11 @@ class HomeMapMarker extends StatelessWidget {
                 left: 0,
                 right: -80,
                 bottom: 3,
-                child: Center(child: _StreakBadge(streak: friend.streak)),
+                child: Center(
+                  child: friend.streak > 0
+                      ? _StreakBadge(streak: friend.streak)
+                      : const SizedBox.shrink(),
+                ),
               ),
             ],
           ),

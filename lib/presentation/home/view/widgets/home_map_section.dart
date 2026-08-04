@@ -16,8 +16,8 @@ class HomeMapSection extends StatefulWidget {
 
 class _HomeMapSectionState extends State<HomeMapSection>
     with TickerProviderStateMixin, WidgetsBindingObserver {
-  static const _fallbackCenter = LatLng(34.0522, -118.2437);
-  static const _defaultZoom = 14.5;
+  static const _fallbackCenter = LatLng(41.0082, 28.9784);
+  static const _defaultZoom = 16.0;
 
   /// Carto Voyager — temiz, renkli, modern (ücretsiz tile).
   static const _tileUrl =
@@ -50,6 +50,10 @@ class _HomeMapSectionState extends State<HomeMapSection>
   late final AnimationController _friendSheetController;
   late final Animation<Offset> _friendSheetSlide;
   late final Animation<double> _friendSheetFade;
+  double _mapZoom = _defaultZoom;
+  static const _distance = Distance();
+  /// Zoom’a göre marker’ların “çakışma” eşiği (metre).
+  static const _spiderfyZoom = 16.8;
 
   @override
   void initState() {
@@ -98,11 +102,16 @@ class _HomeMapSectionState extends State<HomeMapSection>
       end: 1,
     ).animate(_markersScaleCurve);
     unawaited(_resolveUserLocation(animate: false));
-    unawaited(_loadNearbyAnons());
-    unawaited(_loadVenues());
     getIt<UserRepository>().mapFriendsListenable.addListener(
       _onMapFriendsChanged,
     );
+    getIt<UserRepository>().activeMapCheckInListenable.addListener(
+      _onActiveCheckInChanged,
+    );
+  }
+
+  void _onActiveCheckInChanged() {
+    if (mounted) setState(() {});
   }
 
   List<MapFriend> get _mapFriends {
@@ -117,24 +126,39 @@ class _HomeMapSectionState extends State<HomeMapSection>
     final selectedFriend = _selectedFriend;
     setState(() {
       if (openFriend != null) {
-        final match = friends.where((f) => f.name == openFriend.name);
+        final match = friends.where(
+          (f) =>
+              (openFriend.userId.isNotEmpty && f.userId == openFriend.userId) ||
+              f.name == openFriend.name,
+        );
         _friendSheetFriend = match.isEmpty ? openFriend : match.first;
       }
       if (selectedFriend != null) {
-        final match = friends.where((f) => f.name == selectedFriend.name);
+        final match = friends.where(
+          (f) =>
+              (selectedFriend.userId.isNotEmpty &&
+                  f.userId == selectedFriend.userId) ||
+              f.name == selectedFriend.name,
+        );
         _selectedFriend = match.isEmpty ? selectedFriend : match.first;
       }
     });
   }
 
   Future<void> _loadNearbyAnons() async {
-    final items = await getIt<UserRepository>().getMapNearbyAnons();
+    final items = await getIt<UserRepository>().getMapNearbyAnons(
+      lat: _hasRealLocation ? _userLocation.latitude : null,
+      lng: _hasRealLocation ? _userLocation.longitude : null,
+    );
     if (!mounted) return;
     setState(() => _nearbyAnons = items);
   }
 
   Future<void> _loadVenues() async {
-    final items = await getIt<UserRepository>().getMapVenues();
+    final items = await getIt<UserRepository>().getMapVenues(
+      lat: _hasRealLocation ? _userLocation.latitude : null,
+      lng: _hasRealLocation ? _userLocation.longitude : null,
+    );
     if (!mounted) return;
     setState(() => _venues = items);
   }
@@ -143,6 +167,9 @@ class _HomeMapSectionState extends State<HomeMapSection>
   void dispose() {
     getIt<UserRepository>().mapFriendsListenable.removeListener(
       _onMapFriendsChanged,
+    );
+    getIt<UserRepository>().activeMapCheckInListenable.removeListener(
+      _onActiveCheckInChanged,
     );
     WidgetsBinding.instance.removeObserver(this);
     _filterMenuController.dispose();
@@ -339,22 +366,38 @@ class _HomeMapSectionState extends State<HomeMapSection>
   Future<void> _sendFriendMessage(String message) async {
     final friend = _friendSheetFriend ?? _selectedFriend;
     if (friend == null) return;
+    final text = message.trim();
+    if (text.isEmpty) return;
+    if (friend.userId.isEmpty) return;
 
-    await _closeFriendSheet();
-    if (!mounted) return;
+    // Sheet kapanmasını / API’yi beklemeden banner’ı hemen göster.
+    unawaited(_closeFriendSheet());
+    AppInAppNotification.instance.show(
+      InAppNotificationData(
+        username: friend.profileHandle,
+        messageKey: 'map_friend_message_sent',
+        avatarPath: friend.avatarPath,
+        displayName: friend.name,
+        showGradientRing: true,
+      ),
+    );
 
-    // Kart kapandıktan sonra üst banner’ı göster.
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      AppInAppNotification.instance.show(
-        InAppNotificationData(
-          username: friend.name,
-          messageKey: 'map_friend_message_sent',
-          avatarPath: friend.avatarPath,
-          displayName: friend.name,
-          showGradientRing: true,
-        ),
+    try {
+      final chat = getIt<ChatRepository>();
+      final conversation = await chat.openDm(friend.userId);
+      await chat.sendMessage(
+        conversationId: conversation.id,
+        type: 'text',
+        body: text,
       );
-    });
+    } catch (_) {
+      if (!mounted) return;
+      AppSnackbar.instance.show(
+        context,
+        'error_save_profile_failed'.tr(),
+        isError: true,
+      );
+    }
   }
 
   void _onMapBackgroundTap() {
@@ -367,19 +410,348 @@ class _HomeMapSectionState extends State<HomeMapSection>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed && !_hasRealLocation) {
+    if (state != AppLifecycleState.resumed) return;
+    if (!_hasRealLocation) {
       unawaited(_resolveUserLocation(animate: true));
+      return;
     }
+    unawaited(
+      getIt<UserRepository>().syncMapPresence(
+        lat: _userLocation.latitude,
+        lng: _userLocation.longitude,
+        locationLabel: _cityLabel.isEmpty ? null : _cityLabel,
+      ),
+    );
+    unawaited(_loadNearbyAnons());
+    unawaited(_loadVenues());
   }
 
   LatLng _friendPoint(MapFriend friend) {
+    if (friend.lat != 0 || friend.lng != 0) {
+      return LatLng(friend.lat, friend.lng);
+    }
     return LatLng(
       _userLocation.latitude + friend.y * 0.02,
       _userLocation.longitude + friend.x * 0.02,
     );
   }
 
+  double _clusterThresholdMeters(double zoom) {
+    // Zoom 14 ≈ 70m, 16 ≈ 25m, 18 ≈ 10m — büyük check-in marker’lara göre.
+    final meters = 70 * math.pow(2, 14 - zoom);
+    return meters.clamp(10.0, 90.0).toDouble();
+  }
+
+  List<_MapPinItem> _friendLayerPins() {
+    final pins = <_MapPinItem>[
+      for (final friend in _mapFriends)
+        _MapPinItem.friend(friend: friend, point: _friendPoint(friend)),
+    ];
+    final selfCheckIn = getIt<UserRepository>().activeMapCheckIn;
+    final selfAvatar =
+        getIt<UserRepository>().currentUserListenable.value?.hasPhoto == true
+        ? getIt<UserRepository>().currentUserListenable.value!.avatarPath
+        : '';
+    pins.add(
+      _MapPinItem.self(
+        point: _userLocation,
+        checkIn: selfCheckIn,
+        avatarPath: selfAvatar,
+      ),
+    );
+    return pins;
+  }
+
+  List<_MapPinCluster> _clusterPins(List<_MapPinItem> pins, double zoom) {
+    final threshold = _clusterThresholdMeters(zoom);
+    final used = List<bool>.filled(pins.length, false);
+    final clusters = <_MapPinCluster>[];
+
+    for (var i = 0; i < pins.length; i++) {
+      if (used[i]) continue;
+      used[i] = true;
+      final members = <_MapPinItem>[pins[i]];
+      for (var j = i + 1; j < pins.length; j++) {
+        if (used[j]) continue;
+        final meters = _distance.as(
+          LengthUnit.Meter,
+          pins[i].point,
+          pins[j].point,
+        );
+        if (meters <= threshold) {
+          used[j] = true;
+          members.add(pins[j]);
+        }
+      }
+      final lat =
+          members.map((m) => m.point.latitude).reduce((a, b) => a + b) /
+          members.length;
+      final lng =
+          members.map((m) => m.point.longitude).reduce((a, b) => a + b) /
+          members.length;
+      clusters.add(
+        _MapPinCluster(center: LatLng(lat, lng), members: members),
+      );
+    }
+    return clusters;
+  }
+
+  LatLng _spiderfyPoint({
+    required LatLng center,
+    required int index,
+    required int total,
+    required double zoom,
+  }) {
+    if (!_mapReady || total <= 1) return center;
+    try {
+      final camera = _mapController.camera;
+      final centerPx = camera.projectAtZoom(center, zoom);
+      final angle = (2 * math.pi * index / total) - (math.pi / 2);
+      final radius = 52.0 + (total > 4 ? 8.0 : 0.0);
+      final offset = Offset(
+        centerPx.dx + math.cos(angle) * radius,
+        centerPx.dy + math.sin(angle) * radius,
+      );
+      return camera.unprojectAtZoom(offset, zoom);
+    } catch (_) {
+      return center;
+    }
+  }
+
+  List<Marker> _buildFriendLayerMarkers() {
+    final clusters = _clusterPins(_friendLayerPins(), _mapZoom);
+    final markers = <Marker>[];
+
+    for (final cluster in clusters) {
+      if (cluster.members.length == 1) {
+        markers.add(_markerForPin(cluster.members.first, cluster.center));
+        continue;
+      }
+
+      if (_mapZoom >= _spiderfyZoom) {
+        for (var i = 0; i < cluster.members.length; i++) {
+          final point = _spiderfyPoint(
+            center: cluster.center,
+            index: i,
+            total: cluster.members.length,
+            zoom: _mapZoom,
+          );
+          markers.add(_markerForPin(cluster.members[i], point));
+        }
+        continue;
+      }
+
+      markers.add(
+        Marker(
+          point: cluster.center,
+          width: HomeMapClusterMarker.width,
+          height: HomeMapClusterMarker.height,
+          alignment: Alignment.center,
+          child: _animatedMarker(
+            GestureDetector(
+              onTap: () => _onClusterTap(cluster),
+              behavior: HitTestBehavior.opaque,
+              child: HomeMapClusterMarker(
+                avatarPaths: [
+                  for (final m in cluster.members) m.avatarPath,
+                ],
+                count: cluster.members.length,
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+    return markers;
+  }
+
+  Marker _markerForPin(_MapPinItem pin, LatLng point) {
+    if (pin.isSelf) {
+      return Marker(
+        point: point,
+        width: HomeMapTitleMarker.width,
+        height: HomeMapTitleMarker.height,
+        alignment: Alignment.center,
+        child: ValueListenableBuilder<ActiveMapCheckIn?>(
+          valueListenable:
+              getIt<UserRepository>().activeMapCheckInListenable,
+          builder: (context, activeCheckIn, _) {
+            final Widget marker;
+            if (activeCheckIn == null) {
+              marker = Center(
+                child: ValueListenableBuilder<UserProfile?>(
+                  valueListenable:
+                      getIt<UserRepository>().currentUserListenable,
+                  builder: (context, user, _) {
+                    final path =
+                        user?.hasPhoto == true ? user!.avatarPath : '';
+                    return Container(
+                      width: HomeMapCheckInMarker.avatarSize,
+                      height: HomeMapCheckInMarker.avatarSize,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: AppColors.zoviOrange,
+                          width: HomeMapCheckInMarker.border,
+                        ),
+                        boxShadow: const [
+                          BoxShadow(
+                            color: Color(0x33000000),
+                            blurRadius: 6,
+                            offset: Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: ProfileAvatar(
+                        path: path,
+                        size: HomeMapCheckInMarker.avatarSize -
+                            HomeMapCheckInMarker.border * 2,
+                      ),
+                    );
+                  },
+                ),
+              );
+            } else if (activeCheckIn.hasTitle) {
+              marker = HomeMapTitleMarker.fromActive(activeCheckIn);
+            } else {
+              marker = Center(
+                child: SizedBox(
+                  width: HomeMapCheckInMarker.width,
+                  height: HomeMapCheckInMarker.height,
+                  child: HomeMapCheckInMarker.fromActive(activeCheckIn),
+                ),
+              );
+            }
+            if (activeCheckIn == null) {
+              return IgnorePointer(child: marker);
+            }
+            return GestureDetector(
+              onTap: _onSelfTap,
+              behavior: HitTestBehavior.opaque,
+              child: marker,
+            );
+          },
+        ),
+      );
+    }
+
+    final friend = pin.friend!;
+    return Marker(
+      point: point,
+      width: friend.hasCheckIn ? HomeMapCheckInMarker.width : 96,
+      height: friend.hasCheckIn ? HomeMapCheckInMarker.height : 100,
+      alignment: friend.hasCheckIn ? Alignment.center : Alignment.topCenter,
+      child: _animatedMarker(
+        GestureDetector(
+          onTap: () => _onFriendTap(friend),
+          behavior: HitTestBehavior.opaque,
+          child: friend.hasCheckIn
+              ? HomeMapCheckInMarker.fromFriend(friend)
+              : HomeMapMarker(friend: friend),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _onClusterTap(_MapPinCluster cluster) async {
+    if (_filterMenuOpen) _closeFilterMenu();
+    // Önce yakınlaştır; yeterince yakınsa seçim listesi aç.
+    if (_mapZoom < _spiderfyZoom - 0.15) {
+      final targetZoom = math.max(_mapZoom + 1.8, _spiderfyZoom + 0.2);
+      await _animateTo(
+        cluster.center,
+        zoom: targetZoom.clamp(_mapZoom, 18.5),
+        duration: const Duration(milliseconds: 480),
+      );
+      if (!mounted) return;
+      setState(() => _mapZoom = _mapController.camera.zoom);
+      return;
+    }
+    await _showClusterPicker(cluster);
+  }
+
+  Future<void> _showClusterPicker(_MapPinCluster cluster) async {
+    final picked = await showModalBottomSheet<_MapPinItem>(
+      context: context,
+      useRootNavigator: true,
+      backgroundColor: AppColors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 10, 16, 16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 46,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: AppColors.progressInactive,
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                ),
+                const SizedBox(height: 14),
+                Text(
+                  'map_cluster_title'.tr(
+                    namedArgs: {'count': '${cluster.members.length}'},
+                  ),
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.black,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                for (final member in cluster.members)
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: ProfileAvatar(
+                      path: member.avatarPath,
+                      size: 44,
+                      showGradientRing: true,
+                      ringWidth: 2,
+                    ),
+                    title: Text(
+                      member.isSelf
+                          ? 'map_cluster_you'.tr()
+                          : (member.friend?.name ?? 'user'),
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    subtitle: Text(
+                      member.isSelf
+                          ? (member.checkIn?.placeName ?? '')
+                          : (member.friend?.checkIn?.placeName ??
+                                member.friend?.locationLabel ??
+                                ''),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    onTap: () => Navigator.of(context).pop(member),
+                  ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+    if (!mounted || picked == null) return;
+    if (picked.isSelf) {
+      _onSelfTap();
+    } else if (picked.friend != null) {
+      _onFriendTap(picked.friend!);
+    }
+  }
+
   LatLng _venuePoint(MapVenue venue) {
+    if (venue.lat != 0 || venue.lng != 0) {
+      return LatLng(venue.lat, venue.lng);
+    }
     return LatLng(
       _userLocation.latitude + venue.y * 0.02,
       _userLocation.longitude + venue.x * 0.02,
@@ -406,6 +778,19 @@ class _HomeMapSectionState extends State<HomeMapSection>
       ].whereType<String>().map((e) => e.trim()).where((e) => e.isNotEmpty);
       if (label.isEmpty) return;
       setState(() => _cityLabel = label.first);
+      // City + region when available — matches the own-profile live label.
+      final syncLabel = [
+        place.locality,
+        place.administrativeArea ?? place.country,
+      ]
+          .whereType<String>()
+          .map((e) => e.trim())
+          .where((e) => e.isNotEmpty)
+          .take(2)
+          .join(', ');
+      if (syncLabel.isNotEmpty) {
+        unawaited(getIt<UserRepository>().syncLiveLocationLabel(syncLabel));
+      }
     } catch (_) {
       // Etiket opsiyonel; harita yine de konuma gider.
     }
@@ -498,7 +883,18 @@ class _HomeMapSectionState extends State<HomeMapSection>
         }
       }
 
-      unawaited(_updateCityLabel(target));
+      final accuracy = position.accuracy;
+      unawaited(_updateCityLabel(target).then((_) async {
+        if (!mounted) return;
+        await getIt<UserRepository>().syncMapPresence(
+          lat: target.latitude,
+          lng: target.longitude,
+          accuracyM: accuracy,
+          locationLabel: _cityLabel.isEmpty ? null : _cityLabel,
+        );
+      }));
+      unawaited(_loadNearbyAnons());
+      unawaited(_loadVenues());
     } catch (_) {
       if (mounted) {
         setState(() => _locating = false);
@@ -570,7 +966,8 @@ class _HomeMapSectionState extends State<HomeMapSection>
     return Stack(
       fit: StackFit.expand,
       children: [
-        FlutterMap(
+        RepaintBoundary(
+          child: FlutterMap(
           mapController: _mapController,
           options: MapOptions(
             initialCenter: _userLocation,
@@ -590,7 +987,18 @@ class _HomeMapSectionState extends State<HomeMapSection>
             ),
             onMapReady: () {
               _mapReady = true;
+              _mapZoom = _mapController.camera.zoom;
               _moveCamera(_userLocation, _defaultZoom);
+            },
+            onMapEvent: (event) {
+              if (event is MapEventMoveEnd ||
+                  event is MapEventScrollWheelZoom ||
+                  event is MapEventDoubleTapZoom) {
+                final zoom = _mapController.camera.zoom;
+                if ((zoom - _mapZoom).abs() >= 0.08 && mounted) {
+                  setState(() => _mapZoom = zoom);
+                }
+              }
             },
             onTap: (_, _) => _onMapBackgroundTap(),
           ),
@@ -613,28 +1021,7 @@ class _HomeMapSectionState extends State<HomeMapSection>
             MarkerLayer(
               markers: [
                 if (_selectedFilter == _MapFilter.friends)
-                  for (final friend in _mapFriends)
-                    Marker(
-                      point: _friendPoint(friend),
-                      width: friend.hasCheckIn
-                          ? HomeMapCheckInMarker.width
-                          : 96,
-                      height: friend.hasCheckIn
-                          ? HomeMapCheckInMarker.height
-                          : 100,
-                      alignment: friend.hasCheckIn
-                          ? Alignment.center
-                          : Alignment.topCenter,
-                      child: _animatedMarker(
-                        GestureDetector(
-                          onTap: () => _onFriendTap(friend),
-                          behavior: HitTestBehavior.opaque,
-                          child: friend.hasCheckIn
-                              ? HomeMapCheckInMarker.fromFriend(friend)
-                              : HomeMapMarker(friend: friend),
-                        ),
-                      ),
-                    ),
+                  ..._buildFriendLayerMarkers(),
                 if (_selectedFilter == _MapFilter.nearby)
                   for (var i = 0; i < _nearbyAnons.length; i++)
                     Marker(
@@ -667,77 +1054,79 @@ class _HomeMapSectionState extends State<HomeMapSection>
                         ),
                       ),
                     ),
-                Marker(
-                  point: _userLocation,
-                  width: HomeMapTitleMarker.width,
-                  height: HomeMapTitleMarker.height,
-                  alignment: Alignment.center,
-                  child: ValueListenableBuilder<ActiveMapCheckIn?>(
-                    valueListenable:
-                        getIt<UserRepository>().activeMapCheckInListenable,
-                    builder: (context, activeCheckIn, _) {
-                      final Widget marker;
-                      if (activeCheckIn == null) {
-                        marker = Center(
-                          child: ValueListenableBuilder<UserProfile?>(
-                            valueListenable:
-                                getIt<UserRepository>().currentUserListenable,
-                            builder: (context, user, _) {
-                              final path =
-                                  user?.hasPhoto == true ? user!.avatarPath : '';
-                              return Container(
-                                width: HomeMapCheckInMarker.avatarSize,
-                                height: HomeMapCheckInMarker.avatarSize,
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  border: Border.all(
-                                    color: AppColors.zoviOrange,
-                                    width: HomeMapCheckInMarker.border,
-                                  ),
-                                  boxShadow: const [
-                                    BoxShadow(
-                                      color: Color(0x33000000),
-                                      blurRadius: 6,
-                                      offset: Offset(0, 2),
+                if (_selectedFilter != _MapFilter.friends)
+                  Marker(
+                    point: _userLocation,
+                    width: HomeMapTitleMarker.width,
+                    height: HomeMapTitleMarker.height,
+                    alignment: Alignment.center,
+                    child: ValueListenableBuilder<ActiveMapCheckIn?>(
+                      valueListenable:
+                          getIt<UserRepository>().activeMapCheckInListenable,
+                      builder: (context, activeCheckIn, _) {
+                        final Widget marker;
+                        if (activeCheckIn == null) {
+                          marker = Center(
+                            child: ValueListenableBuilder<UserProfile?>(
+                              valueListenable:
+                                  getIt<UserRepository>().currentUserListenable,
+                              builder: (context, user, _) {
+                                final path =
+                                    user?.hasPhoto == true ? user!.avatarPath : '';
+                                return Container(
+                                  width: HomeMapCheckInMarker.avatarSize,
+                                  height: HomeMapCheckInMarker.avatarSize,
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    border: Border.all(
+                                      color: AppColors.zoviOrange,
+                                      width: HomeMapCheckInMarker.border,
                                     ),
-                                  ],
-                                ),
-                                child: ProfileAvatar(
-                                  path: path,
-                                  size: HomeMapCheckInMarker.avatarSize -
-                                      HomeMapCheckInMarker.border * 2,
-                                ),
-                              );
-                            },
-                          ),
-                        );
-                      } else if (activeCheckIn.hasTitle) {
-                        marker = HomeMapTitleMarker.fromActive(activeCheckIn);
-                      } else {
-                        marker = Center(
-                          child: SizedBox(
-                            width: HomeMapCheckInMarker.width,
-                            height: HomeMapCheckInMarker.height,
-                            child: HomeMapCheckInMarker.fromActive(
-                              activeCheckIn,
+                                    boxShadow: const [
+                                      BoxShadow(
+                                        color: Color(0x33000000),
+                                        blurRadius: 6,
+                                        offset: Offset(0, 2),
+                                      ),
+                                    ],
+                                  ),
+                                  child: ProfileAvatar(
+                                    path: path,
+                                    size: HomeMapCheckInMarker.avatarSize -
+                                        HomeMapCheckInMarker.border * 2,
+                                  ),
+                                );
+                              },
                             ),
-                          ),
+                          );
+                        } else if (activeCheckIn.hasTitle) {
+                          marker = HomeMapTitleMarker.fromActive(activeCheckIn);
+                        } else {
+                          marker = Center(
+                            child: SizedBox(
+                              width: HomeMapCheckInMarker.width,
+                              height: HomeMapCheckInMarker.height,
+                              child: HomeMapCheckInMarker.fromActive(
+                                activeCheckIn,
+                              ),
+                            ),
+                          );
+                        }
+                        if (activeCheckIn == null) {
+                          return IgnorePointer(child: marker);
+                        }
+                        return GestureDetector(
+                          onTap: _onSelfTap,
+                          behavior: HitTestBehavior.opaque,
+                          child: marker,
                         );
-                      }
-                      if (activeCheckIn == null) {
-                        return IgnorePointer(child: marker);
-                      }
-                      return GestureDetector(
-                        onTap: _onSelfTap,
-                        behavior: HitTestBehavior.opaque,
-                        child: marker,
-                      );
-                    },
+                      },
+                    ),
                   ),
-                ),
               ],
             ),
           ],
+        ),
         ),
         Positioned(
           top: 12,
@@ -839,7 +1228,9 @@ class _HomeMapSectionState extends State<HomeMapSection>
                           onOpenProfile: () => unawaited(
                             openUserProfile(
                               context,
-                              _friendSheetFriend!.name,
+                              _friendSheetFriend!.username.isNotEmpty
+                                  ? _friendSheetFriend!.username
+                                  : _friendSheetFriend!.name,
                             ),
                           ),
                         )
@@ -1119,13 +1510,11 @@ class _MapSendButton extends StatelessWidget {
           ],
         ),
         child: isLoading
-            ? const SizedBox(
-                width: 24,
-                height: 24,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2.5,
-                  color: AppColors.mintGreen,
-                ),
+            ? const AppLoading(
+                size: 24,
+                strokeWidth: 2.5,
+                color: AppColors.mintGreen,
+                centered: false,
               )
             : const AppIcon(
                 AssetPaths.iconChatSend,
@@ -1166,4 +1555,54 @@ class _MapAddButton extends StatelessWidget {
       ),
     );
   }
+}
+
+class _MapPinItem {
+  const _MapPinItem._({
+    required this.point,
+    required this.avatarPath,
+    this.friend,
+    this.checkIn,
+  });
+
+  factory _MapPinItem.friend({
+    required MapFriend friend,
+    required LatLng point,
+  }) {
+    return _MapPinItem._(
+      point: point,
+      friend: friend,
+      avatarPath: friend.avatarPath,
+      checkIn: null,
+    );
+  }
+
+  factory _MapPinItem.self({
+    required LatLng point,
+    required String avatarPath,
+    ActiveMapCheckIn? checkIn,
+  }) {
+    return _MapPinItem._(
+      point: point,
+      avatarPath: avatarPath,
+      checkIn: checkIn,
+    );
+  }
+
+  final LatLng point;
+  final String avatarPath;
+  final MapFriend? friend;
+  final ActiveMapCheckIn? checkIn;
+
+  bool get isSelf => friend == null;
+}
+
+class _MapPinCluster {
+  const _MapPinCluster({
+    required this.center,
+    required this.members,
+  });
+
+  final LatLng center;
+  final List<_MapPinItem> members;
 }

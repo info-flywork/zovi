@@ -75,8 +75,12 @@ class _InAppNotificationBannerState extends State<InAppNotificationBanner> {
                 if (widget.data.leadingIconPath != null)
                   AppIcon(
                     widget.data.leadingIconPath!,
-                    size: 26,
-                    color: AppColors.white,
+                    size: widget.data.action == InAppNotificationAction.openStory
+                        ? 48
+                        : 26,
+                    color: widget.data.action == InAppNotificationAction.openStory
+                        ? null
+                        : AppColors.white,
                   )
                 else
                   ProfileAvatar(
@@ -126,6 +130,8 @@ class _InAppNotificationBannerState extends State<InAppNotificationBanner> {
     return switch (widget.data.action) {
       InAppNotificationAction.friendRequest ||
       InAppNotificationAction.followBack => true,
+      InAppNotificationAction.openStory =>
+        (widget.data.storyImagePath ?? '').trim().isNotEmpty,
       _ => false,
     };
   }
@@ -198,7 +204,9 @@ class _MessageText extends StatelessWidget {
           TextSpan(
             children: [
               TextSpan(
-                text: data.username,
+                text: (data.displayName?.trim().isNotEmpty ?? false)
+                    ? data.displayName!.trim()
+                    : data.username,
                 style: const TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w600,
@@ -288,7 +296,32 @@ class _Trailing extends StatelessWidget {
           ),
         ),
       ),
+      InAppNotificationAction.openStory => _StoryThumb(
+        path: data.storyImagePath ?? '',
+      ),
       _ => const SizedBox.shrink(),
     };
+  }
+}
+
+class _StoryThumb extends StatelessWidget {
+  const _StoryThumb({required this.path});
+
+  final String path;
+
+  @override
+  Widget build(BuildContext context) {
+    final url = path.trim();
+    if (url.isEmpty) return const SizedBox.shrink();
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(8),
+      child: Image.network(
+        url,
+        width: 44,
+        height: 44,
+        fit: BoxFit.cover,
+        errorBuilder: (_, _, _) => const SizedBox(width: 44, height: 44),
+      ),
+    );
   }
 }

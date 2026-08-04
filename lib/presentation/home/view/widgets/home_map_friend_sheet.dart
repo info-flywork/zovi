@@ -78,7 +78,11 @@ class _HomeMapFriendSheetState extends State<HomeMapFriendSheet> {
                             padding: const EdgeInsets.all(3),
                             gradient: AppColors.storyRingGradient,
                             indexListenable: getIt<UserRepository>()
-                                .friendCheckInPhotoIndexListenable(friend.name),
+                                .friendCheckInPhotoIndexListenable(
+                                  friend.userId.isNotEmpty
+                                      ? friend.userId
+                                      : friend.name,
+                                ),
                           ),
                           Positioned(
                             right: -2,
@@ -120,8 +124,10 @@ class _HomeMapFriendSheetState extends State<HomeMapFriendSheet> {
                                 ),
                               ),
                             ),
-                            const SizedBox(width: 8),
-                            _FriendSheetStreakBadge(streak: friend.streak),
+                            if (friend.streak > 0) ...[
+                              const SizedBox(width: 8),
+                              _FriendSheetStreakBadge(streak: friend.streak),
+                            ],
                           ],
                         ),
                         if (friend.locationLabel != null) ...[

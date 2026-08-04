@@ -9,6 +9,7 @@ import 'package:zovi/core/theme/app_colors.dart';
 import 'package:zovi/core/utils/constants/asset_paths.dart';
 import 'package:zovi/core/utils/extensions/future_extensions.dart';
 import 'package:zovi/core/widgets/app_icon.dart';
+import 'package:zovi/core/widgets/app_loading.dart';
 import 'package:zovi/domain/auth/auth_repository.dart';
 import 'package:zovi/domain/auth/models/username_availability.dart';
 import 'package:zovi/domain/user/user_repository.dart';
@@ -351,11 +352,7 @@ class _UsernameStatusRow extends StatelessWidget {
     return Row(
       children: [
         if (status == _UsernameCheckStatus.checking)
-          const SizedBox(
-            width: 14,
-            height: 14,
-            child: CircularProgressIndicator.adaptive(),
-          )
+          const AppLoading(size: 14, centered: false)
         else
           Icon(
             status == _UsernameCheckStatus.available

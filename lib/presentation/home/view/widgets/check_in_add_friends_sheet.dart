@@ -1,9 +1,13 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
+import 'package:zovi/core/di/injection.dart';
 import 'package:zovi/core/theme/app_colors.dart';
 import 'package:zovi/core/utils/constants/asset_paths.dart';
 import 'package:zovi/core/widgets/app_icon.dart';
+import 'package:zovi/core/widgets/app_loading.dart';
 import 'package:zovi/core/widgets/app_search_field.dart';
+import 'package:zovi/core/widgets/profile_avatar.dart';
+import 'package:zovi/domain/auth/auth_repository.dart';
 
 class CheckInFriend {
   const CheckInFriend({
@@ -12,21 +16,21 @@ class CheckInFriend {
     required this.avatarPath,
   });
 
+  factory CheckInFriend.fromConnection(ConnectionUser user) {
+    final name = user.fullName.trim().isNotEmpty
+        ? user.fullName.trim()
+        : (user.username.trim().isNotEmpty ? user.username.trim() : 'user');
+    return CheckInFriend(
+      id: user.userId,
+      name: name,
+      avatarPath: user.avatarUrl,
+    );
+  }
+
   final String id;
   final String name;
   final String avatarPath;
 }
-
-const checkInDemoFriends = [
-  CheckInFriend(id: 'alex', name: 'Alex', avatarPath: AssetPaths.avatarAlex),
-  CheckInFriend(id: 'lyra', name: 'Lyra', avatarPath: AssetPaths.avatarLyra),
-  CheckInFriend(id: 'sona', name: 'Sona', avatarPath: AssetPaths.avatarSona),
-  CheckInFriend(
-    id: 'jessica',
-    name: 'Jessica',
-    avatarPath: AssetPaths.avatarJessica,
-  ),
-];
 
 Future<List<CheckInFriend>?> showCheckInAddFriendsSheet(
   BuildContext context, {
@@ -57,23 +61,70 @@ class CheckInAddFriendsSheet extends StatefulWidget {
 class _CheckInAddFriendsSheetState extends State<CheckInAddFriendsSheet> {
   late final Set<String> _selectedIds;
   String _query = '';
+  List<CheckInFriend> _friends = const [];
+  var _loading = true;
 
   @override
   void initState() {
     super.initState();
     _selectedIds = {for (final friend in widget.initiallySelected) friend.id};
+    final auth = getIt<AuthRepository>();
+    final userId = auth.backendUserId?.trim() ?? '';
+    final cached = userId.isEmpty ? null : auth.peekFollowing(userId);
+    if (cached != null) {
+      _friends = [
+        for (final user in cached)
+          if (user.userId.isNotEmpty) CheckInFriend.fromConnection(user),
+      ];
+      _loading = false;
+    }
+    _loadFriends();
+  }
+
+  Future<void> _loadFriends() async {
+    try {
+      final auth = getIt<AuthRepository>();
+      final userId = auth.backendUserId?.trim() ?? '';
+      if (userId.isEmpty) {
+        if (mounted) setState(() => _loading = false);
+        return;
+      }
+      final users = await auth.fetchFollowing(userId);
+      if (!mounted) return;
+      setState(() {
+        _friends = [
+          for (final user in users)
+            if (user.userId.isNotEmpty) CheckInFriend.fromConnection(user),
+        ];
+        _loading = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        if (_friends.isEmpty) _friends = const [];
+        _loading = false;
+      });
+    }
   }
 
   List<CheckInFriend> get _filtered {
     final q = _query.trim().toLowerCase();
-    if (q.isEmpty) return checkInDemoFriends;
-    return checkInDemoFriends
+    if (q.isEmpty) return _friends;
+    return _friends
         .where((f) => f.name.toLowerCase().contains(q))
         .toList();
   }
 
-  List<CheckInFriend> get _selectedFriends =>
-      checkInDemoFriends.where((f) => _selectedIds.contains(f.id)).toList();
+  List<CheckInFriend> get _selectedFriends {
+    final byId = <String, CheckInFriend>{
+      for (final f in _friends) f.id: f,
+      for (final f in widget.initiallySelected) f.id: f,
+    };
+    return [
+      for (final id in _selectedIds)
+        if (byId[id] != null) byId[id]!,
+    ];
+  }
 
   void _toggle(CheckInFriend friend) {
     setState(() {
@@ -127,28 +178,31 @@ class _CheckInAddFriendsSheetState extends State<CheckInAddFriendsSheet> {
                 ),
                 const SizedBox(height: 20),
                 Expanded(
-                  child: filtered.isEmpty
-                      ? const _FriendsEmptyState()
-                      : GridView.builder(
-                          padding: const EdgeInsets.only(bottom: 12),
-                          gridDelegate:
-                              const SliverGridDelegateWithFixedCrossAxisCount(
-                                crossAxisCount: 3,
-                                mainAxisSpacing: 16,
-                                crossAxisSpacing: 12,
-                                childAspectRatio: 1,
-                              ),
-                          itemCount: filtered.length,
-                          itemBuilder: (context, index) {
-                            final friend = filtered[index];
-                            final selected = _selectedIds.contains(friend.id);
-                            return _FriendSelectTile(
-                              friend: friend,
-                              selected: selected,
-                              onTap: () => _toggle(friend),
-                            );
-                          },
-                        ),
+                  child: _loading
+                      ? const AppLoading(size: 28)
+                      : filtered.isEmpty
+                          ? const _FriendsEmptyState()
+                          : GridView.builder(
+                              padding: const EdgeInsets.only(bottom: 12),
+                              gridDelegate:
+                                  const SliverGridDelegateWithFixedCrossAxisCount(
+                                    crossAxisCount: 3,
+                                    mainAxisSpacing: 16,
+                                    crossAxisSpacing: 12,
+                                    childAspectRatio: 1,
+                                  ),
+                              itemCount: filtered.length,
+                              itemBuilder: (context, index) {
+                                final friend = filtered[index];
+                                final selected =
+                                    _selectedIds.contains(friend.id);
+                                return _FriendSelectTile(
+                                  friend: friend,
+                                  selected: selected,
+                                  onTap: () => _toggle(friend),
+                                );
+                              },
+                            ),
                 ),
                 const SizedBox(height: 8),
                 SizedBox(
@@ -230,8 +284,9 @@ class _FriendSelectTile extends StatelessWidget {
                       width: 3,
                     ),
                   ),
-                  child: ClipOval(
-                    child: Image.asset(friend.avatarPath, fit: BoxFit.cover),
+                  child: ProfileAvatar(
+                    path: friend.avatarPath,
+                    size: _avatarSize - 6,
                   ),
                 ),
                 if (selected)

@@ -6,6 +6,8 @@ class AddPlanPlace {
     required this.distanceLabel,
     required this.friendAvatars,
     required this.friendsLabel,
+    this.lat = 0,
+    this.lng = 0,
   });
 
   final String categoryKey;
@@ -14,4 +16,8 @@ class AddPlanPlace {
   final String distanceLabel;
   final List<String> friendAvatars;
   final String friendsLabel;
+  final double lat;
+  final double lng;
+
+  bool get hasCoordinates => lat != 0 || lng != 0;
 }

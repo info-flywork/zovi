@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 import 'dart:ui' show lerpDouble;
 
 import 'package:easy_localization/easy_localization.dart';
@@ -9,6 +10,7 @@ import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:zovi/core/di/injection.dart';
 import 'package:zovi/core/theme/app_colors.dart';
 import 'package:zovi/core/utils/constants/asset_paths.dart';
 import 'package:zovi/core/utils/enum/route_paths.dart';
@@ -17,7 +19,9 @@ import 'package:zovi/core/widgets/app_loading.dart';
 import 'package:zovi/core/widgets/bottom_navigation_bar/main_wrapper.dart';
 import 'package:zovi/core/widgets/profile_avatar.dart';
 import 'package:zovi/core/widgets/stamp_image.dart';
+import 'package:zovi/domain/auth/auth_repository.dart';
 import 'package:zovi/domain/user/user_repository.dart';
+import 'package:zovi/presentation/chat/view/widgets/chat_media_viewer.dart';
 import 'package:zovi/presentation/profile/bloc/profile_bloc.dart';
 import 'package:zovi/presentation/profile/connections/model/profile_connections_route_args.dart';
 import 'package:zovi/presentation/profile/edit/model/edit_profile_route_args.dart';
@@ -43,18 +47,28 @@ class ProfileView extends StatefulWidget {
 }
 
 class _ProfileViewState extends State<ProfileView>
-    with TickerProviderStateMixin, ProfileViewMixin {
+    with TickerProviderStateMixin, WidgetsBindingObserver, ProfileViewMixin {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     initProfileTabs();
     context.read<ProfileBloc>().add(const ProfileStarted());
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     disposeProfileTabs();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Counters can change while we're backgrounded (someone unfollows us).
+    if (state == AppLifecycleState.resumed && mounted) {
+      context.read<ProfileBloc>().add(const ProfileRefreshRequested());
+    }
   }
 
   @override
@@ -72,6 +86,7 @@ class _ProfileViewState extends State<ProfileView>
                 :final pulses,
                 :final stamps,
                 :final plans,
+                :final sectionsReady,
               ) =>
                 ProfileLoadedBody(
                   user: user,
@@ -79,6 +94,7 @@ class _ProfileViewState extends State<ProfileView>
                   pulses: pulses,
                   stamps: stamps,
                   plans: plans,
+                  sectionsReady: sectionsReady,
                   tabController: tabController,
                   onTabSelected: onTabSelected,
                 ),

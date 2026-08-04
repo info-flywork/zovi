@@ -1,21 +1,35 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:zovi/domain/chat/chat_repository.dart';
 import 'package:zovi/domain/user/user_repository.dart';
 import 'package:zovi/presentation/home/bloc/home_event.dart';
 import 'package:zovi/presentation/home/bloc/home_state.dart';
 
 class HomeBloc extends Bloc<HomeEvent, HomeState> {
-  HomeBloc(this._userRepository) : super(const HomeInitial()) {
+  HomeBloc(this._userRepository, this._chatRepository)
+    : super(const HomeInitial()) {
     on<HomeStarted>(_onStarted);
     on<HomeRefreshRequested>(_onRefresh);
     on<HomeStoriesRefreshRequested>(_onStoriesRefresh);
   }
 
   final UserRepository _userRepository;
+  final ChatRepository _chatRepository;
 
-  Future<void> _onStarted(
-    HomeStarted event,
-    Emitter<HomeState> emit,
-  ) async {
+  Future<bool> _unread() async {
+    try {
+      return (await _chatRepository.unreadCount()) > 0;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<void> _hydrateProfile() async {
+    try {
+      await _userRepository.getCurrentUser();
+    } catch (_) {}
+  }
+
+  Future<void> _onStarted(HomeStarted event, Emitter<HomeState> emit) async {
     // Re-entering the tab must not blank the map — refresh in place instead.
     final current = state;
     if (current is HomeLoaded && !event.forceLoading) {
@@ -23,14 +37,63 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
       return;
     }
 
+    final cachedStories = _userRepository.peekStories();
+    final cachedFriends = _userRepository.mapFriendsListenable.value;
+    // Splash `warmHomeBootstrap` leaves at least the "Your story" ring.
+    final hasCache = cachedStories.isNotEmpty || cachedFriends.isNotEmpty;
+
+    if (hasCache) {
+      emit(
+        HomeLoaded(
+          stories: cachedStories,
+          mapFriends: cachedFriends,
+          hasUnreadMessages: current is HomeLoaded
+              ? current.hasUnreadMessages
+              : false,
+        ),
+      );
+      // Splash az önce ısıttıysa tüm feed'i tekrar çekme — sadece unread.
+      if (_userRepository.isHomeBootstrapFresh) {
+        try {
+          final hasUnreadMessages = await _unread();
+          final loaded = state;
+          if (loaded is HomeLoaded) {
+            emit(loaded.copyWith(hasUnreadMessages: hasUnreadMessages));
+          }
+        } catch (_) {}
+        return;
+      }
+      // Soft refresh — UI already painted from splash cache.
+      await _refreshInPlace(
+        state is HomeLoaded
+            ? state as HomeLoaded
+            : HomeLoaded(
+                stories: cachedStories,
+                mapFriends: cachedFriends,
+                hasUnreadMessages: false,
+              ),
+        emit,
+      );
+      return;
+    }
+
     emit(const HomeLoading());
+
     try {
-      try {
-        await _userRepository.getCurrentUser();
-      } catch (_) {}
-      final stories = await _userRepository.getStories();
-      final mapFriends = await _userRepository.getMapFriends();
-      final hasUnreadMessages = await _userRepository.hasUnreadMessages();
+      if (!_userRepository.hasCachedProfile) {
+        await _hydrateProfile();
+      }
+      final results = await Future.wait<Object?>([
+        _userRepository.getStories(),
+        _userRepository.getMapFriends(),
+        _unread(),
+        _userRepository.restoreActiveMapCheckIn(),
+      ]);
+
+      final stories = results[0]! as List<StoryPreview>;
+      final mapFriends = results[1]! as List<MapFriend>;
+      final hasUnreadMessages = results[2]! as bool;
+
       emit(
         HomeLoaded(
           stories: stories,
@@ -39,8 +102,11 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
         ),
       );
       _userRepository.warmStampCaches();
+      _userRepository.warmMyPulsesCache();
     } catch (e) {
-      emit(HomeError(message: e.toString()));
+      if (state is! HomeLoaded) {
+        emit(HomeError(message: e.toString()));
+      }
     }
   }
 
@@ -49,14 +115,17 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
     Emitter<HomeState> emit,
   ) async {
     try {
-      final stories = await _userRepository.getStories();
-      final mapFriends = await _userRepository.getMapFriends();
-      final hasUnreadMessages = await _userRepository.hasUnreadMessages();
+      final results = await Future.wait<Object?>([
+        _userRepository.getStories(),
+        _userRepository.getMapFriends(),
+        _unread(),
+        _userRepository.restoreActiveMapCheckIn(),
+      ]);
       emit(
         current.copyWith(
-          stories: stories,
-          mapFriends: mapFriends,
-          hasUnreadMessages: hasUnreadMessages,
+          stories: results[0]! as List<StoryPreview>,
+          mapFriends: results[1]! as List<MapFriend>,
+          hasUnreadMessages: results[2]! as bool,
         ),
       );
     } catch (_) {

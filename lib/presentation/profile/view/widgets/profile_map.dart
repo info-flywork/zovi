@@ -73,15 +73,9 @@ class ProfileMap extends StatelessWidget {
                   const IgnorePointer(
                     child: ColoredBox(
                       color: Color(0x33FFFFFF),
-                      child: Center(
-                        child: SizedBox(
-                          width: 22,
-                          height: 22,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2.2,
-                            color: AppColors.zoviOrange,
-                          ),
-                        ),
+                      child: AppLoading(
+                        size: 22,
+                        strokeWidth: 2.2,
                       ),
                     ),
                   ),

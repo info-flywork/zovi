@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:easy_localization/easy_localization.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -9,15 +10,20 @@ import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:shimmer/shimmer.dart';
+import 'package:zovi/core/di/injection.dart';
 import 'package:zovi/core/snackbar/app_snackbar.dart';
 import 'package:zovi/core/theme/app_colors.dart';
 import 'package:zovi/core/utils/constants/asset_paths.dart';
 import 'package:zovi/core/utils/enum/route_paths.dart';
 import 'package:zovi/core/utils/extensions/future_extensions.dart';
 import 'package:zovi/core/widgets/app_icon.dart';
+import 'package:zovi/core/widgets/profile_avatar.dart';
+import 'package:zovi/domain/user/user_repository.dart';
 import 'package:zovi/presentation/home/model/check_in_success_route_args.dart';
 import 'package:zovi/presentation/home/view/widgets/check_in_add_friends_sheet.dart';
 import 'package:zovi/presentation/home/view/widgets/check_in_add_photo_sheet.dart';
+import 'package:zovi/presentation/home/view/widgets/check_in_place_picker_sheet.dart';
 import 'package:zovi/presentation/profile/settings/view/widgets/account_privacy_sheet.dart';
 
 Future<void> showCheckInCreateSheet(BuildContext context) {
@@ -63,10 +69,15 @@ class _CheckInCreateSheetState extends State<CheckInCreateSheet> {
   final List<String> _photoPaths = [];
   var _photosRowVisible = false;
 
+  List<NearbyAddPlanPlace> _nearbyPlaces = const [];
+  NearbyAddPlanPlace? _selectedPlace;
+  var _placesLoading = true;
+  var _submitting = false;
+
   @override
   void initState() {
     super.initState();
-    _resolveLocation();
+    _bootstrap();
   }
 
   @override
@@ -74,6 +85,11 @@ class _CheckInCreateSheetState extends State<CheckInCreateSheet> {
     _controller.dispose();
     _mapController.dispose();
     super.dispose();
+  }
+
+  Future<void> _bootstrap() async {
+    await _resolveLocation();
+    await _loadNearestPlace();
   }
 
   Future<void> _resolveLocation() async {
@@ -115,6 +131,66 @@ class _CheckInCreateSheetState extends State<CheckInCreateSheet> {
         _mapController.move(target, _defaultZoom);
       } catch (_) {}
     }
+  }
+
+  Future<void> _loadNearestPlace() async {
+    if (mounted) setState(() => _placesLoading = true);
+    try {
+      // Same source as Plan Ekle → nearest is first (distance-sorted).
+      final places = await getIt<UserRepository>().getNearbyAddPlanPlaces(
+        limit: 20,
+      );
+      if (!mounted) return;
+      final nearest = places.isEmpty ? null : places.first;
+      setState(() {
+        _nearbyPlaces = places;
+        _selectedPlace = nearest;
+        _placesLoading = false;
+      });
+      if (nearest != null && (nearest.lat != 0 || nearest.lng != 0)) {
+        _applyPlace(nearest);
+      }
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _nearbyPlaces = const [];
+        _selectedPlace = null;
+        _placesLoading = false;
+      });
+    }
+  }
+
+  void _applyPlace(NearbyAddPlanPlace place) {
+    if (place.lat == 0 && place.lng == 0) return;
+    final target = LatLng(place.lat, place.lng);
+    setState(() {
+      _selectedPlace = place;
+      _center = target;
+    });
+    _mapController.move(target, _defaultZoom);
+  }
+
+  Future<void> _changeLocation() async {
+    if (_placesLoading) return;
+    if (_nearbyPlaces.isEmpty) {
+      await _loadNearestPlace();
+      if (!mounted) return;
+      if (_nearbyPlaces.isEmpty) {
+        AppSnackbar.instance.show(
+          context,
+          'check_in_venue_empty'.tr(),
+          isError: true,
+        );
+        return;
+      }
+    }
+    final picked = await showCheckInPlacePickerSheet(
+      context,
+      places: _nearbyPlaces,
+      selected: _selectedPlace,
+    );
+    if (picked == null || !mounted) return;
+    _applyPlace(picked);
   }
 
   Future<void> _openPhotoPrivacy() async {
@@ -255,14 +331,117 @@ class _CheckInCreateSheetState extends State<CheckInCreateSheet> {
     setState(() {});
   }
 
-  void _submitCheckIn() {
+  Future<void> _submitCheckIn() async {
+    if (_submitting) return;
+    _submitting = true;
+    FocusScope.of(context).unfocus();
+
     final router = GoRouter.of(context);
+    final photos = List<String>.from(_photoPaths);
+    final placeName = _selectedPlace?.placeName.trim().isNotEmpty == true
+        ? _selectedPlace!.placeName.trim()
+        : 'check_in_venue_empty'.tr();
+    final audience = _photoPrivacy == AccountPrivacy.public
+        ? 'public'
+        : 'friends_only';
+    final photoPrivacy = _photoPrivacy == AccountPrivacy.public
+        ? 'public'
+        : 'friends';
+    final lat = _selectedPlace != null &&
+            (_selectedPlace!.lat != 0 || _selectedPlace!.lng != 0)
+        ? _selectedPlace!.lat
+        : _center.latitude;
+    final lng = _selectedPlace != null &&
+            (_selectedPlace!.lat != 0 || _selectedPlace!.lng != 0)
+        ? _selectedPlace!.lng
+        : _center.longitude;
+    final friendNames = _taggedFriends.map((f) => f.name).toList();
+    final taggedIds = _taggedFriends.map((f) => f.id).toList();
+    final caption = _controller.text.trim();
+    final category = _selectedPlace?.categoryKey.trim();
+
+    Map<String, dynamic> submitResult;
+    try {
+      submitResult = await () async {
+        final photoUrls = <String>[];
+        // Shared check-in photos become profile pulses (avatar excluded elsewhere).
+        if (photos.isNotEmpty) {
+          final pulses = await Future.wait([
+            for (final path in photos)
+              getIt<UserRepository>().createPulseFromPhoto(
+                imagePath: path,
+                sourceType: 'check_in',
+                audience: audience,
+                placeName: placeName,
+                lat: lat,
+                lng: lng,
+              ),
+          ]);
+          for (final pulse in pulses) {
+            final url = pulse?.imagePath.trim();
+            if (url != null && url.isNotEmpty) photoUrls.add(url);
+          }
+        }
+
+        return getIt<UserRepository>().submitCheckIn(
+          placeName: placeName,
+          lat: lat,
+          lng: lng,
+          caption: caption.isEmpty ? null : caption,
+          photoPrivacy: photoPrivacy,
+          taggedUserIds: taggedIds,
+          photoUrls: photoUrls,
+          category: (category == null || category.isEmpty) ? null : category,
+        );
+      }().withLoading(context);
+    } catch (e, st) {
+      _submitting = false;
+      if (kDebugMode) {
+        debugPrint('submitCheckIn failed: $e\n$st');
+      }
+      if (!mounted) return;
+      AppSnackbar.instance.show(
+        context,
+        'check_in_submit_failed'.tr(),
+        isError: true,
+      );
+      return;
+    }
+
+    if (!mounted) {
+      _submitting = false;
+      return;
+    }
+
+    final rewardsRaw = submitResult['rewards'];
+    final rewards = <CheckInRewardItem>[
+      if (rewardsRaw is List)
+        for (final item in rewardsRaw)
+          if (item is Map)
+            CheckInRewardItem.fromJson(Map<String, dynamic>.from(item)),
+    ];
+    final founderRaw = submitResult['founderOffer'];
+    final founderOffer = founderRaw is Map
+        ? CheckInFounderOffer.fromJson(Map<String, dynamic>.from(founderRaw))
+        : null;
+    final checkInRaw = submitResult['checkIn'];
+    final checkInMap =
+        checkInRaw is Map ? Map<String, dynamic>.from(checkInRaw) : null;
+
     final args = CheckInSuccessRouteArgs(
-      placeName: 'check_in_venue_demo'.tr(),
-      friendNames: _taggedFriends.map((f) => f.name).toList(),
-      hasPhoto: _photoPaths.isNotEmpty,
-      photoPaths: List<String>.from(_photoPaths),
+      placeName: placeName,
+      friendNames: friendNames,
+      hasPhoto: photos.isNotEmpty,
+      photoPaths: photos,
+      totalCoins: (submitResult['totalCoins'] as num?)?.toInt() ??
+          rewards.fold<int>(0, (sum, r) => sum + r.coins),
+      rewards: rewards,
+      checkInId: (checkInMap?['id'] as String?)?.trim(),
+      founderOffer: founderOffer,
+      isFirstEver: checkInMap?['isFirstEver'] == true ||
+          (checkInMap?['isFirstEver'] as num?)?.toInt() == 1,
     );
+
     Navigator.of(context).pop();
     router.push(RoutePaths.checkInSuccess.path, extra: args);
   }
@@ -286,6 +465,13 @@ class _CheckInCreateSheetState extends State<CheckInCreateSheet> {
     final privacyIcon = _photoPrivacy == AccountPrivacy.public
         ? AssetPaths.iconPublic
         : AssetPaths.iconFriends;
+    final avatarPath =
+        getIt<UserRepository>().currentUserListenable.value?.avatarPath ?? '';
+    final placeTitle = _placesLoading
+        ? null
+        : (_selectedPlace?.placeName.trim().isNotEmpty == true
+              ? _selectedPlace!.placeName.trim()
+              : 'check_in_venue_empty'.tr());
 
     final maxSheetHeight = MediaQuery.sizeOf(context).height * 0.88;
     const headerHeight = 78.0;
@@ -372,8 +558,8 @@ class _CheckInCreateSheetState extends State<CheckInCreateSheet> {
                                           width: 55,
                                           height: 69,
                                           alignment: Alignment.center,
-                                          child: const _CheckInLocationPin(
-                                            avatarPath: AssetPaths.avatarYou,
+                                          child: _CheckInLocationPin(
+                                            avatarPath: avatarPath,
                                           ),
                                         ),
                                       ],
@@ -384,20 +570,34 @@ class _CheckInCreateSheetState extends State<CheckInCreateSheet> {
                             ),
                           ),
                           const SizedBox(height: 12),
-                          Text(
-                            'check_in_venue_demo'.tr(),
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.w700,
-                              height: 1,
-                              letterSpacing: -0.4,
-                              color: AppColors.black,
+                          if (_placesLoading)
+                            Shimmer.fromColors(
+                              baseColor: const Color(0xFFE8E8E8),
+                              highlightColor: const Color(0xFFF5F5F5),
+                              child: Container(
+                                width: 160,
+                                height: 22,
+                                decoration: BoxDecoration(
+                                  color: AppColors.white,
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                              ),
+                            )
+                          else
+                            Text(
+                              placeTitle ?? '',
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.w700,
+                                height: 1,
+                                letterSpacing: -0.4,
+                                color: AppColors.black,
+                              ),
                             ),
-                          ),
                           const SizedBox(height: 4),
                           GestureDetector(
-                            onTap: () {},
+                            onTap: _changeLocation,
                             behavior: HitTestBehavior.opaque,
                             child: Text(
                               'check_in_change_location'.tr(),
@@ -881,10 +1081,11 @@ class _TaggedFriendChip extends StatelessWidget {
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       border: Border.all(color: AppColors.white, width: 2),
-                      image: DecorationImage(
-                        image: AssetImage(friend.avatarPath),
-                        fit: BoxFit.cover,
-                      ),
+                    ),
+                    clipBehavior: Clip.antiAlias,
+                    child: ProfileAvatar(
+                      path: friend.avatarPath,
+                      size: 25,
                     ),
                   ),
                   const SizedBox(width: 10),
@@ -960,10 +1161,11 @@ class _CheckInLocationPin extends StatelessWidget {
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   border: Border.all(color: AppColors.white, width: 2),
-                  image: DecorationImage(
-                    image: AssetImage(avatarPath),
-                    fit: BoxFit.cover,
-                  ),
+                ),
+                clipBehavior: Clip.antiAlias,
+                child: ProfileAvatar(
+                  path: avatarPath,
+                  size: _avatarSize - 4,
                 ),
               ),
             ),

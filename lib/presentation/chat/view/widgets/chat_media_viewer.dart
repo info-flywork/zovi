@@ -9,11 +9,14 @@ Future<void> showChatMediaViewer(
   required String heroTag,
   String? assetPath,
   String? filePath,
+  String? networkUrl,
 }) {
-  assert(
-    (assetPath != null) ^ (filePath != null),
-    'Provide either assetPath or filePath',
-  );
+  final sources = [
+    if (assetPath != null) 'asset',
+    if (filePath != null) 'file',
+    if (networkUrl != null && networkUrl.trim().isNotEmpty) 'network',
+  ];
+  assert(sources.length == 1, 'Provide exactly one of assetPath, filePath, networkUrl');
 
   return showGeneralDialog<void>(
     context: context,
@@ -26,6 +29,7 @@ Future<void> showChatMediaViewer(
         heroTag: heroTag,
         assetPath: assetPath,
         filePath: filePath,
+        networkUrl: networkUrl?.trim(),
       );
     },
     transitionBuilder: (context, animation, secondaryAnimation, child) {
@@ -37,17 +41,56 @@ Future<void> showChatMediaViewer(
   );
 }
 
+/// Opens a pulse / shared photo fullscreen (network, file, or asset).
+Future<void> showPulseMediaViewer(
+  BuildContext context, {
+  required String imagePath,
+  String? heroTag,
+}) {
+  final path = imagePath.trim();
+  if (path.isEmpty) return Future.value();
+
+  final tag = heroTag ?? 'pulse_$path';
+  if (path.startsWith('http://') || path.startsWith('https://')) {
+    return showChatMediaViewer(context, heroTag: tag, networkUrl: path);
+  }
+  if (path.startsWith('/') || path.startsWith('file:')) {
+    return showChatMediaViewer(
+      context,
+      heroTag: tag,
+      filePath: path.replaceFirst('file://', ''),
+    );
+  }
+  return showChatMediaViewer(context, heroTag: tag, assetPath: path);
+}
+
 class ChatMediaViewer extends StatelessWidget {
   const ChatMediaViewer({
     required this.heroTag,
     this.assetPath,
     this.filePath,
+    this.networkUrl,
     super.key,
   });
 
   final String heroTag;
   final String? assetPath;
   final String? filePath;
+  final String? networkUrl;
+
+  Widget get _image {
+    if (networkUrl != null && networkUrl!.isNotEmpty) {
+      return Image.network(
+        networkUrl!,
+        fit: BoxFit.contain,
+        errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+      );
+    }
+    if (assetPath != null) {
+      return StampImage(path: assetPath!, fit: BoxFit.contain);
+    }
+    return Image.file(File(filePath!), fit: BoxFit.contain);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -67,12 +110,7 @@ class ChatMediaViewer extends StatelessWidget {
               child: InteractiveViewer(
                 minScale: 1,
                 maxScale: 4,
-                child: Hero(
-                  tag: heroTag,
-                  child: assetPath != null
-                      ? StampImage(path: assetPath!, fit: BoxFit.contain)
-                      : Image.file(File(filePath!), fit: BoxFit.contain),
-                ),
+                child: Hero(tag: heroTag, child: _image),
               ),
             ),
             Positioned(

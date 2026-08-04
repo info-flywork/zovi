@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:math' as math;
 
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/foundation.dart';
@@ -10,6 +11,7 @@ import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:shimmer/shimmer.dart';
 import 'package:zovi/core/deep_link/deep_link_service.dart';
 import 'package:zovi/core/di/injection.dart';
 import 'package:zovi/core/in_app_notification/app_in_app_notification.dart';
@@ -24,6 +26,7 @@ import 'package:zovi/core/widgets/app_icon.dart';
 import 'package:zovi/core/widgets/app_loading.dart';
 import 'package:zovi/core/widgets/bottom_navigation_bar/main_wrapper.dart';
 import 'package:zovi/core/widgets/profile_avatar.dart';
+import 'package:zovi/domain/chat/chat_repository.dart';
 import 'package:zovi/domain/user/user_repository.dart';
 import 'package:zovi/presentation/home/bloc/home_bloc.dart';
 import 'package:zovi/presentation/home/bloc/home_event.dart';
@@ -39,6 +42,7 @@ part 'widgets/home_loaded_body.dart';
 part 'widgets/home_loading_body.dart';
 part 'widgets/home_map_anon_marker.dart';
 part 'widgets/home_map_check_in_marker.dart';
+part 'widgets/home_map_cluster_marker.dart';
 part 'widgets/home_map_friend_sheet.dart';
 part 'widgets/home_map_last_check_in_sheet.dart';
 part 'widgets/home_map_marker.dart';
@@ -53,7 +57,11 @@ class HomeView extends StatefulWidget {
   State<HomeView> createState() => _HomeViewState();
 }
 
-class _HomeViewState extends State<HomeView> with HomeViewMixin {
+class _HomeViewState extends State<HomeView>
+    with HomeViewMixin, AutomaticKeepAliveClientMixin {
+  @override
+  bool get wantKeepAlive => true;
+
   @override
   void initState() {
     super.initState();
@@ -63,13 +71,22 @@ class _HomeViewState extends State<HomeView> with HomeViewMixin {
 
   @override
   Widget build(BuildContext context) {
+    super.build(context);
     return Scaffold(
       backgroundColor: AppColors.white,
       resizeToAvoidBottomInset: false,
       body: BlocConsumer<HomeBloc, HomeState>(
         listener: (context, state) {
           if (state is HomeError) showErrorSnackbar(state.message);
-          if (state is HomeLoaded) maybeShowDemoFriendCheckIn();
+        },
+        buildWhen: (prev, next) {
+          // Avoid full rebuild when only unread flips during background refresh.
+          if (prev is HomeLoaded && next is HomeLoaded) {
+            return prev.stories != next.stories ||
+                prev.mapFriends != next.mapFriends ||
+                prev.hasUnreadMessages != next.hasUnreadMessages;
+          }
+          return prev.runtimeType != next.runtimeType || prev != next;
         },
         builder: (context, state) {
           return switch (state) {
@@ -93,3 +110,4 @@ class _HomeViewState extends State<HomeView> with HomeViewMixin {
     );
   }
 }
+

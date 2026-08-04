@@ -6,6 +6,7 @@ import 'package:zovi/core/theme/app_colors.dart';
 import 'package:zovi/core/utils/constants/asset_paths.dart';
 import 'package:zovi/core/widgets/app_button.dart';
 import 'package:zovi/domain/user/user_repository.dart';
+import 'package:zovi/presentation/home/model/check_in_success_route_args.dart';
 
 const _unlockStamps = [
   StampItem(imagePath: AssetPaths.stickerNightFlame, title: 'Night Flame'),
@@ -57,11 +58,13 @@ class TitleUnlockItem {
     required this.emoji,
     required this.title,
     required this.imagePath,
+    this.networkImageUrl,
   });
 
   final String emoji;
   final String title;
   final String imagePath;
+  final String? networkImageUrl;
 
   String get label => '$emoji $title';
 }
@@ -84,7 +87,35 @@ class CheckInUnlockResult {
   bool get isTitle => titleLabel != null;
 }
 
+/// Mekanın ilk checin’i için founder stamp + unvan sheet’i.
+Future<CheckInUnlockResult?> showCheckInFounderUnlockSheet(
+  BuildContext context, {
+  required String placeName,
+  required CheckInFounderOffer offer,
+}) {
+  final title = TitleUnlockItem(
+    emoji: (offer.titleEmoji?.trim().isNotEmpty == true)
+        ? offer.titleEmoji!.trim()
+        : '👑',
+    title: offer.titleLabel,
+    imagePath: AssetPaths.stamp16,
+    networkImageUrl: offer.stampImageUrl,
+  );
+  return showModalBottomSheet<CheckInUnlockResult>(
+    context: context,
+    isScrollControlled: true,
+    useRootNavigator: true,
+    backgroundColor: AppColors.white,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+    ),
+    builder: (context) =>
+        CheckInUnlockTitleSheet(title: title, placeName: placeName),
+  );
+}
+
 /// Rastgele stamp veya unvan sheet'i açar.
+@Deprecated('Use showCheckInFounderUnlockSheet for venue-first rewards')
 Future<CheckInUnlockResult?> showCheckInUnlockRewardSheet(
   BuildContext context, {
   required String placeName,
@@ -287,12 +318,27 @@ class CheckInUnlockTitleSheet extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 10),
-            Image.asset(
-              title.imagePath,
-              width: 180,
-              height: 180,
-              fit: BoxFit.contain,
-            ),
+            if (title.networkImageUrl != null &&
+                title.networkImageUrl!.trim().isNotEmpty)
+              Image.network(
+                title.networkImageUrl!,
+                width: 180,
+                height: 180,
+                fit: BoxFit.contain,
+                errorBuilder: (_, _, _) => Image.asset(
+                  title.imagePath,
+                  width: 180,
+                  height: 180,
+                  fit: BoxFit.contain,
+                ),
+              )
+            else
+              Image.asset(
+                title.imagePath,
+                width: 180,
+                height: 180,
+                fit: BoxFit.contain,
+              ),
             const SizedBox(height: 10),
             AppButton(
               label: 'check_in_unlock_save_and_use'.tr(),

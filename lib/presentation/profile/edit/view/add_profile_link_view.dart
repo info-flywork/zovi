@@ -1,13 +1,20 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:zovi/core/di/injection.dart';
+import 'package:zovi/core/snackbar/app_snackbar.dart';
 import 'package:zovi/core/theme/app_colors.dart';
 import 'package:zovi/core/utils/constants/asset_paths.dart';
+import 'package:zovi/core/utils/extensions/future_extensions.dart';
 import 'package:zovi/core/widgets/app_icon.dart';
 import 'package:zovi/domain/user/user_repository.dart';
 
 class AddProfileLinkView extends StatefulWidget {
-  const AddProfileLinkView({super.key});
+  const AddProfileLinkView({this.existingLinks = const [], super.key});
+
+  /// Links already on the profile — the new one is appended and the whole
+  /// list is persisted, so "Tamam" writes to the backend right away.
+  final List<ProfileLink> existingLinks;
 
   @override
   State<AddProfileLinkView> createState() => _AddProfileLinkViewState();
@@ -16,6 +23,7 @@ class AddProfileLinkView extends StatefulWidget {
 class _AddProfileLinkViewState extends State<AddProfileLinkView> {
   final _urlController = TextEditingController();
   final _titleController = TextEditingController();
+  var _saving = false;
 
   @override
   void dispose() {
@@ -24,13 +32,32 @@ class _AddProfileLinkViewState extends State<AddProfileLinkView> {
     super.dispose();
   }
 
-  void _onDone() {
+  Future<void> _onDone() async {
+    if (_saving) return;
     final url = _urlController.text.trim();
     final title = _titleController.text.trim();
     if (url.isEmpty || title.isEmpty) return;
 
     final normalizedUrl = url.startsWith('http') ? url : 'https://$url';
-    context.pop(ProfileLink(title: title, url: normalizedUrl));
+    final link = ProfileLink(title: title, url: normalizedUrl);
+
+    _saving = true;
+    try {
+      final updated = await getIt<UserRepository>()
+          .patchProfileLinks([...widget.existingLinks, link])
+          .withLoading(context);
+      if (!mounted) return;
+      context.pop(updated.links);
+    } catch (_) {
+      if (!mounted) return;
+      AppSnackbar.instance.show(
+        context,
+        'error_profile_save_failed'.tr(),
+        isError: true,
+      );
+    } finally {
+      _saving = false;
+    }
   }
 
   @override

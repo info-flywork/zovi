@@ -9,6 +9,7 @@ class ProfileLoadedBody extends StatefulWidget {
     required this.plans,
     required this.tabController,
     required this.onTabSelected,
+    this.sectionsReady = true,
     super.key,
   });
 
@@ -17,6 +18,7 @@ class ProfileLoadedBody extends StatefulWidget {
   final List<PulseItem> pulses;
   final List<StampItem> stamps;
   final List<PlanItem> plans;
+  final bool sectionsReady;
   final TabController tabController;
   final ValueChanged<ProfileContentTab> onTabSelected;
 
@@ -105,6 +107,9 @@ class _ProfileLoadedBodyState extends State<ProfileLoadedBody> {
           _liveLocation = label;
         }
       });
+      if (label != null && label.isNotEmpty) {
+        unawaited(getIt<UserRepository>().syncLiveLocationLabel(label));
+      }
     } catch (_) {
       // Fallback: mock user.location / default map center.
     }
@@ -127,7 +132,7 @@ class _ProfileLoadedBodyState extends State<ProfileLoadedBody> {
       case 1:
         const spacing = 10.0;
         final itemWidth = (width - 32 - spacing * 2) / 3;
-        final cardHeight = itemWidth + 20;
+        final cardHeight = itemWidth + 24;
         final rows = (stampCount / 3).ceil().clamp(1, 100);
         return 16 + rows * cardHeight + (rows - 1) * spacing;
       case 2:
@@ -136,7 +141,8 @@ class _ProfileLoadedBodyState extends State<ProfileLoadedBody> {
           // Empty-state kartının görünmesi için minimum yükseklik.
           return 180;
         }
-        return 16 + checkInCount * 80.0;
+        // padding 16 + row(padding 20 + avatar 50 + border 2 + margin 10)
+        return 16 + checkInCount * 82.0;
     }
   }
 
@@ -284,15 +290,18 @@ class _ProfileLoadedBodyState extends State<ProfileLoadedBody> {
             controller: widget.tabController,
             children: [
               Align(
-                alignment: Alignment.topCenter,
-                child: ProfilePulses(pulses: widget.pulses),
+                alignment: Alignment.topLeft,
+                child: ProfilePulses(
+                  pulses: widget.pulses,
+                  isLoading: !widget.sectionsReady && widget.pulses.isEmpty,
+                ),
               ),
               Align(
-                alignment: Alignment.topCenter,
+                alignment: Alignment.topLeft,
                 child: ProfileStamps(stamps: widget.stamps),
               ),
               Align(
-                alignment: Alignment.topCenter,
+                alignment: Alignment.topLeft,
                 child: ProfileCheckins(checkIns: widget.checkIns),
               ),
             ],

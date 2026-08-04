@@ -2,9 +2,11 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:zovi/core/theme/app_colors.dart';
 import 'package:zovi/core/utils/constants/asset_paths.dart';
+import 'package:zovi/core/utils/navigation/open_user_profile.dart';
 import 'package:zovi/core/widgets/app_icon.dart';
 import 'package:zovi/core/widgets/app_search_field.dart';
 import 'package:zovi/core/widgets/profile_avatar.dart';
+import 'package:zovi/domain/user/user_repository.dart';
 
 class BlockedUser {
   const BlockedUser({
@@ -293,22 +295,44 @@ class _BlockedUserRow extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        ProfileAvatar(
-          path: user.avatarPath,
-          size: 48,
-          showGradientRing: true,
-          ringGap: 1.5,
-        ),
-        const SizedBox(width: 12),
         Expanded(
-          child: Text(
-            user.username,
-            style: const TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-              height: 20 / 16,
-              letterSpacing: -0.32,
-              color: AppColors.black,
+          child: GestureDetector(
+            onTap: () {
+              final handle = user.username.trim();
+              if (handle.isEmpty) return;
+              openUserProfile(
+                context,
+                handle,
+                seed: PublicUserProfile.skeleton(
+                  username: handle,
+                  avatarPath: user.avatarPath,
+                  userId: user.userId,
+                ),
+              );
+            },
+            behavior: HitTestBehavior.opaque,
+            child: Row(
+              children: [
+                ProfileAvatar(
+                  path: user.avatarPath,
+                  size: 48,
+                  showGradientRing: true,
+                  ringGap: 1.5,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    user.username,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      height: 20 / 16,
+                      letterSpacing: -0.32,
+                      color: AppColors.black,
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
         ),
