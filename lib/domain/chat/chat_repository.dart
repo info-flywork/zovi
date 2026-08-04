@@ -1,7 +1,9 @@
 import 'package:zovi/core/network/network_manager.dart';
 import 'package:zovi/core/utils/enum/request_type.dart';
+import 'package:flutter/foundation.dart';
 
-class ChatPeer {
+@immutable
+final class ChatPeer {
   const ChatPeer({
     required this.userId,
     required this.name,
@@ -24,7 +26,8 @@ class ChatPeer {
   final String avatarUrl;
 }
 
-class ChatConversation {
+@immutable
+final class ChatConversation {
   const ChatConversation({
     required this.id,
     required this.folder,
@@ -62,7 +65,8 @@ class ChatConversation {
   bool get isUnread => unreadCount > 0;
 }
 
-class ChatMessage {
+@immutable
+final class ChatMessage {
   const ChatMessage({
     required this.id,
     required this.conversationId,

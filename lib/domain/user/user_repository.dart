@@ -12,7 +12,8 @@ import 'package:zovi/domain/auth/auth_repository.dart';
 
 // Domain keeps map marker positions as normalized x/y (-1..1).
 
-class ProfileLink extends Equatable {
+@immutable
+final class ProfileLink extends Equatable {
   const ProfileLink({
     required this.title,
     required this.url,
@@ -28,7 +29,8 @@ class ProfileLink extends Equatable {
   List<Object?> get props => [title, url];
 }
 
-class UserProfile extends Equatable {
+@immutable
+final class UserProfile extends Equatable {
   const UserProfile({
     required this.name,
     required this.username,
@@ -148,7 +150,8 @@ class UserProfile extends Equatable {
 }
 
 /// Başka kullanıcının profil ekranı için genişletilmiş profil.
-class PublicUserProfile extends Equatable {
+@immutable
+final class PublicUserProfile extends Equatable {
   const PublicUserProfile({
     required this.name,
     required this.username,
@@ -385,7 +388,8 @@ class PublicUserProfile extends Equatable {
       ];
 }
 
-class StoryPreview extends Equatable {
+@immutable
+final class StoryPreview extends Equatable {
   const StoryPreview({
     required this.name,
     required this.avatarPath,
@@ -431,7 +435,8 @@ class StoryPreview extends Equatable {
   ];
 }
 
-class StoryMediaItem extends Equatable {
+@immutable
+final class StoryMediaItem extends Equatable {
   const StoryMediaItem({
     required this.imagePath,
     required this.label,
@@ -561,7 +566,8 @@ class StoryMediaItem extends Equatable {
   ];
 }
 
-class MapFriend extends Equatable {
+@immutable
+final class MapFriend extends Equatable {
   const MapFriend({
     required this.name,
     required this.avatarPath,
@@ -714,7 +720,8 @@ class MapFriend extends Equatable {
 }
 
 /// Arkadaşın haritadaki aktif check-in’i.
-class FriendMapCheckIn extends Equatable {
+@immutable
+final class FriendMapCheckIn extends Equatable {
   const FriendMapCheckIn({
     required this.photoPaths,
     required this.stampImagePath,
@@ -736,7 +743,8 @@ class FriendMapCheckIn extends Equatable {
       [photoPaths, stampImagePath, placeName, checkedAt, titleLabel];
 }
 
-class MapVenue extends Equatable {
+@immutable
+final class MapVenue extends Equatable {
   const MapVenue({
     required this.name,
     required this.peopleCount,
@@ -757,7 +765,8 @@ class MapVenue extends Equatable {
   List<Object?> get props => [name, peopleCount, lat, lng, x, y];
 }
 
-class CheckInItem extends Equatable {
+@immutable
+final class CheckInItem extends Equatable {
   const CheckInItem({
     required this.placeName,
     required this.when,
@@ -842,7 +851,8 @@ String _formatCheckInClock(DateTime at) {
   return '$hour12:$minute${isPm ? 'pm' : 'am'}';
 }
 
-class PulseItem extends Equatable {
+@immutable
+final class PulseItem extends Equatable {
   const PulseItem({
     required this.imagePath,
     this.id = '',
@@ -911,7 +921,8 @@ String _formatPulseTime(DateTime at) {
   return '${at.day}.${at.month}.${at.year}';
 }
 
-class StampItem extends Equatable {
+@immutable
+final class StampItem extends Equatable {
   const StampItem({
     required this.imagePath,
     required this.title,
@@ -937,7 +948,8 @@ class StampItem extends Equatable {
   List<Object?> get props => [id, imagePath, title];
 }
 
-class ActiveMapCheckIn extends Equatable {
+@immutable
+final class ActiveMapCheckIn extends Equatable {
   const ActiveMapCheckIn({
     required this.stampImagePath,
     required this.photoPaths,
@@ -977,7 +989,8 @@ class ActiveMapCheckIn extends Equatable {
       ];
 }
 
-class PlanItem extends Equatable {
+@immutable
+final class PlanItem extends Equatable {
   const PlanItem({
     required this.time,
     required this.placeName,
@@ -1015,7 +1028,8 @@ class PlanItem extends Equatable {
 }
 
 /// Cached public-profile tabs (plans / pulse / stamps / check-in).
-class FriendProfileSections {
+@immutable
+final class FriendProfileSections {
   const FriendProfileSections({
     required this.plans,
     required this.pulses,
@@ -1029,7 +1043,8 @@ class FriendProfileSections {
   final List<CheckInItem> checkIns;
 }
 
-class NearbyAddPlanPlace extends Equatable {
+@immutable
+final class NearbyAddPlanPlace extends Equatable {
   const NearbyAddPlanPlace({
     required this.categoryKey,
     required this.placeName,

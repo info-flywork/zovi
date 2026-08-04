@@ -1,6 +1,8 @@
 import 'package:zovi/presentation/auth/model/signup_flow.dart';
+import 'package:flutter/foundation.dart';
 
-class CreateProfileRouteArgs {
+@immutable
+final class CreateProfileRouteArgs {
   const CreateProfileRouteArgs({required this.signupFlow});
 
   final SignupFlow signupFlow;

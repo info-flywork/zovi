@@ -1,4 +1,6 @@
-class AddPlanPlace {
+import 'package:flutter/foundation.dart';
+@immutable
+final class AddPlanPlace {
   const AddPlanPlace({
     required this.categoryKey,
     required this.placeName,

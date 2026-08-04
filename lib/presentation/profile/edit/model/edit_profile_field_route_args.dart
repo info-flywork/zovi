@@ -1,6 +1,8 @@
 import 'package:zovi/presentation/profile/edit/model/edit_profile_field_type.dart';
+import 'package:flutter/foundation.dart';
 
-class EditProfileFieldRouteArgs {
+@immutable
+final class EditProfileFieldRouteArgs {
   const EditProfileFieldRouteArgs({
     required this.field,
     required this.initialValue,

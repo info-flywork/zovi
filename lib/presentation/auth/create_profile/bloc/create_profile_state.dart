@@ -1,5 +1,6 @@
 import 'package:equatable/equatable.dart';
 import 'package:zovi/presentation/auth/model/signup_flow.dart';
+import 'package:flutter/foundation.dart';
 
 enum UsernameAvailabilityStatus {
   idle,
@@ -9,6 +10,7 @@ enum UsernameAvailabilityStatus {
   invalid,
 }
 
+@immutable
 sealed class CreateProfileState extends Equatable {
   const CreateProfileState({
     required this.signupFlow,
@@ -48,6 +50,7 @@ sealed class CreateProfileState extends Equatable {
       ];
 }
 
+@immutable
 final class CreateProfileInitial extends CreateProfileState {
   const CreateProfileInitial({
     required super.signupFlow,
@@ -58,6 +61,7 @@ final class CreateProfileInitial extends CreateProfileState {
   });
 }
 
+@immutable
 final class CreateProfileLoading extends CreateProfileState {
   const CreateProfileLoading({
     required super.signupFlow,
@@ -68,6 +72,7 @@ final class CreateProfileLoading extends CreateProfileState {
   });
 }
 
+@immutable
 final class CreateProfileSuccess extends CreateProfileState {
   const CreateProfileSuccess({
     required this.navigateTo,
@@ -87,6 +92,7 @@ final class CreateProfileSuccess extends CreateProfileState {
       ];
 }
 
+@immutable
 final class CreateProfileError extends CreateProfileState {
   const CreateProfileError({
     required this.message,

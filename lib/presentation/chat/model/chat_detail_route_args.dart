@@ -1,4 +1,6 @@
-class ChatDetailRouteArgs {
+import 'package:flutter/foundation.dart';
+@immutable
+final class ChatDetailRouteArgs {
   const ChatDetailRouteArgs({
     required this.name,
     required this.username,

@@ -1,4 +1,6 @@
-class StoryDraftItem {
+import 'package:flutter/foundation.dart';
+@immutable
+final class StoryDraftItem {
   const StoryDraftItem({
     required this.id,
     required this.mediaUrl,

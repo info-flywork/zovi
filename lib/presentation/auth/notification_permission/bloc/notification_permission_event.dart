@@ -1,5 +1,7 @@
 import 'package:equatable/equatable.dart';
+import 'package:flutter/foundation.dart';
 
+@immutable
 sealed class NotificationPermissionEvent extends Equatable {
   const NotificationPermissionEvent();
 
@@ -7,6 +9,7 @@ sealed class NotificationPermissionEvent extends Equatable {
   List<Object?> get props => [];
 }
 
+@immutable
 final class NotificationPermissionContinueTapped
     extends NotificationPermissionEvent {
   const NotificationPermissionContinueTapped();

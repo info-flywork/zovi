@@ -1,6 +1,8 @@
 import 'package:equatable/equatable.dart';
 import 'package:zovi/core/models/country.dart';
+import 'package:flutter/foundation.dart';
 
+@immutable
 sealed class OtpState extends Equatable {
   const OtpState({
     required this.phone,
@@ -21,6 +23,7 @@ sealed class OtpState extends Equatable {
   List<Object?> get props => [phone, selectedCountry, code, resendSeconds];
 }
 
+@immutable
 final class OtpInitial extends OtpState {
   const OtpInitial({
     required super.phone,
@@ -30,6 +33,7 @@ final class OtpInitial extends OtpState {
   });
 }
 
+@immutable
 final class OtpLoading extends OtpState {
   const OtpLoading({
     required super.phone,
@@ -39,6 +43,7 @@ final class OtpLoading extends OtpState {
   });
 }
 
+@immutable
 final class OtpResending extends OtpState {
   const OtpResending({
     required super.phone,
@@ -48,6 +53,7 @@ final class OtpResending extends OtpState {
   });
 }
 
+@immutable
 final class OtpSuccess extends OtpState {
   const OtpSuccess({
     required this.navigateTo,
@@ -72,6 +78,7 @@ final class OtpSuccess extends OtpState {
       ];
 }
 
+@immutable
 final class OtpError extends OtpState {
   const OtpError({
     required this.message,

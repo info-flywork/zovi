@@ -1,6 +1,8 @@
+import 'package:flutter/foundation.dart';
 enum ProfileConnectionsTab { followers, friends }
 
-class ProfileConnectionsRouteArgs {
+@immutable
+final class ProfileConnectionsRouteArgs {
   const ProfileConnectionsRouteArgs({
     required this.name,
     required this.followersCount,

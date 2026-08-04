@@ -8,7 +8,7 @@ import 'package:zovi/domain/auth/phone_auth_error.dart';
 import 'package:zovi/presentation/auth/onboarding/bloc/onboarding_event.dart';
 import 'package:zovi/presentation/auth/onboarding/bloc/onboarding_state.dart';
 
-class OnboardingBloc extends Bloc<OnboardingEvent, OnboardingState> {
+final class OnboardingBloc extends Bloc<OnboardingEvent, OnboardingState> {
   OnboardingBloc(this._authRepository) : super(const OnboardingInitial()) {
     on<OnboardingPhoneChanged>(_onPhoneChanged);
     on<OnboardingCountryChanged>(_onCountryChanged);

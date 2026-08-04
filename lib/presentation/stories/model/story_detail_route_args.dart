@@ -1,6 +1,8 @@
 import 'package:zovi/domain/user/user_repository.dart';
+import 'package:flutter/foundation.dart';
 
-class StoryDetailRouteArgs {
+@immutable
+final class StoryDetailRouteArgs {
   const StoryDetailRouteArgs({
     required this.items,
     required this.initialIndex,

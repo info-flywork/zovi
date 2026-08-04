@@ -1,6 +1,8 @@
 import 'package:equatable/equatable.dart';
 import 'package:zovi/domain/user/user_repository.dart';
+import 'package:flutter/foundation.dart';
 
+@immutable
 sealed class HomeState extends Equatable {
   const HomeState();
 
@@ -8,14 +10,17 @@ sealed class HomeState extends Equatable {
   List<Object?> get props => [];
 }
 
+@immutable
 final class HomeInitial extends HomeState {
   const HomeInitial();
 }
 
+@immutable
 final class HomeLoading extends HomeState {
   const HomeLoading();
 }
 
+@immutable
 final class HomeLoaded extends HomeState {
   const HomeLoaded({
     required this.stories,
@@ -43,6 +48,7 @@ final class HomeLoaded extends HomeState {
   List<Object?> get props => [stories, mapFriends, hasUnreadMessages];
 }
 
+@immutable
 final class HomeError extends HomeState {
   const HomeError({required this.message});
 

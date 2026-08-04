@@ -6,7 +6,7 @@ import 'package:zovi/presentation/auth/birthday/bloc/birthday_event.dart';
 import 'package:zovi/presentation/auth/birthday/bloc/birthday_state.dart';
 import 'package:zovi/presentation/auth/model/signup_flow.dart';
 
-class BirthdayBloc extends Bloc<BirthdayEvent, BirthdayState> {
+final class BirthdayBloc extends Bloc<BirthdayEvent, BirthdayState> {
   BirthdayBloc({
     required SignupFlow signupFlow,
     required this._authRepository,

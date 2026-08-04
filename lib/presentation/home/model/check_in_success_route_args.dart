@@ -1,4 +1,6 @@
-class CheckInRewardItem {
+import 'package:flutter/foundation.dart';
+@immutable
+final class CheckInRewardItem {
   const CheckInRewardItem({
     required this.code,
     required this.coins,
@@ -31,7 +33,8 @@ class CheckInRewardItem {
   final Map<String, String> namedArgs;
 }
 
-class CheckInFounderOffer {
+@immutable
+final class CheckInFounderOffer {
   const CheckInFounderOffer({
     required this.titleLabel,
     required this.titleSlug,
@@ -69,7 +72,8 @@ class CheckInFounderOffer {
   }
 }
 
-class CheckInSuccessRouteArgs {
+@immutable
+final class CheckInSuccessRouteArgs {
   const CheckInSuccessRouteArgs({
     required this.placeName,
     this.friendNames = const [],

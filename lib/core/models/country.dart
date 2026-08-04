@@ -1,6 +1,8 @@
 import 'package:equatable/equatable.dart';
+import 'package:flutter/foundation.dart';
 
-class Country extends Equatable {
+@immutable
+final class Country extends Equatable {
   const Country({
     required this.isoCode,
     required this.name,

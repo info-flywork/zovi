@@ -9,7 +9,7 @@ import 'package:zovi/presentation/auth/create_profile/bloc/create_profile_event.
 import 'package:zovi/presentation/auth/create_profile/bloc/create_profile_state.dart';
 import 'package:zovi/presentation/auth/model/signup_flow.dart';
 
-class CreateProfileBloc extends Bloc<CreateProfileEvent, CreateProfileState> {
+final class CreateProfileBloc extends Bloc<CreateProfileEvent, CreateProfileState> {
   CreateProfileBloc({
     required SignupFlow signupFlow,
     required AuthRepository this._authRepository,

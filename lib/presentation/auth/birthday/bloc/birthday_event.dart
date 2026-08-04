@@ -1,5 +1,7 @@
 import 'package:equatable/equatable.dart';
+import 'package:flutter/foundation.dart';
 
+@immutable
 sealed class BirthdayEvent extends Equatable {
   const BirthdayEvent();
 
@@ -7,6 +9,7 @@ sealed class BirthdayEvent extends Equatable {
   List<Object?> get props => [];
 }
 
+@immutable
 final class BirthdayDateChanged extends BirthdayEvent {
   const BirthdayDateChanged(this.birthDate);
 
@@ -16,6 +19,7 @@ final class BirthdayDateChanged extends BirthdayEvent {
   List<Object?> get props => [birthDate];
 }
 
+@immutable
 final class BirthdayContinueTapped extends BirthdayEvent {
   const BirthdayContinueTapped();
 }

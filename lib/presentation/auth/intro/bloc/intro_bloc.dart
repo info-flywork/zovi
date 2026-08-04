@@ -4,7 +4,7 @@ import 'package:zovi/domain/auth/auth_repository.dart';
 import 'package:zovi/presentation/auth/intro/bloc/intro_event.dart';
 import 'package:zovi/presentation/auth/intro/bloc/intro_state.dart';
 
-class IntroBloc extends Bloc<IntroEvent, IntroState> {
+final class IntroBloc extends Bloc<IntroEvent, IntroState> {
   IntroBloc(this._authRepository) : super(const IntroInProgress()) {
     on<IntroPageChanged>(_onPageChanged);
     on<IntroContinueTapped>(_onContinue);

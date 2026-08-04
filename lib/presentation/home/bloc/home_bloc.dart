@@ -4,7 +4,7 @@ import 'package:zovi/domain/user/user_repository.dart';
 import 'package:zovi/presentation/home/bloc/home_event.dart';
 import 'package:zovi/presentation/home/bloc/home_state.dart';
 
-class HomeBloc extends Bloc<HomeEvent, HomeState> {
+final class HomeBloc extends Bloc<HomeEvent, HomeState> {
   HomeBloc(this._userRepository, this._chatRepository)
     : super(const HomeInitial()) {
     on<HomeStarted>(_onStarted);

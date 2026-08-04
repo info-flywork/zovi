@@ -1,4 +1,6 @@
-class UsernameAvailability {
+import 'package:flutter/foundation.dart';
+@immutable
+final class UsernameAvailability {
   const UsernameAvailability({
     required this.username,
     required this.available,

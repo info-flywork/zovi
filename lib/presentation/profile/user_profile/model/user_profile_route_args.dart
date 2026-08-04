@@ -1,6 +1,8 @@
 import 'package:zovi/domain/user/user_repository.dart';
+import 'package:flutter/foundation.dart';
 
-class UserProfileRouteArgs {
+@immutable
+final class UserProfileRouteArgs {
   const UserProfileRouteArgs({required this.user});
 
   final PublicUserProfile user;

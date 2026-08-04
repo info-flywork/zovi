@@ -7,7 +7,7 @@ import 'package:zovi/domain/user/user_repository.dart';
 import 'package:zovi/presentation/auth/splash/bloc/splash_event.dart';
 import 'package:zovi/presentation/auth/splash/bloc/splash_state.dart';
 
-class SplashBloc extends Bloc<SplashEvent, SplashState> {
+final class SplashBloc extends Bloc<SplashEvent, SplashState> {
   SplashBloc(this._authRepository, this._userRepository)
     : super(const SplashInitial()) {
     on<SplashStarted>(_onStarted);

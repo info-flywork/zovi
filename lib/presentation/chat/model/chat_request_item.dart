@@ -1,4 +1,7 @@
-class ChatRequestItem {
+import 'package:flutter/foundation.dart';
+
+@immutable
+final class ChatRequestItem {
   const ChatRequestItem({
     required this.conversationId,
     required this.userId,
@@ -30,7 +33,8 @@ class ChatRequestItem {
   }
 }
 
-class ChatRequestsRouteArgs {
+@immutable
+final class ChatRequestsRouteArgs {
   const ChatRequestsRouteArgs({required this.requests});
 
   final List<ChatRequestItem> requests;

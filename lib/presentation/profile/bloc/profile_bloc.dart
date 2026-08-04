@@ -1,17 +1,21 @@
 import 'package:equatable/equatable.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:zovi/domain/user/user_repository.dart';
 
+@immutable
 sealed class ProfileEvent extends Equatable {
   const ProfileEvent();
   @override
   List<Object?> get props => [];
 }
 
+@immutable
 final class ProfileStarted extends ProfileEvent {
   const ProfileStarted();
 }
 
+@immutable
 final class ProfileUserUpdated extends ProfileEvent {
   const ProfileUserUpdated(this.user);
 
@@ -21,18 +25,21 @@ final class ProfileUserUpdated extends ProfileEvent {
   List<Object?> get props => [user];
 }
 
+@immutable
 final class ProfilePlansRefreshRequested extends ProfileEvent {
   const ProfilePlansRefreshRequested();
 }
 
 /// Re-fetches `/auth/me` so counters (followers/following) reflect actions
 /// taken elsewhere — including by other users.
+@immutable
 final class ProfileRefreshRequested extends ProfileEvent {
   const ProfileRefreshRequested();
 }
 
 /// Emitted from the repository cache listener; must not write back to the
 /// repository or the notifier would loop.
+@immutable
 final class _ProfileCacheChanged extends ProfileEvent {
   const _ProfileCacheChanged(this.user);
 
@@ -42,20 +49,24 @@ final class _ProfileCacheChanged extends ProfileEvent {
   List<Object?> get props => [user];
 }
 
+@immutable
 sealed class ProfileState extends Equatable {
   const ProfileState();
   @override
   List<Object?> get props => [];
 }
 
+@immutable
 final class ProfileInitial extends ProfileState {
   const ProfileInitial();
 }
 
+@immutable
 final class ProfileLoading extends ProfileState {
   const ProfileLoading();
 }
 
+@immutable
 final class ProfileLoaded extends ProfileState {
   const ProfileLoaded({
     required this.user,
@@ -104,6 +115,7 @@ final class ProfileLoaded extends ProfileState {
   ];
 }
 
+@immutable
 final class ProfileError extends ProfileState {
   const ProfileError(this.message);
   final String message;
@@ -111,7 +123,7 @@ final class ProfileError extends ProfileState {
   List<Object?> get props => [message];
 }
 
-class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
+final class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
   ProfileBloc(this._userRepository) : super(const ProfileInitial()) {
     on<ProfileStarted>(_onStarted);
     on<ProfileUserUpdated>(_onUserUpdated);

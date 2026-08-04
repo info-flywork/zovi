@@ -1,5 +1,7 @@
 import 'package:equatable/equatable.dart';
+import 'package:flutter/foundation.dart';
 
+@immutable
 sealed class CreateProfileEvent extends Equatable {
   const CreateProfileEvent();
 
@@ -7,6 +9,7 @@ sealed class CreateProfileEvent extends Equatable {
   List<Object?> get props => [];
 }
 
+@immutable
 final class CreateProfileFullNameChanged extends CreateProfileEvent {
   const CreateProfileFullNameChanged(this.fullName);
 
@@ -16,6 +19,7 @@ final class CreateProfileFullNameChanged extends CreateProfileEvent {
   List<Object?> get props => [fullName];
 }
 
+@immutable
 final class CreateProfileUsernameChanged extends CreateProfileEvent {
   const CreateProfileUsernameChanged(this.username);
 
@@ -25,6 +29,7 @@ final class CreateProfileUsernameChanged extends CreateProfileEvent {
   List<Object?> get props => [username];
 }
 
+@immutable
 final class CreateProfileUsernameCheckRequested extends CreateProfileEvent {
   const CreateProfileUsernameCheckRequested(this.username);
 
@@ -34,6 +39,7 @@ final class CreateProfileUsernameCheckRequested extends CreateProfileEvent {
   List<Object?> get props => [username];
 }
 
+@immutable
 final class CreateProfileUsernameSuggestionSelected extends CreateProfileEvent {
   const CreateProfileUsernameSuggestionSelected(this.username);
 
@@ -43,6 +49,7 @@ final class CreateProfileUsernameSuggestionSelected extends CreateProfileEvent {
   List<Object?> get props => [username];
 }
 
+@immutable
 final class CreateProfileContinueTapped extends CreateProfileEvent {
   const CreateProfileContinueTapped();
 }

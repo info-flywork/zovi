@@ -1,6 +1,8 @@
 import 'package:zovi/presentation/auth/model/signup_flow.dart';
+import 'package:flutter/foundation.dart';
 
-class BirthdayRouteArgs {
+@immutable
+final class BirthdayRouteArgs {
   const BirthdayRouteArgs({required this.signupFlow});
 
   final SignupFlow signupFlow;

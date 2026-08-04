@@ -2,8 +2,10 @@ import 'package:zovi/core/utils/enum/route_paths.dart';
 import 'package:zovi/presentation/auth/create_profile/model/create_profile_route_args.dart';
 import 'package:zovi/presentation/auth/model/signup_flow.dart';
 import 'package:zovi/presentation/auth/birthday/model/birthday_route_args.dart';
+import 'package:flutter/foundation.dart';
 
-class AuthSession {
+@immutable
+final class AuthSession {
   const AuthSession({
     required this.nextStep,
     required this.isProfileComplete,

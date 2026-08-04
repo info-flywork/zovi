@@ -1,6 +1,8 @@
 import 'package:equatable/equatable.dart';
 import 'package:zovi/core/models/country.dart';
+import 'package:flutter/foundation.dart';
 
+@immutable
 sealed class OnboardingEvent extends Equatable {
   const OnboardingEvent();
 
@@ -8,6 +10,7 @@ sealed class OnboardingEvent extends Equatable {
   List<Object?> get props => [];
 }
 
+@immutable
 final class OnboardingPhoneChanged extends OnboardingEvent {
   const OnboardingPhoneChanged(this.phone);
 
@@ -17,10 +20,12 @@ final class OnboardingPhoneChanged extends OnboardingEvent {
   List<Object?> get props => [phone];
 }
 
+@immutable
 final class OnboardingSendCodeTapped extends OnboardingEvent {
   const OnboardingSendCodeTapped();
 }
 
+@immutable
 final class OnboardingCountryChanged extends OnboardingEvent {
   const OnboardingCountryChanged(this.country);
 

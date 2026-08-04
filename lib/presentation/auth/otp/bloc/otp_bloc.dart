@@ -8,7 +8,7 @@ import 'package:zovi/domain/auth/phone_auth_error.dart';
 import 'package:zovi/presentation/auth/otp/bloc/otp_event.dart';
 import 'package:zovi/presentation/auth/otp/bloc/otp_state.dart';
 
-class OtpBloc extends Bloc<OtpEvent, OtpState> {
+final class OtpBloc extends Bloc<OtpEvent, OtpState> {
   OtpBloc(
     this._authRepository, {
     required String phone,

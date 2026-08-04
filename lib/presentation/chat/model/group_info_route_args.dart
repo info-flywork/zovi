@@ -1,4 +1,6 @@
-class GroupInfoRouteArgs {
+import 'package:flutter/foundation.dart';
+@immutable
+final class GroupInfoRouteArgs {
   const GroupInfoRouteArgs({
     required this.name,
     required this.avatarPath,

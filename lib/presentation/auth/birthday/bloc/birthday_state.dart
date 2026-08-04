@@ -1,6 +1,8 @@
 import 'package:equatable/equatable.dart';
 import 'package:zovi/presentation/auth/model/signup_flow.dart';
+import 'package:flutter/foundation.dart';
 
+@immutable
 sealed class BirthdayState extends Equatable {
   const BirthdayState({
     required this.signupFlow,
@@ -21,6 +23,7 @@ sealed class BirthdayState extends Equatable {
   List<Object?> get props => [signupFlow, birthDate];
 }
 
+@immutable
 final class BirthdayInitial extends BirthdayState {
   const BirthdayInitial({
     required super.signupFlow,
@@ -28,6 +31,7 @@ final class BirthdayInitial extends BirthdayState {
   });
 }
 
+@immutable
 final class BirthdayLoading extends BirthdayState {
   const BirthdayLoading({
     required super.signupFlow,
@@ -35,6 +39,7 @@ final class BirthdayLoading extends BirthdayState {
   });
 }
 
+@immutable
 final class BirthdaySuccess extends BirthdayState {
   const BirthdaySuccess({
     required this.navigateTo,
@@ -48,6 +53,7 @@ final class BirthdaySuccess extends BirthdayState {
   List<Object?> get props => [signupFlow, birthDate, navigateTo];
 }
 
+@immutable
 final class BirthdayError extends BirthdayState {
   const BirthdayError({
     required this.message,

@@ -5,7 +5,7 @@ import 'package:zovi/domain/auth/auth_repository.dart';
 import 'package:zovi/presentation/auth/location_permission/bloc/location_permission_event.dart';
 import 'package:zovi/presentation/auth/location_permission/bloc/location_permission_state.dart';
 
-class LocationPermissionBloc
+final class LocationPermissionBloc
     extends Bloc<LocationPermissionEvent, LocationPermissionState> {
   LocationPermissionBloc(this._authRepository)
     : super(const LocationPermissionInitial()) {

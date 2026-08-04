@@ -1,7 +1,9 @@
 import 'package:equatable/equatable.dart';
 import 'package:zovi/core/models/country.dart';
+import 'package:flutter/foundation.dart';
 
-class OtpRouteArgs extends Equatable {
+@immutable
+final class OtpRouteArgs extends Equatable {
   const OtpRouteArgs({
     required this.phone,
     required this.selectedCountry,

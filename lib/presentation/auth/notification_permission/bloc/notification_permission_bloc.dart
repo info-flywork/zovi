@@ -5,7 +5,7 @@ import 'package:zovi/presentation/auth/model/signup_flow.dart';
 import 'package:zovi/presentation/auth/notification_permission/bloc/notification_permission_event.dart';
 import 'package:zovi/presentation/auth/notification_permission/bloc/notification_permission_state.dart';
 
-class NotificationPermissionBloc
+final class NotificationPermissionBloc
     extends Bloc<NotificationPermissionEvent, NotificationPermissionState> {
   NotificationPermissionBloc({required SignupFlow signupFlow})
     : super(NotificationPermissionInitial(signupFlow: signupFlow)) {

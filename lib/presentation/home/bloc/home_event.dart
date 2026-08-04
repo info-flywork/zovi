@@ -1,5 +1,7 @@
 import 'package:equatable/equatable.dart';
+import 'package:flutter/foundation.dart';
 
+@immutable
 sealed class HomeEvent extends Equatable {
   const HomeEvent();
 
@@ -7,6 +9,7 @@ sealed class HomeEvent extends Equatable {
   List<Object?> get props => [];
 }
 
+@immutable
 final class HomeStarted extends HomeEvent {
   const HomeStarted({this.forceLoading = false});
 
@@ -17,10 +20,12 @@ final class HomeStarted extends HomeEvent {
   List<Object?> get props => [forceLoading];
 }
 
+@immutable
 final class HomeRefreshRequested extends HomeEvent {
   const HomeRefreshRequested();
 }
 
+@immutable
 final class HomeStoriesRefreshRequested extends HomeEvent {
   const HomeStoriesRefreshRequested();
 }

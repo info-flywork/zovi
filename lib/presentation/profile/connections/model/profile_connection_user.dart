@@ -1,7 +1,9 @@
 import 'package:equatable/equatable.dart';
 import 'package:zovi/domain/auth/auth_repository.dart';
+import 'package:flutter/foundation.dart';
 
-class ProfileConnectionUser extends Equatable {
+@immutable
+final class ProfileConnectionUser extends Equatable {
   const ProfileConnectionUser({
     required this.userId,
     required this.username,

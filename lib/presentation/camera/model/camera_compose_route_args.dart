@@ -1,4 +1,6 @@
-class CameraComposeRouteArgs {
+import 'package:flutter/foundation.dart';
+@immutable
+final class CameraComposeRouteArgs {
   const CameraComposeRouteArgs({
     required this.imagePath,
     this.fromDraft = false,

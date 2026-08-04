@@ -1,6 +1,8 @@
 import 'package:zovi/domain/user/user_repository.dart';
+import 'package:flutter/foundation.dart';
 
-class EditProfileLinksRouteArgs {
+@immutable
+final class EditProfileLinksRouteArgs {
   const EditProfileLinksRouteArgs({required this.links});
 
   final List<ProfileLink> links;
