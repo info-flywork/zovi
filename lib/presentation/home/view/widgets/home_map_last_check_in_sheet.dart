@@ -13,6 +13,29 @@ class HomeMapLastCheckInSheet extends StatelessWidget {
   static const _thumbSize = 68.0;
   static const _stampSize = 32.0;
 
+  String _relativeTime(DateTime? at) {
+    if (at == null) return 'map_friend_checked_just_now'.tr();
+    final elapsed = DateTime.now().difference(at.toLocal());
+    if (elapsed.isNegative || elapsed.inMinutes < 1) {
+      return 'map_friend_checked_just_now'.tr();
+    }
+    if (elapsed.inMinutes < 60) {
+      return 'map_friend_checked_minutes_ago'.tr(
+        namedArgs: {'minutes': '${elapsed.inMinutes}'},
+      );
+    }
+    if (elapsed.inHours < 24) {
+      return 'map_friend_checked_hours_ago'.tr(
+        namedArgs: {'hours': '${elapsed.inHours}'},
+      );
+    }
+    final local = at.toLocal();
+    final day = '${local.day}.${local.month}.${local.year}';
+    final hour = local.hour.toString().padLeft(2, '0');
+    final minute = local.minute.toString().padLeft(2, '0');
+    return '$day · $hour:$minute';
+  }
+
   @override
   Widget build(BuildContext context) {
     return Material(
@@ -122,7 +145,7 @@ class HomeMapLastCheckInSheet extends StatelessWidget {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      'last_check_in_time'.tr(),
+                      _relativeTime(checkIn.checkedAt),
                       style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w500,

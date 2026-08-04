@@ -1223,6 +1223,7 @@ class _HomeMapSectionState extends State<HomeMapSection>
                   child: _friendSheetFriend != null
                       ? HomeMapFriendSheet(
                           friend: _friendSheetFriend!,
+                          viewerLocation: _userLocation,
                           onClose: () => unawaited(_closeFriendSheet()),
                           onSend: (text) => unawaited(_sendFriendMessage(text)),
                           onOpenProfile: () => unawaited(

@@ -3,6 +3,7 @@ part of '../home_view.dart';
 class HomeMapFriendSheet extends StatefulWidget {
   const HomeMapFriendSheet({
     required this.friend,
+    required this.viewerLocation,
     required this.onClose,
     required this.onSend,
     required this.onOpenProfile,
@@ -10,6 +11,7 @@ class HomeMapFriendSheet extends StatefulWidget {
   });
 
   final MapFriend friend;
+  final LatLng viewerLocation;
   final VoidCallback onClose;
   final ValueChanged<String> onSend;
   final VoidCallback onOpenProfile;
@@ -23,6 +25,10 @@ class _HomeMapFriendSheetState extends State<HomeMapFriendSheet> {
 
   static const _thumbSize = 68.0;
   static const _stampSize = 32.0;
+  static const _distance = Distance();
+
+  /// Average walking speed ≈ 5 km/h.
+  static const _walkMetersPerMinute = 83.3;
 
   @override
   void dispose() {
@@ -34,12 +40,78 @@ class _HomeMapFriendSheetState extends State<HomeMapFriendSheet> {
     widget.onSend(_controller.text.trim());
   }
 
+  int? _liveDistanceMeters(MapFriend friend) {
+    if (friend.lat == 0 && friend.lng == 0) {
+      return friend.distanceMeters;
+    }
+    return _distance
+        .as(
+          LengthUnit.Meter,
+          widget.viewerLocation,
+          LatLng(friend.lat, friend.lng),
+        )
+        .round();
+  }
+
+  String? _formatDistance(int? meters) {
+    if (meters == null || meters < 0) return null;
+    if (meters < 1000) return '${meters}m';
+    return '${(meters / 1000).toStringAsFixed(1)}km';
+  }
+
+  String? _formatCheckInAgo(DateTime at) {
+    final elapsed = DateTime.now().difference(at.toLocal());
+    if (elapsed.isNegative || elapsed.inMinutes < 1) {
+      return 'map_friend_checked_just_now'.tr();
+    }
+    if (elapsed.inMinutes < 60) {
+      return 'map_friend_checked_minutes_ago'.tr(
+        namedArgs: {'minutes': '${elapsed.inMinutes}'},
+      );
+    }
+    if (elapsed.inHours < 24) {
+      return 'map_friend_checked_hours_ago'.tr(
+        namedArgs: {'hours': '${elapsed.inHours}'},
+      );
+    }
+    return null;
+  }
+
+  String? _formatWalkEta(int meters) {
+    final minutes = meters / _walkMetersPerMinute;
+    if (minutes < 1) return 'map_friend_walk_under_min'.tr();
+    return 'map_friend_walk_minutes'.tr(
+      namedArgs: {'minutes': '${minutes.round().clamp(1, 180)}'},
+    );
+  }
+
+  String? _metaLine(MapFriend friend) {
+    final meters = _liveDistanceMeters(friend);
+    final distance = _formatDistance(meters);
+    final checkedAt = friend.checkIn?.checkedAt;
+    final time = checkedAt != null
+        ? _formatCheckInAgo(checkedAt)
+        : (meters == null ? null : _formatWalkEta(meters));
+
+    if (time == null && distance == null) return null;
+    if (time == null) return distance;
+    if (distance == null) return time;
+    return 'map_friend_eta'.tr(namedArgs: {'time': time, 'distance': distance});
+  }
+
+  String? _locationLabel(MapFriend friend) {
+    final place = friend.checkIn?.placeName.trim() ?? '';
+    if (place.isNotEmpty) return place;
+    final label = friend.locationLabel?.trim() ?? '';
+    return label.isEmpty ? null : label;
+  }
+
   @override
   Widget build(BuildContext context) {
     final friend = widget.friend;
-    final minutes = friend.etaMinutes ?? 10;
-    final distance = friend.distanceMeters ?? 50;
     final checkIn = friend.checkIn;
+    final location = _locationLabel(friend);
+    final meta = _metaLine(friend);
 
     return Material(
       color: Colors.transparent,
@@ -130,16 +202,14 @@ class _HomeMapFriendSheetState extends State<HomeMapFriendSheet> {
                             ],
                           ],
                         ),
-                        if (friend.locationLabel != null) ...[
+                        if (location != null) ...[
                           const SizedBox(height: 4),
                           Text(
                             friend.hasCheckIn
                                 ? 'map_friend_check_in_location'.tr(
-                                    namedArgs: {
-                                      'location': friend.locationLabel!,
-                                    },
+                                    namedArgs: {'location': location},
                                   )
-                                : friend.locationLabel!,
+                                : location,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: const TextStyle(
@@ -150,32 +220,30 @@ class _HomeMapFriendSheetState extends State<HomeMapFriendSheet> {
                             ),
                           ),
                         ],
-                        const SizedBox(height: 2),
-                        Row(
-                          children: [
-                            Text(
-                              'map_friend_eta'.tr(
-                                namedArgs: {
-                                  'minutes': '$minutes',
-                                  'distance': '$distance',
-                                },
-                              ),
-                              style: TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w500,
-                                height: 1,
-                                color: AppColors.deepRoast.withValues(
-                                  alpha: 0.35,
+                        if (meta != null) ...[
+                          const SizedBox(height: 2),
+                          Row(
+                            children: [
+                              Flexible(
+                                child: Text(
+                                  meta,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w500,
+                                    height: 1,
+                                    color: AppColors.deepRoast.withValues(
+                                      alpha: 0.35,
+                                    ),
+                                  ),
                                 ),
                               ),
-                            ),
-                            const SizedBox(width: 4),
-                            const AppIcon(
-                              AssetPaths.iconSendGray,
-                              size: 16,
-                            ),
-                          ],
-                        ),
+                              const SizedBox(width: 4),
+                              const AppIcon(AssetPaths.iconSendGray, size: 16),
+                            ],
+                          ),
+                        ],
                       ],
                     ),
                   ),
@@ -214,9 +282,8 @@ class _HomeMapFriendSheetState extends State<HomeMapFriendSheet> {
                           fontSize: 14,
                           fontWeight: FontWeight.w500,
                           height: 1,
-                          color: AppColors.deepRoast.withValues(alpha: 0.3),
+                          color: AppColors.deepRoast.withValues(alpha: 0.35),
                         ),
-                        contentPadding: EdgeInsets.zero,
                       ),
                     ),
                   ),
@@ -224,23 +291,13 @@ class _HomeMapFriendSheetState extends State<HomeMapFriendSheet> {
                   GestureDetector(
                     onTap: _submit,
                     behavior: HitTestBehavior.opaque,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 20,
-                        vertical: 5,
-                      ),
-                      decoration: BoxDecoration(
-                        color: AppColors.mintGreen,
-                        borderRadius: BorderRadius.circular(9999),
-                      ),
-                      child: Text(
-                        'map_friend_send'.tr(),
-                        style: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
-                          height: 1,
-                          color: AppColors.white,
-                        ),
+                    child: Text(
+                      'map_friend_send'.tr(),
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                        height: 1,
+                        color: Color(0xFF34C759),
                       ),
                     ),
                   ),
@@ -262,10 +319,9 @@ class _FriendSheetStreakBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 30,
-      padding: const EdgeInsets.symmetric(horizontal: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: const Color(0x1AFF4D6D),
+        color: const Color(0xFFFF4D6D).withValues(alpha: 0.10),
         borderRadius: BorderRadius.circular(999),
       ),
       child: Row(
@@ -273,16 +329,15 @@ class _FriendSheetStreakBadge extends StatelessWidget {
         children: [
           Text(
             '$streak',
-            textAlign: TextAlign.right,
             style: const TextStyle(
               fontSize: 12,
-              fontWeight: FontWeight.w600,
-              height: 14 / 12,
-              color: AppColors.black,
+              fontWeight: FontWeight.w700,
+              height: 1,
+              color: Color(0xFFFF4D6D),
             ),
           ),
-          const SizedBox(width: 4),
-          const AppIcon(AssetPaths.iconStreak, size: 18),
+          const SizedBox(width: 2),
+          const AppIcon(AssetPaths.iconStreak, size: 12),
         ],
       ),
     );
