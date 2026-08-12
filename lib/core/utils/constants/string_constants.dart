@@ -8,7 +8,7 @@ abstract final class StringConstants {
   static const String _envBaseUrl = String.fromEnvironment('API_BASE_URL');
 
   /// Mac Wi‑Fi IP. Değişirse burayı güncelle (`ipconfig getifaddr en0`).
-  static const String _lanHost = '192.168.1.105';
+  static const String _lanHost = '192.168.1.6';
   static const int _apiPort = 3000;
 
   static String get baseUrl {

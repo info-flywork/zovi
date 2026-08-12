@@ -383,11 +383,11 @@ class _CameraViewState extends State<CameraView> with WidgetsBindingObserver {
                         GestureDetector(
                           onTap: _toggleFlash,
                           child: AppIcon(
-                            AssetPaths.iconFlashSlash,
+                            _flashOn
+                                ? AssetPaths.iconFlashOpen
+                                : AssetPaths.iconFlashSlash,
                             size: 32,
-                            color: _flashOn
-                                ? AppColors.zoviOrange
-                                : AppColors.white,
+                            color: AppColors.white,
                           ),
                         ),
                       ],

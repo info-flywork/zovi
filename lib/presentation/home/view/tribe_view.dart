@@ -10,10 +10,46 @@ import 'package:zovi/presentation/chat/model/chat_detail_route_args.dart';
 class TribeView extends StatelessWidget {
   const TribeView({super.key});
 
-  static const _featuredAvatars = [
-    AssetPaths.avatarJessica,
-    AssetPaths.avatarSona,
-    AssetPaths.avatarLyra,
+  static const _featuredTribes = [
+    _FeaturedTribeItem(
+      titleKey: 'tribe_featured_title',
+      descriptionKey: 'tribe_featured_description',
+      membersKey: 'tribe_featured_members',
+      memberCount: 8,
+      avatarPath: AssetPaths.avatarJulia,
+      avatars: [
+        AssetPaths.avatarJessica,
+        AssetPaths.avatarSona,
+        AssetPaths.avatarLyra,
+      ],
+      background: Color(0xFFF3EDFF),
+    ),
+    _FeaturedTribeItem(
+      titleKey: 'tribe_featured_title_2',
+      descriptionKey: 'tribe_featured_description_2',
+      membersKey: 'tribe_featured_members_2',
+      memberCount: 11,
+      avatarPath: AssetPaths.avatarNova,
+      avatars: [
+        AssetPaths.avatarNova,
+        AssetPaths.avatarJessica,
+        AssetPaths.avatarJulia,
+      ],
+      background: Color(0xFFFFF1E8),
+    ),
+    _FeaturedTribeItem(
+      titleKey: 'tribe_featured_title_3',
+      descriptionKey: 'tribe_featured_description_3',
+      membersKey: 'tribe_featured_members_3',
+      memberCount: 9,
+      avatarPath: AssetPaths.checkinPlace,
+      avatars: [
+        AssetPaths.avatarLyra,
+        AssetPaths.avatarSona,
+        AssetPaths.avatarNova,
+      ],
+      background: Color(0xFFEAF7F2),
+    ),
   ];
 
   static const _tribes = [
@@ -77,63 +113,108 @@ class TribeView extends StatelessWidget {
       backgroundColor: AppColors.white,
       body: SafeArea(
         child: ListView(
-          physics: ClampingScrollPhysics(),
-          padding: const EdgeInsets.fromLTRB(16, 10, 16, 24),
+          physics: const ClampingScrollPhysics(),
+          clipBehavior: Clip.none,
+          padding: const EdgeInsets.fromLTRB(0, 10, 0, 24),
           children: [
-            Text(
-              'tribe_title'.tr(),
-              style: const TextStyle(
-                fontSize: 28,
-                fontWeight: FontWeight.w700,
-                height: 1,
-                letterSpacing: -0.56,
-                color: AppColors.black,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'tribe_subtitle'.tr(),
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
-                height: 1,
-                letterSpacing: -0.28,
-                color: AppColors.black.withValues(alpha: 0.45),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'tribe_title'.tr(),
+                    style: const TextStyle(
+                      fontSize: 28,
+                      fontWeight: FontWeight.w700,
+                      height: 1,
+                      letterSpacing: -0.56,
+                      color: AppColors.black,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'tribe_subtitle'.tr(),
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                      height: 1,
+                      letterSpacing: -0.28,
+                      color: AppColors.black.withValues(alpha: 0.45),
+                    ),
+                  ),
+                ],
               ),
             ),
             const SizedBox(height: 20),
-            const _FeaturedTribeCard(avatars: _featuredAvatars),
-            const SizedBox(height: 28),
-            Text(
-              'tribe_list_title'.tr(),
-              style: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-                height: 1,
-                letterSpacing: -0.32,
-                color: AppColors.black,
+            _FeaturedTribeCarousel(
+              items: _featuredTribes,
+              onJoin: (item) => _openGroupChat(
+                context,
+                name: item.titleKey.tr(),
+                avatarPath: item.avatarPath,
+                memberCount: item.memberCount,
               ),
             ),
-            const SizedBox(height: 12),
-            for (var i = 0; i < _tribes.length; i++) ...[
-              if (i > 0) const SizedBox(height: 10),
-              _TribeListTile(
-                item: _tribes[i],
-                onTap: _tribes[i].unlocked
-                    ? () => _openGroupChat(
-                        context,
-                        name: _tribes[i].titleKey.tr(),
-                        avatarPath: _tribes[i].avatarPath,
-                        memberCount: _tribes[i].memberCount,
-                      )
-                    : null,
+            const SizedBox(height: 28),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'tribe_list_title'.tr(),
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      height: 1,
+                      letterSpacing: -0.32,
+                      color: AppColors.black,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  for (var i = 0; i < _tribes.length; i++) ...[
+                    if (i > 0) const SizedBox(height: 10),
+                    _TribeListTile(
+                      item: _tribes[i],
+                      onTap: _tribes[i].unlocked
+                          ? () => _openGroupChat(
+                              context,
+                              name: _tribes[i].titleKey.tr(),
+                              avatarPath: _tribes[i].avatarPath,
+                              memberCount: _tribes[i].memberCount,
+                            )
+                          : null,
+                    ),
+                  ],
+                ],
               ),
-            ],
+            ),
           ],
         ),
       ),
     );
   }
+}
+
+class _FeaturedTribeItem {
+  const _FeaturedTribeItem({
+    required this.titleKey,
+    required this.descriptionKey,
+    required this.membersKey,
+    required this.memberCount,
+    required this.avatarPath,
+    required this.avatars,
+    required this.background,
+  });
+
+  final String titleKey;
+  final String descriptionKey;
+  final String membersKey;
+  final int memberCount;
+  final String avatarPath;
+  final List<String> avatars;
+  final Color background;
 }
 
 class _TribeItem {
@@ -156,10 +237,70 @@ class _TribeItem {
   final String? progress;
 }
 
-class _FeaturedTribeCard extends StatelessWidget {
-  const _FeaturedTribeCard({required this.avatars});
+class _FeaturedTribeCarousel extends StatefulWidget {
+  const _FeaturedTribeCarousel({required this.items, required this.onJoin});
 
-  final List<String> avatars;
+  final List<_FeaturedTribeItem> items;
+  final ValueChanged<_FeaturedTribeItem> onJoin;
+
+  @override
+  State<_FeaturedTribeCarousel> createState() => _FeaturedTribeCarouselState();
+}
+
+class _FeaturedTribeCarouselState extends State<_FeaturedTribeCarousel> {
+  late final PageController _controller = PageController(
+    viewportFraction: 0.86,
+  );
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 256,
+      child: PageView.builder(
+        controller: _controller,
+        itemCount: widget.items.length,
+        padEnds: true,
+        clipBehavior: Clip.none,
+        itemBuilder: (context, index) {
+          return AnimatedBuilder(
+            animation: _controller,
+            builder: (context, child) {
+              final page = _controller.hasClients
+                  ? (_controller.page ?? _controller.initialPage.toDouble())
+                  : 0.0;
+              final delta = (page - index).abs().clamp(0.0, 1.0);
+              final scale = 1 - (delta * 0.08);
+              return Transform.scale(
+                scale: scale,
+                alignment: Alignment.center,
+                child: child,
+              );
+            },
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 2),
+              child: _FeaturedTribeCard(
+                item: widget.items[index],
+                onJoin: () => widget.onJoin(widget.items[index]),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _FeaturedTribeCard extends StatelessWidget {
+  const _FeaturedTribeCard({required this.item, required this.onJoin});
+
+  final _FeaturedTribeItem item;
+  final VoidCallback onJoin;
 
   @override
   Widget build(BuildContext context) {
@@ -167,10 +308,11 @@ class _FeaturedTribeCard extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: const Color(0xFFF3EDFF),
+        color: item.background,
         borderRadius: BorderRadius.circular(16),
       ),
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
@@ -198,7 +340,9 @@ class _FeaturedTribeCard extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           Text(
-            'tribe_featured_title'.tr(),
+            item.titleKey.tr(),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
             style: const TextStyle(
               fontSize: 24,
               fontWeight: FontWeight.w700,
@@ -209,7 +353,9 @@ class _FeaturedTribeCard extends StatelessWidget {
           ),
           const SizedBox(height: 10),
           Text(
-            'tribe_featured_description'.tr(),
+            item.descriptionKey.tr(),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w500,
@@ -221,11 +367,13 @@ class _FeaturedTribeCard extends StatelessWidget {
           const SizedBox(height: 14),
           Row(
             children: [
-              _AvatarPile(avatars: avatars),
+              _AvatarPile(avatars: item.avatars),
               const SizedBox(width: 8),
               Flexible(
                 child: Text(
-                  'tribe_featured_members'.tr(),
+                  item.membersKey.tr(),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w500,
@@ -239,18 +387,7 @@ class _FeaturedTribeCard extends StatelessWidget {
           ),
           const SizedBox(height: 16),
           GestureDetector(
-            onTap: () {
-              context.push(
-                RoutePaths.chatDetail.path,
-                extra: ChatDetailRouteArgs(
-                  name: 'tribe_featured_title'.tr(),
-                  username: 'tribe_featured_title'.tr(),
-                  avatarPath: AssetPaths.avatarJulia,
-                  isGroup: true,
-                  memberCount: 8,
-                ),
-              );
-            },
+            onTap: onJoin,
             behavior: HitTestBehavior.opaque,
             child: SizedBox(
               width: double.infinity,

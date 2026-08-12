@@ -29,32 +29,39 @@ class HomeMapVenueMarker extends StatelessWidget {
             scale: 1.85,
           ),
           const SizedBox(width: 4),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                venue.name,
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                  height: 20 / 16,
-                  color: AppColors.black,
-                ),
-              ),
-              if (venue.peopleCount > 0)
+          ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 210),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
                 Text(
-                  'map_venue_people'.tr(
-                    namedArgs: {'count': '${venue.peopleCount}'},
-                  ),
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500,
-                    height: 16 / 12,
-                    color: AppColors.black.withValues(alpha: 0.65),
+                  venue.name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    height: 20 / 16,
+                    color: AppColors.black,
                   ),
                 ),
-            ],
+                if (venue.peopleCount > 0)
+                  Text(
+                    'map_venue_people'.tr(
+                      namedArgs: {'count': '${venue.peopleCount}'},
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                      height: 16 / 12,
+                      color: AppColors.black.withValues(alpha: 0.65),
+                    ),
+                  ),
+              ],
+            ),
           ),
         ],
       ),

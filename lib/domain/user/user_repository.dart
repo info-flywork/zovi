@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:dio/dio.dart';
 import 'package:equatable/equatable.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/painting.dart';
@@ -14,16 +13,14 @@ import 'package:zovi/domain/auth/auth_repository.dart';
 
 @immutable
 final class ProfileLink extends Equatable {
-  const ProfileLink({
-    required this.title,
-    required this.url,
-  });
+  const ProfileLink({required this.title, required this.url});
 
   final String title;
   final String url;
 
-  String get displayUrl =>
-      url.replaceFirst(RegExp(r'^https?://'), '').replaceFirst(RegExp(r'/+$'), '');
+  String get displayUrl => url
+      .replaceFirst(RegExp(r'^https?://'), '')
+      .replaceFirst(RegExp(r'/+$'), '');
 
   @override
   List<Object?> get props => [title, url];
@@ -75,7 +72,8 @@ final class UserProfile extends Equatable {
       bio: (profileMap['bio'] as String?)?.trim() ?? '',
       checkIns: (profileMap['checkInsCount'] as num?)?.toInt() ?? 0,
       followers: (profileMap['followersCount'] as num?)?.toInt() ?? 0,
-      friends: (profileMap['followingCount'] as num?)?.toInt() ??
+      friends:
+          (profileMap['followingCount'] as num?)?.toInt() ??
           (profileMap['friendsCount'] as num?)?.toInt() ??
           0,
       accountPrivacy:
@@ -136,17 +134,17 @@ final class UserProfile extends Equatable {
 
   @override
   List<Object?> get props => [
-        name,
-        username,
-        avatarPath,
-        location,
-        bio,
-        checkIns,
-        followers,
-        friends,
-        accountPrivacy,
-        links,
-      ];
+    name,
+    username,
+    avatarPath,
+    location,
+    bio,
+    checkIns,
+    followers,
+    friends,
+    accountPrivacy,
+    links,
+  ];
 }
 
 /// Başka kullanıcının profil ekranı için genişletilmiş profil.
@@ -328,7 +326,8 @@ final class PublicUserProfile extends Equatable {
       bio: (profile['bio'] as String?)?.trim() ?? '',
       checkIns: (profile['checkInsCount'] as num?)?.toInt() ?? 0,
       followers: (profile['followersCount'] as num?)?.toInt() ?? 0,
-      friends: (profile['followingCount'] as num?)?.toInt() ??
+      friends:
+          (profile['followingCount'] as num?)?.toInt() ??
           (profile['friendsCount'] as num?)?.toInt() ??
           0,
       isVerified: profile['isVerified'] == true,
@@ -356,36 +355,36 @@ final class PublicUserProfile extends Equatable {
 
   @override
   List<Object?> get props => [
-        userId,
-        name,
-        username,
-        avatarPath,
-        location,
-        bio,
-        checkIns,
-        followers,
-        friends,
-        isVerified,
-        streak,
-        explorerTitle,
-        mapPlaceName,
-        mapDistanceKm,
-        mutualFriendsCount,
-        mutualFriendAvatars,
-        links,
-        isFollowing,
-        areFriends,
-        isSelf,
-        hasActiveStory,
-        storyIsViewed,
-        isHydrated,
-        relationship.following,
-        relationship.followedBy,
-        relationship.outgoingRequest,
-        relationship.incomingRequest,
-        blockedByMe,
-        restrictedByMe,
-      ];
+    userId,
+    name,
+    username,
+    avatarPath,
+    location,
+    bio,
+    checkIns,
+    followers,
+    friends,
+    isVerified,
+    streak,
+    explorerTitle,
+    mapPlaceName,
+    mapDistanceKm,
+    mutualFriendsCount,
+    mutualFriendAvatars,
+    links,
+    isFollowing,
+    areFriends,
+    isSelf,
+    hasActiveStory,
+    storyIsViewed,
+    isHydrated,
+    relationship.following,
+    relationship.followedBy,
+    relationship.outgoingRequest,
+    relationship.incomingRequest,
+    blockedByMe,
+    restrictedByMe,
+  ];
 }
 
 @immutable
@@ -594,8 +593,8 @@ final class MapFriend extends Equatable {
         : ((json['username'] as String?)?.trim() ?? 'user');
     final username = (json['username'] as String?)?.trim() ?? '';
     final isAnon = json['isAnonymous'] == true;
-    final isFriend = json['isFriend'] == true ||
-        (json['isFriend'] == null && !isAnon);
+    final isFriend =
+        json['isFriend'] == true || (json['isFriend'] == null && !isAnon);
     final rawCheckIn = json['activeCheckIn'];
     FriendMapCheckIn? checkIn;
     if (rawCheckIn is Map) {
@@ -609,19 +608,27 @@ final class MapFriend extends Equatable {
       final place = (map['placeName'] as String?)?.trim() ?? '';
       final title = (map['titleLabel'] as String?)?.trim();
       final stampSlug = (map['stampSlug'] as String?)?.trim();
-      final checkedAt =
-          DateTime.tryParse('${map['checkedAt'] ?? ''}')?.toLocal();
-      checkIn = FriendMapCheckIn(
-        placeName: place,
-        photoPaths: photos.isNotEmpty
-            ? photos
-            : const [AssetPaths.mapSecondAvatar],
-        stampImagePath: stampSlug == 'founder'
-            ? AssetPaths.stamp16
-            : AssetPaths.stamp1,
-        checkedAt: checkedAt,
-        titleLabel: (title != null && title.isNotEmpty) ? title : null,
-      );
+      final checkedAt = DateTime.tryParse(
+        '${map['checkedAt'] ?? ''}',
+      )?.toLocal();
+      final isFresh =
+          checkedAt == null ||
+          DateTime.now().difference(checkedAt) <= const Duration(hours: 24);
+      if (!isFresh) {
+        checkIn = null;
+      } else {
+        checkIn = FriendMapCheckIn(
+          placeName: place,
+          photoPaths: photos.isNotEmpty
+              ? photos
+              : const [AssetPaths.mapSecondAvatar],
+          stampImagePath: stampSlug == 'founder'
+              ? AssetPaths.stamp16
+              : AssetPaths.stamp1,
+          checkedAt: checkedAt,
+          titleLabel: (title != null && title.isNotEmpty) ? title : null,
+        );
+      }
     }
     return MapFriend(
       userId: (json['userId'] as String?)?.trim() ?? '',
@@ -702,21 +709,21 @@ final class MapFriend extends Equatable {
 
   @override
   List<Object?> get props => [
-        userId,
-        username,
-        name,
-        avatarPath,
-        streak,
-        lat,
-        lng,
-        x,
-        y,
-        isFriend,
-        distanceMeters,
-        locationLabel,
-        etaMinutes,
-        checkIn,
-      ];
+    userId,
+    username,
+    name,
+    avatarPath,
+    streak,
+    lat,
+    lng,
+    x,
+    y,
+    isFriend,
+    distanceMeters,
+    locationLabel,
+    etaMinutes,
+    checkIn,
+  ];
 }
 
 /// Arkadaşın haritadaki aktif check-in’i.
@@ -739,8 +746,13 @@ final class FriendMapCheckIn extends Equatable {
   bool get hasTitle => titleLabel != null && titleLabel!.trim().isNotEmpty;
 
   @override
-  List<Object?> get props =>
-      [photoPaths, stampImagePath, placeName, checkedAt, titleLabel];
+  List<Object?> get props => [
+    photoPaths,
+    stampImagePath,
+    placeName,
+    checkedAt,
+    titleLabel,
+  ];
 }
 
 @immutable
@@ -750,6 +762,7 @@ final class MapVenue extends Equatable {
     required this.peopleCount,
     required this.lat,
     required this.lng,
+    this.photoPath,
     this.x = 0,
     this.y = 0,
   });
@@ -758,11 +771,12 @@ final class MapVenue extends Equatable {
   final int peopleCount;
   final double lat;
   final double lng;
+  final String? photoPath;
   final double x;
   final double y;
 
   @override
-  List<Object?> get props => [name, peopleCount, lat, lng, x, y];
+  List<Object?> get props => [name, peopleCount, lat, lng, photoPath, x, y];
 }
 
 @immutable
@@ -776,8 +790,9 @@ final class CheckInItem extends Equatable {
   });
 
   factory CheckInItem.fromJson(Map<String, dynamic> json, {int index = 0}) {
-    final checkedAt =
-        DateTime.tryParse('${json['checkedAt'] ?? ''}')?.toLocal();
+    final checkedAt = DateTime.tryParse(
+      '${json['checkedAt'] ?? ''}',
+    )?.toLocal();
     final photos = json['photoUrls'];
     var imagePath = '';
     if (photos is List) {
@@ -866,8 +881,9 @@ final class PulseItem extends Equatable {
   });
 
   factory PulseItem.fromJson(Map<String, dynamic> json) {
-    final createdAt =
-        DateTime.tryParse('${json['createdAt'] ?? ''}')?.toLocal();
+    final createdAt = DateTime.tryParse(
+      '${json['createdAt'] ?? ''}',
+    )?.toLocal();
     final place = (json['placeName'] as String?)?.trim() ?? '';
     final caption = (json['caption'] as String?)?.trim() ?? '';
     return PulseItem(
@@ -923,18 +939,10 @@ String _formatPulseTime(DateTime at) {
 
 @immutable
 final class StampItem extends Equatable {
-  const StampItem({
-    required this.imagePath,
-    required this.title,
-    this.id = '',
-  });
+  const StampItem({required this.imagePath, required this.title, this.id = ''});
 
   factory StampItem.fromCatalog(StampCatalogItem item) {
-    return StampItem(
-      id: item.id,
-      imagePath: item.imageUrl,
-      title: item.name,
-    );
+    return StampItem(id: item.id, imagePath: item.imageUrl, title: item.name);
   }
 
   final String id;
@@ -980,13 +988,13 @@ final class ActiveMapCheckIn extends Equatable {
 
   @override
   List<Object?> get props => [
-        stampImagePath,
-        photoPaths,
-        placeName,
-        avatarPath,
-        checkedAt,
-        titleLabel,
-      ];
+    stampImagePath,
+    photoPaths,
+    placeName,
+    avatarPath,
+    checkedAt,
+    titleLabel,
+  ];
 }
 
 @immutable
@@ -1067,37 +1075,32 @@ final class NearbyAddPlanPlace extends Equatable {
 
   @override
   List<Object?> get props => [
-        categoryKey,
-        placeName,
-        subtitle,
-        distanceLabel,
-        friendAvatars,
-        friendsLabel,
-        lat,
-        lng,
-      ];
+    categoryKey,
+    placeName,
+    subtitle,
+    distanceLabel,
+    friendAvatars,
+    friendsLabel,
+    lat,
+    lng,
+  ];
 }
 
 class UserRepository {
   UserRepository(this._authRepository);
 
   final AuthRepository _authRepository;
-  final Dio _publicDio = Dio(
-    BaseOptions(
-      connectTimeout: const Duration(seconds: 8),
-      receiveTimeout: const Duration(seconds: 12),
-      headers: const {'User-Agent': 'zovi-app/1.0'},
-    ),
-  );
   static const int _nearbyPlacesDisplayLimit = 40;
-  static const int _nearbyPlacesCandidateLimit = 120;
   static const double _nearbyPlacesSearchRadiusMeters = 3000;
   static const double _nearbyPlacesRefreshDistanceMeters = 400;
   static const Duration _nearbyPlacesMaxCacheAge = Duration(minutes: 30);
+  static const Duration _mapVenuesMaxCacheAge = Duration(minutes: 12);
   List<NearbyAddPlanPlace> _nearbyAddPlanPlacesCache = const [];
   Position? _nearbyAddPlanPlacesCachePosition;
   DateTime? _nearbyAddPlanPlacesCachedAt;
   Future<List<NearbyAddPlanPlace>>? _nearbyAddPlanPlacesInFlight;
+  final Map<String, ({DateTime at, List<MapVenue> items})> _mapVenuesCache = {};
+  final Map<String, Future<List<MapVenue>>> _mapVenuesInFlight = {};
 
   UserProfile _currentUser = const UserProfile(
     name: '',
@@ -1205,6 +1208,8 @@ class UserRepository {
     _nearbyAddPlanPlacesCachePosition = null;
     _nearbyAddPlanPlacesCachedAt = null;
     _nearbyAddPlanPlacesInFlight = null;
+    _mapVenuesCache.clear();
+    _mapVenuesInFlight.clear();
 
     _authRepository.clearSessionCaches();
   }
@@ -1403,6 +1408,7 @@ class UserRepository {
     }
     return valid;
   }
+
   Timer? _checkInPhotoTimer;
   final _friendPhotoIndexes = <String, ValueNotifier<int>>{};
   final _friendPhotoTimers = <String, Timer>{};
@@ -1411,10 +1417,7 @@ class UserRepository {
 
   /// Marker + sheet aynı indeksi paylaşsın diye arkadaş bazlı foto döngüsü.
   ValueListenable<int> friendCheckInPhotoIndexListenable(String key) {
-    return _friendPhotoIndexes.putIfAbsent(
-      key,
-      () => ValueNotifier<int>(0),
-    );
+    return _friendPhotoIndexes.putIfAbsent(key, () => ValueNotifier<int>(0));
   }
 
   void setActiveMapCheckIn(ActiveMapCheckIn? checkIn) {
@@ -1481,9 +1484,7 @@ class UserRepository {
   List<Map<String, dynamic>>? peekFriendshipStreaks() {
     final cached = _friendshipStreaksCache;
     if (cached == null) return null;
-    return [
-      for (final row in cached) Map<String, dynamic>.from(row),
-    ];
+    return [for (final row in cached) Map<String, dynamic>.from(row)];
   }
 
   void invalidateFriendshipStreaks() {
@@ -1509,8 +1510,16 @@ class UserRepository {
       final place = (raw['placeName'] as String?)?.trim() ?? '';
       final stampSlug = (raw['stampSlug'] as String?)?.trim();
       final title = (raw['titleLabel'] as String?)?.trim();
-      final checkedAt =
-          DateTime.tryParse('${raw['checkedAt'] ?? ''}')?.toLocal();
+      final checkedAt = DateTime.tryParse(
+        '${raw['checkedAt'] ?? ''}',
+      )?.toLocal();
+      if (checkedAt != null &&
+          DateTime.now().difference(checkedAt) > const Duration(hours: 24)) {
+        if (_activeMapCheckIn != null) {
+          setActiveMapCheckIn(null);
+        }
+        return null;
+      }
       final avatar = _currentUser.hasPhoto ? _currentUser.avatarPath : '';
       final restored = ActiveMapCheckIn(
         stampImagePath: stampSlug == 'founder'
@@ -1642,7 +1651,8 @@ class UserRepository {
             : null,
         checkIns: (profile['checkInsCount'] as num?)?.toInt(),
         followers: (profile['followersCount'] as num?)?.toInt(),
-        friends: (profile['followingCount'] as num?)?.toInt() ??
+        friends:
+            (profile['followingCount'] as num?)?.toInt() ??
             (profile['friendsCount'] as num?)?.toInt(),
       );
     } else {
@@ -1687,15 +1697,16 @@ class UserRepository {
     String? localAvatarPath,
     bool saveBio = false,
   }) async {
-    final handle =
-        username.startsWith('@') ? username.substring(1) : username.trim();
+    final handle = username.startsWith('@')
+        ? username.substring(1)
+        : username.trim();
     final nameChanged = name.trim() != _currentUser.name.trim();
     final usernameChanged =
         handle.toLowerCase() != _currentUser.usernameHandle.toLowerCase();
-    final bioChanged =
-        saveBio && bio.trim() != _currentUser.bio.trim();
+    final bioChanged = saveBio && bio.trim() != _currentUser.bio.trim();
     final linksChanged = !_sameLinks(links, _currentUser.links);
-    final avatarDirty = localAvatarPath != null &&
+    final avatarDirty =
+        localAvatarPath != null &&
         localAvatarPath.isNotEmpty &&
         (localAvatarPath.startsWith('/') ||
             localAvatarPath.startsWith('file:'));
@@ -1808,7 +1819,6 @@ class UserRepository {
     }
   }
 
-
   Future<void> updateCurrentUser(UserProfile user) async {
     _currentUser = user;
     _profileHydrated = true;
@@ -1845,7 +1855,7 @@ class UserRepository {
   }) async {
     final safeLimit = limit.clamp(1, _nearbyPlacesDisplayLimit);
 
-    // Fast path: valid cache, no GPS / Overpass.
+    // Fast path: valid cache, no GPS / Places call.
     if (!forceRefresh && _isNearbyCacheFresh()) {
       return _nearbyAddPlanPlacesCache.take(safeLimit).toList();
     }
@@ -1912,88 +1922,50 @@ class UserRepository {
       );
       if (placemarks.isNotEmpty) {
         final p = placemarks.first;
-        area =
-            (p.subLocality ?? p.locality ?? p.subAdministrativeArea ?? '').trim();
+        area = (p.subLocality ?? p.locality ?? p.subAdministrativeArea ?? '')
+            .trim();
       }
     } catch (_) {}
 
-    final candidateLimit = (safeLimit * 4).clamp(40, _nearbyPlacesCandidateLimit);
-    final r = _nearbyPlacesSearchRadiusMeters.toInt();
-    final lat = position.latitude;
-    final lng = position.longitude;
-    final query = '''
-[out:json][timeout:15];
-(
-  node["name"]["amenity"](around:$r,$lat,$lng);
-  node["name"]["tourism"](around:$r,$lat,$lng);
-  node["name"]["leisure"](around:$r,$lat,$lng);
-  node["name"]["sport"](around:$r,$lat,$lng);
-  node["name"]["club"="sport"](around:$r,$lat,$lng);
-  way["name"]["amenity"](around:$r,$lat,$lng);
-  way["name"]["tourism"](around:$r,$lat,$lng);
-  way["name"]["leisure"](around:$r,$lat,$lng);
-  way["name"]["sport"](around:$r,$lat,$lng);
-  way["name"]["club"="sport"](around:$r,$lat,$lng);
-  way["name"]["leisure"="fitness_centre"](around:$r,$lat,$lng);
-  way["name"]["leisure"="sports_centre"](around:$r,$lat,$lng);
-  way["name"]["leisure"="sports_hall"](around:$r,$lat,$lng);
-  way["name"]["amenity"="gym"](around:$r,$lat,$lng);
-);
-out center $candidateLimit;
-''';
-
     try {
-      final response = await _publicDio.post<dynamic>(
-        'https://overpass-api.de/api/interpreter',
-        data: query,
-        options: Options(contentType: Headers.formUrlEncodedContentType),
+      final raw = await _authRepository.fetchNearbyPlaces(
+        lat: position.latitude,
+        lng: position.longitude,
+        radiusMeters: _nearbyPlacesSearchRadiusMeters,
+        limit: _nearbyPlacesDisplayLimit,
       );
-      final data = response.data;
-      if (data is! Map) {
-        return peekNearbyAddPlanPlaces(limit: safeLimit);
-      }
-      final elements = data['elements'];
-      if (elements is! List) {
-        return peekNearbyAddPlanPlaces(limit: safeLimit);
-      }
 
       final seen = <String>{};
       final itemsWithDistance = <({NearbyAddPlanPlace place, double meters})>[];
-      for (final element in elements) {
-        if (element is! Map) continue;
-        final tags = element['tags'];
-        if (tags is! Map) continue;
-        if (_shouldSkipPlace(tags)) continue;
-        final name = (tags['name'] as String?)?.trim() ?? '';
+      for (final row in raw) {
+        final name = (row['placeName'] as String?)?.trim() ?? '';
         if (name.isEmpty || seen.contains(name.toLowerCase())) continue;
-
-        final center = element['center'];
-        final placeLat = (element['lat'] as num?)?.toDouble() ??
-            (center is Map ? (center['lat'] as num?)?.toDouble() : null);
-        final placeLon = (element['lon'] as num?)?.toDouble() ??
-            (center is Map ? (center['lon'] as num?)?.toDouble() : null);
-        if (placeLat == null || placeLon == null) continue;
+        final placeLat = (row['lat'] as num?)?.toDouble();
+        final placeLng = (row['lng'] as num?)?.toDouble();
+        if (placeLat == null || placeLng == null) continue;
 
         seen.add(name.toLowerCase());
-        final category = _categoryFromTags(tags);
-        final subtitle =
-            '${_categoryLabel(category)}${area.isEmpty ? '' : ' · $area'}';
-        final meters = Geolocator.distanceBetween(
-          position.latitude,
-          position.longitude,
-          placeLat,
-          placeLon,
-        );
+        final categoryRaw = (row['categoryKey'] as String?)?.trim() ?? '';
+        final category = categoryRaw.isNotEmpty ? categoryRaw : 'culture';
+        final meters =
+            (row['distanceMeters'] as num?)?.toDouble() ??
+            Geolocator.distanceBetween(
+              position.latitude,
+              position.longitude,
+              placeLat,
+              placeLng,
+            );
         itemsWithDistance.add((
           place: NearbyAddPlanPlace(
             categoryKey: category,
             placeName: name,
-            subtitle: subtitle,
+            subtitle:
+                '${_categoryLabel(category)}${area.isEmpty ? '' : ' · $area'}',
             distanceLabel: _formatDistance(meters),
             friendAvatars: const [],
             friendsLabel: '0',
             lat: placeLat,
-            lng: placeLon,
+            lng: placeLng,
           ),
           meters: meters,
         ));
@@ -2004,7 +1976,7 @@ out center $candidateLimit;
           .take(_nearbyPlacesDisplayLimit)
           .toList();
 
-      // Boş cevap eski dolu cache’i ezmesin (Overpass timeout / rate-limit).
+      // Boş cevap eski dolu cache’i ezmesin (API hata / kota).
       if (items.isEmpty) {
         return peekNearbyAddPlanPlaces(limit: safeLimit);
       }
@@ -2013,137 +1985,11 @@ out center $candidateLimit;
       _nearbyAddPlanPlacesCachePosition = position;
       _nearbyAddPlanPlacesCachedAt = DateTime.now();
       return items.take(safeLimit).toList();
-    } catch (_) {
+    } catch (e, st) {
+      debugPrint('getNearbyAddPlanPlaces failed: $e');
+      debugPrintStack(stackTrace: st);
       return peekNearbyAddPlanPlaces(limit: safeLimit);
     }
-  }
-
-  static String _categoryFromTags(Map tags) {
-    final amenity = (tags['amenity'] as String?)?.toLowerCase() ?? '';
-    final leisure = (tags['leisure'] as String?)?.toLowerCase() ?? '';
-    final tourism = (tags['tourism'] as String?)?.toLowerCase() ?? '';
-    final sport = (tags['sport'] as String?)?.toLowerCase() ?? '';
-    final shop = (tags['shop'] as String?)?.toLowerCase() ?? '';
-    final club = (tags['club'] as String?)?.toLowerCase() ?? '';
-    final name = (tags['name'] as String?)?.toLowerCase() ?? '';
-
-    if (amenity == 'cafe' || amenity == 'ice_cream' || shop == 'coffee') {
-      return 'cafe';
-    }
-    if (amenity == 'restaurant' ||
-        amenity == 'fast_food' ||
-        amenity == 'food_court') {
-      return 'restaurant';
-    }
-    if (amenity == 'bar' ||
-        amenity == 'pub' ||
-        amenity == 'nightclub' ||
-        amenity == 'theatre' ||
-        amenity == 'cinema' ||
-        amenity == 'arts_centre') {
-      return 'music';
-    }
-    final looksLikeGym = amenity == 'gym' ||
-        leisure == 'fitness_centre' ||
-        leisure == 'sports_centre' ||
-        leisure == 'sports_hall' ||
-        leisure == 'stadium' ||
-        club == 'sport' ||
-        sport == 'fitness' ||
-        sport.contains('fitness') ||
-        name.contains('gym') ||
-        name.contains('fitness') ||
-        name.contains('spor salonu') ||
-        name.contains('spor kompleksi') ||
-        name.contains('sports club') ||
-        name.contains('sportsclub') ||
-        name.contains('sport club') ||
-        name.contains('sports centre') ||
-        name.contains('sports center');
-    if (looksLikeGym) return 'gym';
-    if (leisure == 'park' || leisure == 'garden' || leisure == 'nature_reserve') {
-      return 'park';
-    }
-    if (tourism == 'museum' || tourism == 'gallery' || tourism == 'attraction') {
-      return 'culture';
-    }
-    return 'culture';
-  }
-
-  static bool _shouldSkipPlace(Map tags) {
-    final amenity = (tags['amenity'] as String?)?.toLowerCase() ?? '';
-    final healthcare = (tags['healthcare'] as String?)?.toLowerCase() ?? '';
-    final shop = (tags['shop'] as String?)?.toLowerCase() ?? '';
-    final office = (tags['office'] as String?)?.toLowerCase() ?? '';
-    final emergency = (tags['emergency'] as String?)?.toLowerCase() ?? '';
-    final highway = (tags['highway'] as String?)?.toLowerCase() ?? '';
-    final parking = (tags['parking'] as String?)?.toLowerCase() ?? '';
-    final name = (tags['name'] as String?)?.toLowerCase() ?? '';
-
-    final socialFacility =
-        (tags['social_facility'] as String?)?.toLowerCase() ?? '';
-
-    const blockedAmenities = {
-      'pharmacy',
-      'hospital',
-      'clinic',
-      'doctors',
-      'dentist',
-      'veterinary',
-      'bank',
-      'atm',
-      'taxi',
-      'taxi_rank',
-      'fuel',
-      'parking',
-      'parking_entrance',
-      'parking_space',
-      'bus_station',
-      'police',
-      'fire_station',
-      'social_facility',
-      'community_centre',
-      'ngo',
-      'foundation',
-      'orphanage',
-      'childcare',
-      'kindergarten',
-    };
-
-    const blockedNameKeywords = {
-      'otopark',
-      'ispark',
-      'i̇spark',
-      'vakif',
-      'vakıf',
-      'vakfi',
-      'vakfı',
-      'dernek',
-      'çocuk yuvası',
-      'cocuk yuvasi',
-      'çocuk yuvasi',
-      'cocuk yuvası',
-      'çocuk yuv',
-      'cocuk yuv',
-      'kreş',
-      'kres',
-      'kavsak',
-      'kavşak',
-    };
-
-    if (blockedAmenities.contains(amenity)) return true;
-    if (highway == 'motorway_junction' || highway == 'junction') return true;
-    if (parking.isNotEmpty) return true;
-    if (socialFacility.isNotEmpty) return true;
-    if (office == 'ngo' || office == 'association' || office == 'foundation') {
-      return true;
-    }
-    if (blockedNameKeywords.any(name.contains)) return true;
-    if (healthcare.isNotEmpty) return true;
-    if (shop == 'chemist' || shop == 'pharmacy') return true;
-    if (office == 'healthcare') return true;
-    if (emergency == 'yes') return true;
-    return false;
   }
 
   static String _categoryLabel(String categoryKey) {
@@ -2175,10 +2021,10 @@ out center $candidateLimit;
         await getCurrentUser();
       } catch (_) {}
     }
-    final myAvatar =
-        _currentUser.hasPhoto ? _currentUser.avatarPath : '';
-    final myLabel =
-        _currentUser.name.trim().isEmpty ? 'You' : _currentUser.name;
+    final myAvatar = _currentUser.hasPhoto ? _currentUser.avatarPath : '';
+    final myLabel = _currentUser.name.trim().isEmpty
+        ? 'You'
+        : _currentUser.name;
 
     var ownHasStory = false;
     var ownIsViewed = false;
@@ -2243,8 +2089,8 @@ out center $candidateLimit;
         username: friend.username,
       );
       if (items.isEmpty) continue;
-      _friendStoryItemsByUserId[friend.userId] = List<StoryMediaItem>
-          .unmodifiable(items);
+      _friendStoryItemsByUserId[friend.userId] =
+          List<StoryMediaItem>.unmodifiable(items);
       previews.add(
         StoryPreview(
           name: friend.displayName,
@@ -2284,8 +2130,8 @@ out center $candidateLimit;
       final label = payload.name.trim().isNotEmpty
           ? payload.name.trim()
           : (payload.username.trim().isNotEmpty
-              ? payload.username.trim()
-              : 'User');
+                ? payload.username.trim()
+                : 'User');
       final items = _mapPublishedStories(
         payload.stories,
         label: label,
@@ -2293,7 +2139,9 @@ out center $candidateLimit;
         username: payload.username,
       );
       if (items.isNotEmpty) {
-        _friendStoryItemsByUserId[id] = List<StoryMediaItem>.unmodifiable(items);
+        _friendStoryItemsByUserId[id] = List<StoryMediaItem>.unmodifiable(
+          items,
+        );
       }
       return items;
     } catch (e) {
@@ -2447,8 +2295,7 @@ out center $candidateLimit;
 
     final stories = await _authRepository.fetchMyActiveStories();
     final label = _currentUser.name.trim().isEmpty ? 'You' : _currentUser.name;
-    final avatar =
-        _currentUser.hasPhoto ? _currentUser.avatarPath : '';
+    final avatar = _currentUser.hasPhoto ? _currentUser.avatarPath : '';
     final items = _mapPublishedStories(
       stories,
       label: label,
@@ -2474,8 +2321,7 @@ out center $candidateLimit;
       musicClipDurationMs: musicClipDurationMs,
     );
     final label = _currentUser.name.trim().isEmpty ? 'You' : _currentUser.name;
-    final avatar =
-        _currentUser.hasPhoto ? _currentUser.avatarPath : '';
+    final avatar = _currentUser.hasPhoto ? _currentUser.avatarPath : '';
     final mapped = _mapPublishedStories(
       [created],
       label: label,
@@ -2505,9 +2351,7 @@ out center $candidateLimit;
     ];
   }
 
-  Future<List<StoryMediaItem>> getStoryFeed({
-    bool forceRefresh = false,
-  }) async {
+  Future<List<StoryMediaItem>> getStoryFeed({bool forceRefresh = false}) async {
     try {
       final stories = await _authRepository.fetchExploreStories(
         forceRefresh: forceRefresh,
@@ -2555,10 +2399,7 @@ out center $candidateLimit;
     }
   }
 
-  Future<List<MapFriend>> getMapFriends({
-    double? lat,
-    double? lng,
-  }) async {
+  Future<List<MapFriend>> getMapFriends({double? lat, double? lng}) async {
     try {
       var queryLat = lat;
       var queryLng = lng;
@@ -2577,9 +2418,7 @@ out center $candidateLimit;
         lng: queryLng,
         filter: 'friends',
       );
-      final friends = [
-        for (final item in raw) MapFriend.fromMapPresence(item),
-      ];
+      final friends = [for (final item in raw) MapFriend.fromMapPresence(item)];
       mapFriendsListenable.value = friends;
       _syncFriendPhotoCycles(friends);
       return friends;
@@ -2659,10 +2498,7 @@ out center $candidateLimit;
     return updatedFriend;
   }
 
-  Future<List<MapFriend>> getMapNearbyAnons({
-    double? lat,
-    double? lng,
-  }) async {
+  Future<List<MapFriend>> getMapNearbyAnons({double? lat, double? lng}) async {
     try {
       var queryLat = lat;
       var queryLng = lng;
@@ -2678,9 +2514,7 @@ out center $candidateLimit;
         lng: queryLng,
         filter: 'anon',
       );
-      return [
-        for (final item in raw) MapFriend.fromMapPresence(item),
-      ];
+      return [for (final item in raw) MapFriend.fromMapPresence(item)];
     } catch (e) {
       if (kDebugMode) {
         debugPrint('getMapNearbyAnons failed: $e');
@@ -2691,17 +2525,64 @@ out center $candidateLimit;
 
   Future<List<MapVenue>> getMapVenues({double? lat, double? lng}) async {
     try {
-      final places = await getNearbyAddPlanPlaces(limit: 20);
-      return [
-        for (final place in places)
-          if (place.lat != 0 || place.lng != 0)
-            MapVenue(
-              name: place.placeName,
-              peopleCount: int.tryParse(place.friendsLabel) ?? 0,
-              lat: place.lat,
-              lng: place.lng,
-            ),
-      ];
+      var queryLat = lat;
+      var queryLng = lng;
+      if (queryLat == null || queryLng == null) {
+        final last = await Geolocator.getLastKnownPosition();
+        queryLat = last?.latitude;
+        queryLng = last?.longitude;
+      }
+      if (queryLat == null || queryLng == null) return const [];
+
+      final radiusMeters = _nearbyPlacesSearchRadiusMeters;
+      final roundedLat = queryLat.toStringAsFixed(3);
+      final roundedLng = queryLng.toStringAsFixed(3);
+      final key = 'venues:$roundedLat:$roundedLng:${radiusMeters.round()}:40';
+
+      final cached = _mapVenuesCache[key];
+      if (cached != null &&
+          DateTime.now().difference(cached.at) <= _mapVenuesMaxCacheAge) {
+        return cached.items;
+      }
+
+      final inFlight = _mapVenuesInFlight[key];
+      if (inFlight != null) return inFlight;
+
+      final future = () async {
+        final raw = await _authRepository.fetchNearbyPlaces(
+          lat: queryLat!,
+          lng: queryLng!,
+          radiusMeters: radiusMeters,
+          limit: 40,
+        );
+        final items = <MapVenue>[
+          for (final row in raw)
+            if (((row['placeName'] as String?)?.trim().isNotEmpty ?? false) &&
+                ((row['lat'] as num?) != null && (row['lng'] as num?) != null))
+              MapVenue(
+                name: (row['placeName'] as String).trim(),
+                peopleCount: 0,
+                lat: (row['lat'] as num?)?.toDouble() ?? 0,
+                lng: (row['lng'] as num?)?.toDouble() ?? 0,
+                photoPath: (row['photoUrl'] as String?)?.trim().isNotEmpty == true
+                    ? (row['photoUrl'] as String).trim()
+                    : null,
+              ),
+        ];
+        if (items.isNotEmpty) {
+          _mapVenuesCache[key] = (at: DateTime.now(), items: items);
+        }
+        return items;
+      }();
+
+      _mapVenuesInFlight[key] = future;
+      try {
+        return await future;
+      } finally {
+        if (identical(_mapVenuesInFlight[key], future)) {
+          _mapVenuesInFlight.remove(key);
+        }
+      }
     } catch (e) {
       if (kDebugMode) {
         debugPrint('getMapVenues failed: $e');

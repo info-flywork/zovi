@@ -48,6 +48,7 @@ part 'widgets/home_map_last_check_in_sheet.dart';
 part 'widgets/home_map_marker.dart';
 part 'widgets/home_map_section.dart';
 part 'widgets/home_map_venue_marker.dart';
+part 'widgets/home_map_venue_sheet.dart';
 part 'widgets/home_stories_row.dart';
 
 class HomeView extends StatefulWidget {

@@ -1006,6 +1006,32 @@ class AuthRepository {
     ];
   }
 
+  /// Google Places Nearby via backend (`GET /map/places/nearby`).
+  Future<List<Map<String, dynamic>>> fetchNearbyPlaces({
+    required double lat,
+    required double lng,
+    double radiusMeters = 3000,
+    int limit = 40,
+  }) async {
+    final result = await _network.send<Map<String, dynamic>>(
+      path: '/map/places/nearby',
+      method: RequestType.get,
+      queryParameters: {
+        'lat': '$lat',
+        'lng': '$lng',
+        'radiusMeters': '${radiusMeters.round()}',
+        'limit': '$limit',
+      },
+      parserModel: (json) => json,
+    );
+    final raw = result?['items'];
+    if (raw is! List) return const [];
+    return [
+      for (final item in raw)
+        if (item is Map) Map<String, dynamic>.from(item),
+    ];
+  }
+
   /// Submit a check-in and earn DB-driven coin rewards + pair streaks.
   Future<Map<String, dynamic>> submitCheckIn({
     required String placeName,

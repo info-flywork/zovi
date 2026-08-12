@@ -18,6 +18,9 @@ class _HomeMapSectionState extends State<HomeMapSection>
     with TickerProviderStateMixin, WidgetsBindingObserver {
   static const _fallbackCenter = LatLng(41.0082, 28.9784);
   static const _defaultZoom = 16.0;
+  static const _venueLoadMinZoom = 14.8;
+  static const _venueReloadDistanceMeters = 280.0;
+  static const _venueReloadZoomDelta = 0.35;
 
   /// Carto Voyager — temiz, renkli, modern (ücretsiz tile).
   static const _tileUrl =
@@ -39,17 +42,26 @@ class _HomeMapSectionState extends State<HomeMapSection>
   bool _filterMenuOpen = false;
   bool _filterTransitioning = false;
   _MapFilter _selectedFilter = _MapFilter.friends;
+  bool _venueZoomHintDismissed = false;
   List<MapFriend> _nearbyAnons = const [];
   List<MapVenue> _venues = const [];
-  int? _expandedAnonIndex;
+  LatLng? _lastVenueFetchCenter;
+  double? _lastVenueFetchZoom;
+  Timer? _venuesDebounce;
+  bool _venuesLoading = false;
   MapFriend? _selectedFriend;
+  MapVenue? _selectedVenue;
   MapFriend? _friendSheetFriend;
   ActiveMapCheckIn? _lastCheckInSheet;
   int _sheetPresentGeneration = 0;
+  int _venuePresentGeneration = 0;
   AnimationController? _cameraAnimation;
   late final AnimationController _friendSheetController;
   late final Animation<Offset> _friendSheetSlide;
   late final Animation<double> _friendSheetFade;
+  late final AnimationController _venueSheetController;
+  late final Animation<Offset> _venueSheetSlide;
+  late final Animation<double> _venueSheetFade;
   double _mapZoom = _defaultZoom;
   static const _distance = Distance();
   /// Zoom’a göre marker’ların “çakışma” eşiği (metre).
@@ -79,6 +91,24 @@ class _HomeMapSectionState extends State<HomeMapSection>
         );
     _friendSheetFade = CurvedAnimation(
       parent: _friendSheetController,
+      curve: Curves.easeOut,
+      reverseCurve: Curves.easeIn,
+    );
+    _venueSheetController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 280),
+      reverseDuration: const Duration(milliseconds: 220),
+    );
+    _venueSheetSlide =
+        Tween<Offset>(begin: const Offset(0, 0.42), end: Offset.zero).animate(
+          CurvedAnimation(
+            parent: _venueSheetController,
+            curve: Curves.easeOutCubic,
+            reverseCurve: Curves.easeInCubic,
+          ),
+        );
+    _venueSheetFade = CurvedAnimation(
+      parent: _venueSheetController,
       curve: Curves.easeOut,
       reverseCurve: Curves.easeIn,
     );
@@ -142,6 +172,16 @@ class _HomeMapSectionState extends State<HomeMapSection>
         );
         _selectedFriend = match.isEmpty ? selectedFriend : match.first;
       }
+      final selectedVenue = _selectedVenue;
+      if (selectedVenue != null) {
+        final stillVisible = _venues.any(
+          (v) =>
+              v.name == selectedVenue.name &&
+              (v.lat - selectedVenue.lat).abs() < 0.0001 &&
+              (v.lng - selectedVenue.lng).abs() < 0.0001,
+        );
+        if (!stillVisible) _selectedVenue = null;
+      }
     });
   }
 
@@ -154,13 +194,218 @@ class _HomeMapSectionState extends State<HomeMapSection>
     setState(() => _nearbyAnons = items);
   }
 
-  Future<void> _loadVenues() async {
+  Future<void> _loadVenues({
+    required LatLng center,
+    required double zoom,
+    bool force = false,
+  }) async {
+    final movedEnough = _lastVenueFetchCenter == null
+        ? true
+        : _distance.as(LengthUnit.Meter, _lastVenueFetchCenter!, center) >=
+              _venueReloadDistanceMeters;
+    final zoomChangedEnough = _lastVenueFetchZoom == null
+        ? true
+        : (zoom - _lastVenueFetchZoom!).abs() >= _venueReloadZoomDelta;
+
+    if (!force && !movedEnough && !zoomChangedEnough) return;
+
+    _venuesLoading = true;
     final items = await getIt<UserRepository>().getMapVenues(
-      lat: _hasRealLocation ? _userLocation.latitude : null,
-      lng: _hasRealLocation ? _userLocation.longitude : null,
+      lat: center.latitude,
+      lng: center.longitude,
     );
     if (!mounted) return;
-    setState(() => _venues = items);
+    setState(() {
+      _venuesLoading = false;
+      _lastVenueFetchCenter = center;
+      _lastVenueFetchZoom = zoom;
+      _venues = items;
+      final selectedVenue = _selectedVenue;
+      if (selectedVenue != null) {
+        final refreshed = items.where(
+          (v) =>
+              v.name == selectedVenue.name &&
+              (v.lat - selectedVenue.lat).abs() < 0.0001 &&
+              (v.lng - selectedVenue.lng).abs() < 0.0001,
+        );
+        _selectedVenue = refreshed.isEmpty ? null : refreshed.first;
+      }
+    });
+  }
+
+  void _scheduleVenueRefresh({bool force = false}) {
+    if (_selectedFilter != _MapFilter.venues || !_mapReady) return;
+    if (_venuesLoading && !force) return;
+    final zoom = _mapController.camera.zoom;
+    if (!force && zoom < _venueLoadMinZoom) return;
+    final center = _mapController.camera.center;
+    _venuesDebounce?.cancel();
+    _venuesDebounce = Timer(const Duration(milliseconds: 220), () {
+      if (!mounted) return;
+      unawaited(_loadVenues(center: center, zoom: zoom, force: force));
+    });
+  }
+
+  bool get _shouldHideVenuesByZoom => _mapZoom < _venueLoadMinZoom;
+
+  bool get _showVenueZoomHint =>
+      _selectedFilter == _MapFilter.venues &&
+      _shouldHideVenuesByZoom &&
+      !_venueZoomHintDismissed;
+
+  String _normalizeVenueText(String value) {
+    final lower = value.toLowerCase().trim();
+    final compact = lower.replaceAll(RegExp(r'\s+'), ' ');
+    return compact.replaceAll(RegExp(r'[^a-z0-9çğıöşü ]', unicode: true), '');
+  }
+
+  int _venueFriendCount(MapVenue venue) {
+    final venuePoint = _venuePoint(venue);
+    final venueName = _normalizeVenueText(venue.name);
+    final seen = <String>{};
+    var count = 0;
+
+    for (final friend in _mapFriends) {
+      if (!friend.isFriend || !friend.hasCheckIn) continue;
+      final friendPlace = _normalizeVenueText(friend.checkIn?.placeName ?? '');
+      final nameMatches = friendPlace.isNotEmpty && friendPlace == venueName;
+      final meters = _distance.as(
+        LengthUnit.Meter,
+        venuePoint,
+        _friendPoint(friend),
+      );
+      final nearEnough = meters <= 120;
+      if (!nameMatches && !nearEnough) continue;
+
+      final key = friend.userId.isNotEmpty ? friend.userId : friend.name;
+      if (seen.add(key)) count++;
+    }
+    return count;
+  }
+
+  List<MapVenue> _venuesWithFriendCounts() {
+    if (_venues.isEmpty) return const [];
+    return [
+      for (final venue in _venues)
+        MapVenue(
+          name: venue.name,
+          peopleCount: _venueFriendCount(venue),
+          lat: venue.lat,
+          lng: venue.lng,
+          photoPath: venue.photoPath,
+          x: venue.x,
+          y: venue.y,
+        ),
+    ];
+  }
+
+  String? _venuePreviewPhoto(MapVenue venue) {
+    final direct = (venue.photoPath ?? '').trim();
+    if (direct.isNotEmpty) return direct;
+    final venueName = _normalizeVenueText(venue.name);
+    final venuePoint = _venuePoint(venue);
+    for (final friend in _mapFriends) {
+      if (!friend.hasCheckIn) continue;
+      final photos = friend.checkIn?.photoPaths ?? const <String>[];
+      if (photos.isEmpty) continue;
+      final friendPlace = _normalizeVenueText(friend.checkIn?.placeName ?? '');
+      final meters = _distance.as(
+        LengthUnit.Meter,
+        venuePoint,
+        _friendPoint(friend),
+      );
+      final nameMatches = friendPlace.isNotEmpty && friendPlace == venueName;
+      if (!nameMatches && meters > 120) continue;
+      final first = photos.firstWhere(
+        (p) => p.trim().isNotEmpty,
+        orElse: () => '',
+      );
+      if (first.isNotEmpty) return first;
+    }
+    return null;
+  }
+
+  List<MapVenue> _compactVenueLabels() {
+    final source = _venuesWithFriendCounts();
+    if (!_mapReady || source.isEmpty) return source;
+    final zoom = _mapController.camera.zoom;
+    final camera = _mapController.camera;
+    final viewport = camera.visibleBounds;
+    final labelGap = (92 - ((zoom - 15.5) * 10)).clamp(54, 96).toDouble();
+    final maxCount = (18 + ((zoom - 15) * 8)).clamp(18, 40).toInt();
+    final placed = <Offset>[];
+    final output = <MapVenue>[];
+
+    for (final venue in source) {
+      if (output.length >= maxCount) break;
+      final point = _venuePoint(venue);
+      if (!viewport.contains(point)) continue;
+      final px = camera.projectAtZoom(point, zoom);
+      var collide = false;
+      for (final prev in placed) {
+        if ((prev - px).distance < labelGap) {
+          collide = true;
+          break;
+        }
+      }
+      if (collide) continue;
+      placed.add(px);
+      output.add(venue);
+    }
+    return output;
+  }
+
+  List<Marker> _buildVenueMarkers() {
+    return [
+      for (final venue in _compactVenueLabels())
+        Marker(
+          point: _venuePoint(venue),
+          width: 300,
+          height: 88,
+          alignment: Alignment.center,
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: () => _onVenueTap(venue),
+            child: Center(
+              child: _animatedMarker(HomeMapVenueMarker(venue: venue)),
+            ),
+          ),
+        ),
+    ];
+  }
+
+  void _onVenueTap(MapVenue venue) {
+    unawaited(_presentVenueSheet(venue));
+  }
+
+  Future<void> _presentVenueSheet(MapVenue venue) async {
+    final generation = ++_venuePresentGeneration;
+    FocusManager.instance.primaryFocus?.unfocus();
+    final wasOpen = _venueSheetController.value > 0 && _selectedVenue != null;
+    if (wasOpen) {
+      await _venueSheetController.reverse();
+      if (!mounted || generation != _venuePresentGeneration) return;
+    }
+    if (_filterMenuOpen) _closeFilterMenu();
+    setState(() {
+      _selectedFriend = null;
+      _lastCheckInSheet = null;
+      _friendSheetFriend = null;
+      _selectedVenue = venue;
+    });
+    _friendSheetController.value = 0;
+    await _venueSheetController.forward(from: 0);
+  }
+
+  Future<void> _closeVenueSheet() async {
+    if (_selectedVenue == null) return;
+    _venuePresentGeneration++;
+    FocusManager.instance.primaryFocus?.unfocus();
+    await _venueSheetController.reverse();
+    if (!mounted) return;
+    if (_selectedVenue != null) {
+      setState(() => _selectedVenue = null);
+    }
   }
 
   @override
@@ -174,10 +419,12 @@ class _HomeMapSectionState extends State<HomeMapSection>
     WidgetsBinding.instance.removeObserver(this);
     _filterMenuController.dispose();
     _friendSheetController.dispose();
+    _venueSheetController.dispose();
     _markersFade.dispose();
     _markersScaleCurve.dispose();
     _markersController.dispose();
     _cameraAnimation?.dispose();
+    _venuesDebounce?.cancel();
     _mapController.dispose();
     super.dispose();
   }
@@ -209,10 +456,19 @@ class _HomeMapSectionState extends State<HomeMapSection>
       if (!mounted) return;
       setState(() {
         _selectedFilter = filter;
-        _expandedAnonIndex = null;
         _selectedFriend = null;
+        _selectedVenue = null;
         _friendSheetFriend = null;
+        if (filter != _MapFilter.venues) {
+          _venueZoomHintDismissed = false;
+        }
       });
+      if (filter == _MapFilter.venues) {
+        _scheduleVenueRefresh(force: true);
+      }
+      if (filter == _MapFilter.nearby) {
+        unawaited(_loadNearbyAnons());
+      }
       _friendSheetController.value = 0;
       unawaited(_pulseCameraForFilter());
       await _markersController.forward();
@@ -245,23 +501,6 @@ class _HomeMapSectionState extends State<HomeMapSection>
     );
   }
 
-  void _onAnonTap(int index) {
-    if (_friendSheetFriend != null) {
-      unawaited(_closeFriendSheet());
-    }
-    if (_filterMenuOpen) {
-      setState(() {
-        _filterMenuOpen = false;
-        _expandedAnonIndex = index;
-      });
-      _filterMenuController.reverse();
-      return;
-    }
-    setState(() {
-      _expandedAnonIndex = _expandedAnonIndex == index ? null : index;
-    });
-  }
-
   void _onFriendTap(MapFriend friend) {
     if (_filterMenuOpen) {
       _closeFilterMenu();
@@ -276,7 +515,7 @@ class _HomeMapSectionState extends State<HomeMapSection>
     unawaited(
       _presentBottomSheet(
         apply: () {
-          _expandedAnonIndex = null;
+          _selectedVenue = null;
           _lastCheckInSheet = null;
           _selectedFriend = friend;
           _friendSheetFriend = friend;
@@ -300,8 +539,8 @@ class _HomeMapSectionState extends State<HomeMapSection>
     unawaited(
       _presentBottomSheet(
         apply: () {
-          _expandedAnonIndex = null;
           _selectedFriend = null;
+          _selectedVenue = null;
           _friendSheetFriend = null;
           _lastCheckInSheet = checkIn;
         },
@@ -401,9 +640,7 @@ class _HomeMapSectionState extends State<HomeMapSection>
   }
 
   void _onMapBackgroundTap() {
-    if (_expandedAnonIndex != null) {
-      setState(() => _expandedAnonIndex = null);
-    }
+    unawaited(_closeVenueSheet());
     unawaited(_closeFriendSheet());
     _closeFilterMenu();
   }
@@ -423,7 +660,7 @@ class _HomeMapSectionState extends State<HomeMapSection>
       ),
     );
     unawaited(_loadNearbyAnons());
-    unawaited(_loadVenues());
+    _scheduleVenueRefresh(force: true);
   }
 
   LatLng _friendPoint(MapFriend friend) {
@@ -894,7 +1131,7 @@ class _HomeMapSectionState extends State<HomeMapSection>
         );
       }));
       unawaited(_loadNearbyAnons());
-      unawaited(_loadVenues());
+      _scheduleVenueRefresh(force: true);
     } catch (_) {
       if (mounted) {
         setState(() => _locating = false);
@@ -989,6 +1226,7 @@ class _HomeMapSectionState extends State<HomeMapSection>
               _mapReady = true;
               _mapZoom = _mapController.camera.zoom;
               _moveCamera(_userLocation, _defaultZoom);
+              _scheduleVenueRefresh(force: true);
             },
             onMapEvent: (event) {
               if (event is MapEventMoveEnd ||
@@ -996,8 +1234,15 @@ class _HomeMapSectionState extends State<HomeMapSection>
                   event is MapEventDoubleTapZoom) {
                 final zoom = _mapController.camera.zoom;
                 if ((zoom - _mapZoom).abs() >= 0.08 && mounted) {
-                  setState(() => _mapZoom = zoom);
+                  setState(() {
+                    _mapZoom = zoom;
+                    // Yeterince yakınlaşınca ipucunu tekrar gösterilebilir hale al.
+                    if (zoom >= _venueLoadMinZoom) {
+                      _venueZoomHintDismissed = false;
+                    }
+                  });
                 }
+                _scheduleVenueRefresh();
               }
             },
             onTap: (_, _) => _onMapBackgroundTap(),
@@ -1023,37 +1268,30 @@ class _HomeMapSectionState extends State<HomeMapSection>
                 if (_selectedFilter == _MapFilter.friends)
                   ..._buildFriendLayerMarkers(),
                 if (_selectedFilter == _MapFilter.nearby)
-                  for (var i = 0; i < _nearbyAnons.length; i++)
+                  for (final person in _nearbyAnons)
                     Marker(
-                      point: _friendPoint(_nearbyAnons[i]),
-                      width: 180,
-                      height: 120,
-                      alignment: Alignment.topCenter,
+                      point: _friendPoint(person),
+                      width: person.hasCheckIn
+                          ? HomeMapCheckInMarker.width
+                          : 96,
+                      height: person.hasCheckIn
+                          ? HomeMapCheckInMarker.height
+                          : 100,
+                      alignment: person.hasCheckIn
+                          ? Alignment.center
+                          : Alignment.topCenter,
                       child: _animatedMarker(
-                        HomeMapAnonMarker(
-                          user: _nearbyAnons[i],
-                          expanded: _expandedAnonIndex == i,
-                          onTap: () => _onAnonTap(i),
+                        GestureDetector(
+                          onTap: () => _onFriendTap(person),
+                          behavior: HitTestBehavior.opaque,
+                          child: person.hasCheckIn
+                              ? HomeMapCheckInMarker.fromFriend(person)
+                              : HomeMapMarker(friend: person),
                         ),
                       ),
                     ),
                 if (_selectedFilter == _MapFilter.venues)
-                  for (final venue in _venues)
-                    Marker(
-                      point: _venuePoint(venue),
-                      width: 1,
-                      height: 1,
-                      alignment: Alignment.center,
-                      child: IgnorePointer(
-                        child: OverflowBox(
-                          maxWidth: 320,
-                          maxHeight: 80,
-                          child: _animatedMarker(
-                            HomeMapVenueMarker(venue: venue),
-                          ),
-                        ),
-                      ),
-                    ),
+                  ...(_shouldHideVenuesByZoom ? const <Marker>[] : _buildVenueMarkers()),
                 if (_selectedFilter != _MapFilter.friends)
                   Marker(
                     point: _userLocation,
@@ -1239,6 +1477,87 @@ class _HomeMapSectionState extends State<HomeMapSection>
                           checkIn: _lastCheckInSheet!,
                           onClose: () => unawaited(_closeFriendSheet()),
                         ),
+                ),
+              ),
+            ),
+          )
+        else if (_selectedVenue != null)
+          Positioned(
+            left: 16,
+            right: 16,
+            bottom: friendSheetBottom,
+            child: SlideTransition(
+              position: _venueSheetSlide,
+              child: FadeTransition(
+                opacity: _venueSheetFade,
+                child: HomeMapVenueSheet(
+                  venue: _selectedVenue!,
+                  photoPath: _venuePreviewPhoto(_selectedVenue!),
+                  onClose: () => unawaited(_closeVenueSheet()),
+                ),
+              ),
+            ),
+          )
+        else if (_showVenueZoomHint)
+          Positioned.fill(
+            child: GestureDetector(
+              onTap: () {
+                if (!mounted) return;
+                setState(() => _venueZoomHintDismissed = true);
+              },
+              behavior: HitTestBehavior.opaque,
+              child: Container(
+                color: AppColors.black.withValues(alpha: 0.18),
+                alignment: Alignment.center,
+                padding: const EdgeInsets.symmetric(horizontal: 28),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 18,
+                    vertical: 14,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppColors.white.withValues(alpha: 0.92),
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: const [
+                      BoxShadow(
+                        color: Color(0x22000000),
+                        blurRadius: 14,
+                        offset: Offset(0, 6),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const AppIcon(
+                        AssetPaths.iconLocationOutlined,
+                        size: 22,
+                        color: AppColors.zoviOrange,
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Mekanları görmek için biraz yakınlaştır.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: AppColors.black.withValues(alpha: 0.84),
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                          height: 20 / 15,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'İpucu ekranına dokunarak kapatabilirsin.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: AppColors.black.withValues(alpha: 0.56),
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                          height: 16 / 12,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
