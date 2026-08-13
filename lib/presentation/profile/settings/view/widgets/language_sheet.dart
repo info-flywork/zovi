@@ -28,9 +28,20 @@ enum AppLanguage {
 
   String get label => labelKey.tr();
 
-  /// Uygulama çevirisi şu an yalnızca en/tr.
-  Locale get appLocale =>
-      code == 'tr' ? const Locale('tr') : const Locale('en');
+  Locale get appLocale => switch (code) {
+    'tr' => const Locale('tr'),
+    'de' => const Locale('de'),
+    'fr' => const Locale('fr'),
+    'es' => const Locale('es'),
+    'it' => const Locale('it'),
+    'pt' => const Locale('pt'),
+    'ru' => const Locale('ru'),
+    'hi' => const Locale('hi'),
+    'ja' => const Locale('ja'),
+    'ko' => const Locale('ko'),
+    'zh' => const Locale('zh'),
+    _ => const Locale('en'),
+  };
 
   static AppLanguage fromLocale(Locale locale) {
     return AppLanguage.values.firstWhere(
@@ -105,10 +116,7 @@ class _LanguageSheetState extends State<LanguageSheet> {
                           GestureDetector(
                             onTap: () => Navigator.of(context).pop(),
                             behavior: HitTestBehavior.opaque,
-                            child: const AppIcon(
-                              AssetPaths.iconBack,
-                              size: 24,
-                            ),
+                            child: const AppIcon(AssetPaths.iconBack, size: 24),
                           ),
                           const SizedBox(width: 12),
                           Text(
@@ -148,7 +156,7 @@ class _LanguageSheetState extends State<LanguageSheet> {
               SafeArea(
                 top: false,
                 child: Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
                   child: AppButton(
                     label: 'save_changes'.tr(),
                     onPressed: () => Navigator.of(context).pop(_selected),

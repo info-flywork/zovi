@@ -8,7 +8,7 @@ import 'package:zovi/core/utils/constants/string_constants.dart';
 import 'package:zovi/domain/auth/auth_repository.dart';
 
 /// Handles Universal / App Links for profile share URLs:
-/// `https://zovi.app/u/{handle}`
+/// `https://zovi.fly-work.com/u/{handle}`
 class DeepLinkService {
   DeepLinkService(this._authRepository);
 
@@ -103,7 +103,7 @@ class DeepLinkService {
     }
   }
 
-  /// Accepts `https://zovi.app/u/{handle}` (and www) plus `zovi://u/{handle}`.
+  /// Accepts `https://zovi.fly-work.com/u/{handle}` (and www) plus `zovi://u/{handle}`.
   static String? parseProfileHandle(Uri uri) {
     final host = uri.host.toLowerCase();
     final scheme = uri.scheme.toLowerCase();

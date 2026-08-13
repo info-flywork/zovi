@@ -40,8 +40,6 @@ import 'package:zovi/presentation/chat/view/chat_requests_view.dart';
 import 'package:zovi/presentation/chat/view/chat_view.dart';
 import 'package:zovi/presentation/chat/view/group_gallery_view.dart';
 import 'package:zovi/presentation/chat/view/group_info_view.dart';
-import 'package:zovi/presentation/discover/bloc/discover_bloc.dart';
-import 'package:zovi/presentation/discover/view/discover_view.dart';
 import 'package:zovi/presentation/home/bloc/home_bloc.dart';
 import 'package:zovi/presentation/home/model/check_in_success_route_args.dart';
 import 'package:zovi/presentation/home/view/check_in_success_view.dart';
@@ -488,7 +486,7 @@ abstract final class AppRouter {
       GoRoute(
         path: RoutePaths.settings.path,
         name: RoutePaths.settings.name,
-        builder: (context, state) => const SettingsView(),
+        builder: (context, state) => SettingsView(),
       ),
       GoRoute(
         path: RoutePaths.stickers.path,
@@ -588,14 +586,6 @@ abstract final class AppRouter {
         path: RoutePaths.notifications.path,
         name: RoutePaths.notifications.name,
         builder: (context, state) => const NotificationsView(),
-      ),
-      GoRoute(
-        path: RoutePaths.discover.path,
-        name: RoutePaths.discover.name,
-        builder: (context, state) => BlocProvider(
-          create: (_) => getIt<DiscoverBloc>(),
-          child: const DiscoverView(),
-        ),
       ),
     ],
   );

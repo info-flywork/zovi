@@ -5,7 +5,9 @@ class AuthCacheManager {
 
   final FlutterSecureStorage _storage;
 
+  static const sessionTtl = Duration(days: 7);
   static const _accessTokenKey = 'access_token';
+  static const _sessionExpiresAtKey = 'session_expires_at_ms';
 
   Future<void> saveAccessToken(String token) async {
     await _storage.write(key: _accessTokenKey, value: token);
@@ -13,6 +15,20 @@ class AuthCacheManager {
 
   Future<String?> getAccessToken() async {
     return _storage.read(key: _accessTokenKey);
+  }
+
+  /// Sliding 7-day app session. Re-entry before expiry resets the window.
+  Future<void> touchSession() async {
+    final expiresAt = DateTime.now().add(sessionTtl).millisecondsSinceEpoch;
+    await _storage.write(key: _sessionExpiresAtKey, value: '$expiresAt');
+  }
+
+  Future<bool> isSessionExpired() async {
+    final raw = await _storage.read(key: _sessionExpiresAtKey);
+    if (raw == null || raw.isEmpty) return false;
+    final expiresAt = int.tryParse(raw);
+    if (expiresAt == null) return false;
+    return DateTime.now().millisecondsSinceEpoch >= expiresAt;
   }
 
   Future<void> clearAll() async {

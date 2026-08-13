@@ -38,8 +38,7 @@ enum RoutePaths {
   createStickerSuccess('/profile/stickers/create/success'),
   tribe('/tribe'),
   groupInfo('/chat/group-info'),
-  groupGallery('/chat/group-info/gallery'),
-  discover('/discover');
+  groupGallery('/chat/group-info/gallery');
 
   const RoutePaths(this.path);
   final String path;

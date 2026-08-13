@@ -16,6 +16,14 @@ final class SplashBloc extends Bloc<SplashEvent, SplashState> {
   final AuthRepository _authRepository;
   final UserRepository _userRepository;
 
+  static const _expiredSessionSplashDelay = Duration(seconds: 2);
+
+  /// Onboard/login olmuş ama token bitmiş kullanıcı splash'i görmeden
+  /// login'e zıplamasın.
+  Future<void> _holdSplashForExpiredSession() async {
+    await Future<void>.delayed(_expiredSessionSplashDelay);
+  }
+
   Future<void> _onStarted(
     SplashStarted event,
     Emitter<SplashState> emit,
@@ -54,6 +62,12 @@ final class SplashBloc extends Bloc<SplashEvent, SplashState> {
 
         emit(SplashNavigateTo(dest.path, extra: dest.extra));
         return;
+      } on SessionExpiredException {
+        await _authRepository.logout();
+        _userRepository.clearSessionCache();
+        await _holdSplashForExpiredSession();
+        emit(SplashNavigateTo(RoutePaths.onboarding.path));
+        return;
       } catch (_) {
         _userRepository.clearSessionCache();
         emit(SplashNavigateTo(RoutePaths.onboarding.path));
@@ -61,7 +75,12 @@ final class SplashBloc extends Bloc<SplashEvent, SplashState> {
       }
     }
 
+    final returningExpired = await _authRepository.isOnboardingDone();
+    await _authRepository.logoutIfStaleSession();
     _userRepository.clearSessionCache();
+    if (returningExpired) {
+      await _holdSplashForExpiredSession();
+    }
     emit(SplashNavigateTo(RoutePaths.onboarding.path));
   }
 }

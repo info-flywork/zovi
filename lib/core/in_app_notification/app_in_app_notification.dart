@@ -6,8 +6,8 @@ import 'package:zovi/core/in_app_notification/in_app_notification_banner.dart';
 import 'package:zovi/core/in_app_notification/in_app_notification_data.dart';
 import 'package:zovi/core/router/app_router.dart';
 import 'package:zovi/core/utils/enum/route_paths.dart';
+import 'package:zovi/core/utils/navigation/open_chat_detail.dart';
 import 'package:zovi/core/utils/navigation/open_story_by_id.dart';
-import 'package:zovi/presentation/chat/model/chat_detail_route_args.dart';
 
 class AppInAppNotification {
   AppInAppNotification._();
@@ -94,12 +94,15 @@ class AppInAppNotification {
         hide(immediate: true);
         context.push(
           RoutePaths.chatDetail.path,
-          extra: ChatDetailRouteArgs(
-            name: data.displayName ?? data.username,
-            username: data.username,
-            avatarPath: data.avatarPath,
-            userId: data.userId,
+          extra: chatDetailArgsFromNotification(
             conversationId: data.conversationId,
+            isGroup: data.isGroup,
+            tribeId: data.tribeId,
+            groupName: data.groupName,
+            actorName: data.displayName ?? '',
+            actorUsername: data.username,
+            actorAvatar: data.avatarPath,
+            actorUserId: data.userId,
             isRequest: data.isRequest,
           ),
         );

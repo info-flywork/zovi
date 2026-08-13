@@ -66,6 +66,7 @@ class _MainWrapperState extends State<MainWrapper> {
   @override
   Widget build(BuildContext context) {
     final currentIndex = _currentNavIndex;
+    final locale = context.locale;
 
     return Scaffold(
       backgroundColor: AppColors.white,
@@ -73,7 +74,10 @@ class _MainWrapperState extends State<MainWrapper> {
       body: Stack(
         fit: StackFit.expand,
         children: [
-          widget.navigationShell,
+          KeyedSubtree(
+            key: ValueKey(locale.languageCode),
+            child: widget.navigationShell,
+          ),
           Positioned(
             left: 0,
             right: 0,

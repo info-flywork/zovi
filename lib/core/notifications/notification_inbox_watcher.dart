@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:zovi/core/in_app_notification/app_in_app_notification.dart';
 import 'package:zovi/core/in_app_notification/in_app_notification_data.dart';
+import 'package:zovi/core/notifications/chat_notification_watcher.dart';
 import 'package:zovi/core/utils/constants/asset_paths.dart';
 import 'package:zovi/domain/auth/auth_repository.dart';
 
@@ -66,6 +67,26 @@ class NotificationInboxWatcher with WidgetsBindingObserver {
   void markSeen(String notificationId) {
     final id = notificationId.trim();
     if (id.isNotEmpty) _remember(id);
+  }
+
+  /// Lets the chat watcher claim a banner key so inbox + chat poll never double-fire.
+  // ignore: use_setters_to_change_properties
+  void attachChatSeenSink(void Function(String key) sink) {
+    _chatSeenSink = sink;
+  }
+
+  void Function(String key)? _chatSeenSink;
+
+  /// Conversation banner keys the chat watcher already surfaced.
+  final _chatBannerKeys = <String>{};
+
+  void markChatBannerSeen(String key) {
+    final k = key.trim();
+    if (k.isEmpty) return;
+    _chatBannerKeys.add(k);
+    if (_chatBannerKeys.length > _seenLimit) {
+      _chatBannerKeys.remove(_chatBannerKeys.first);
+    }
   }
 
   @override
@@ -135,6 +156,12 @@ class NotificationInboxWatcher with WidgetsBindingObserver {
 
   /// Returns false only when the banner should be retried later.
   bool _show(AppNotificationItem item) {
+    final isChat =
+        item.type == 'chat_message' || item.type == 'chat_request';
+    if (isChat) {
+      return _showChat(item);
+    }
+
     final isStoryLike = item.type == 'story_like';
     final aggCount = item.aggCount ?? 1;
     final isAgg = isStoryLike && aggCount >= 2;
@@ -179,6 +206,79 @@ class NotificationInboxWatcher with WidgetsBindingObserver {
       ),
     );
     _log('banner ${item.type} id=${item.id} shown=$shown');
+    return shown;
+  }
+
+  bool _showChat(AppNotificationItem item) {
+    final payload = item.payload ?? const {};
+    final conversationId =
+        (payload['conversationId'] as String?)?.trim().isNotEmpty == true
+        ? (payload['conversationId'] as String).trim()
+        : (item.objectId?.trim() ?? '');
+    final lastMessageAt = (payload['lastMessageAt'] as String?)?.trim() ?? '';
+    final preview = (payload['preview'] as String?)?.trim() ?? '';
+    final chatKey = ChatNotificationWatcher.seenKey(
+      conversationId: conversationId,
+      lastMessageAt: lastMessageAt,
+      messagePreview: preview,
+    );
+    if (_chatBannerKeys.contains(chatKey)) return true;
+
+    final aggCount = item.aggCount ?? 1;
+    final isAgg = aggCount >= 2;
+    final isRequest =
+        item.type == 'chat_request' ||
+        payload['isRequest'] == true ||
+        payload['isRequest'] == 'true';
+    final tribeId = (payload['tribeId'] as String?)?.trim() ?? '';
+    final groupName =
+        (payload['groupName'] as String?)?.trim().isNotEmpty == true
+        ? (payload['groupName'] as String).trim()
+        : ((payload['tribeName'] as String?)?.trim() ?? '');
+    final isGroup =
+        payload['isGroup'] == true ||
+        payload['isGroup'] == 'true' ||
+        tribeId.isNotEmpty;
+    final username = item.actorUsername?.trim() ?? '';
+    final actorName = item.actorName?.trim() ?? '';
+    final messageKey = isAgg
+        ? 'notifications_chat_messages_batch'
+        : (isRequest ? 'chat_message_request' : 'chat_message_received');
+
+    final shown = AppInAppNotification.instance.show(
+      InAppNotificationData(
+        username: isAgg
+            ? ''
+            : (username.isNotEmpty
+                ? username
+                : (actorName.isNotEmpty ? actorName : 'user')),
+        displayName: isAgg && isGroup && groupName.isNotEmpty
+            ? groupName
+            : (actorName.isNotEmpty ? actorName : null),
+        messageKey: messageKey,
+        messageNamedArgs: isAgg ? {'count': '$aggCount'} : const {},
+        avatarPath: item.actorAvatarUrl ?? '',
+        action: InAppNotificationAction.openChat,
+        conversationId: conversationId,
+        userId: item.actorId?.trim() ?? '',
+        isRequest: isRequest,
+        isGroup: isGroup,
+        tribeId: tribeId,
+        groupName: groupName,
+        useFullTitle: isAgg,
+        subtitleKey: !isAgg && preview.isNotEmpty ? 'chat_push_preview' : null,
+        subtitleNamedArgs:
+            !isAgg && preview.isNotEmpty ? {'text': preview} : const {},
+        storyImagePath: item.thumbnailUrl?.trim().isNotEmpty == true
+            ? item.thumbnailUrl
+            : null,
+      ),
+    );
+    if (shown) {
+      _chatSeenSink?.call(chatKey);
+      markChatBannerSeen(chatKey);
+    }
+    _log('banner chat id=${item.id} shown=$shown');
     return shown;
   }
 

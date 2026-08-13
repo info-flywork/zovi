@@ -1,17 +1,23 @@
+import 'dart:async';
+
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:shimmer/shimmer.dart';
+import 'package:zovi/core/di/injection.dart';
+import 'package:zovi/core/snackbar/app_snackbar.dart';
 import 'package:zovi/core/theme/app_colors.dart';
 import 'package:zovi/core/utils/constants/asset_paths.dart';
 import 'package:zovi/core/utils/enum/route_paths.dart';
 import 'package:zovi/core/utils/navigation/open_user_profile.dart';
 import 'package:zovi/core/widgets/app_button.dart';
 import 'package:zovi/core/widgets/app_icon.dart';
+import 'package:zovi/core/widgets/profile_avatar.dart';
+import 'package:zovi/domain/tribe/tribe_repository.dart';
 import 'package:zovi/presentation/chat/model/chat_detail_route_args.dart';
 import 'package:zovi/presentation/chat/model/group_info_route_args.dart';
 import 'package:zovi/presentation/profile/settings/view/widgets/blocked_users_sheet.dart';
-import 'package:zovi/presentation/profile/settings/view/widgets/language_sheet.dart';
 
 const _leaveRed = Color(0xFFE30A17);
 const _streakPink = Color(0xFFFF4D6D);
@@ -26,47 +32,69 @@ class GroupInfoView extends StatefulWidget {
 }
 
 class _GroupInfoViewState extends State<GroupInfoView> {
+  final TribeRepository _tribes = getIt<TribeRepository>();
   var _notificationsOn = true;
-  var _languageLabel = 'English';
-  List<BlockedUser> _blockedUsers = const [
-    BlockedUser(username: 'lyrajhonson', avatarPath: AssetPaths.avatarLyra),
-    BlockedUser(username: 'jessicablues', avatarPath: AssetPaths.avatarJessica),
-  ];
+  var _leaving = false;
+  var _loadingMembers = true;
+  late int _memberCount = widget.args.memberCount;
+  List<BlockedUser> _blockedUsers = const [];
+  List<_GroupMember> _members = const [];
 
-  static const _members = [
-    _GroupMember(
-      nameKey: 'group_info_you',
-      avatarPath: AssetPaths.avatarYou,
-      isMe: true,
-      streak: 8,
-    ),
-    _GroupMember(
-      name: 'Lyra',
-      fullName: 'Lyra Jhonson',
-      avatarPath: AssetPaths.avatarLyra,
-      streak: 12,
-    ),
-    _GroupMember(
-      name: 'Jessica',
-      fullName: 'Jessica Blues',
-      avatarPath: AssetPaths.avatarJessica,
-      streak: 9,
-    ),
-    _GroupMember(
-      name: 'Julia',
-      fullName: 'Julia Ivanova',
-      avatarPath: AssetPaths.avatarJulia,
-      streak: 7,
-    ),
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _hydrateFromCache();
+    unawaited(_loadMembers());
+  }
 
-  Future<void> _pickLanguage() async {
-    final selected = await showLanguageSheet(
-      context,
-      initial: AppLanguage.english,
-    );
-    if (!mounted || selected == null) return;
-    setState(() => _languageLabel = selected.label);
+  void _hydrateFromCache() {
+    final tribeId = widget.args.tribeId.trim();
+    if (tribeId.isEmpty) return;
+    final cached = _tribes.peekTribeDetail(tribeId);
+    if (cached == null) return;
+    if (cached.memberCount > 0) _memberCount = cached.memberCount;
+    if (cached.members.isNotEmpty) {
+      _members = _mapMembers(cached);
+      _loadingMembers = false;
+    }
+  }
+
+  List<_GroupMember> _mapMembers(Tribe detail) => [
+        for (final m in detail.members)
+          _GroupMember(
+            userId: m.userId,
+            name: m.isMe ? null : (m.name.isNotEmpty ? m.name : m.username),
+            nameKey: m.isMe ? 'group_info_you' : null,
+            fullName: m.name.isNotEmpty ? m.name : m.username,
+            username: m.username,
+            avatarPath: m.avatarUrl,
+            streak: m.streakCount,
+            isMe: m.isMe,
+          ),
+      ];
+
+  Future<void> _loadMembers() async {
+    final tribeId = widget.args.tribeId.trim();
+    if (tribeId.isEmpty) {
+      if (mounted) setState(() => _loadingMembers = false);
+      return;
+    }
+    try {
+      final detail = await _tribes.refreshTribeDetail(tribeId);
+      if (!mounted) return;
+      if (detail == null) {
+        setState(() => _loadingMembers = false);
+        return;
+      }
+      setState(() {
+        _memberCount = detail.memberCount;
+        _members = _mapMembers(detail);
+        _loadingMembers = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _loadingMembers = false);
+    }
   }
 
   Future<void> _openBlockedUsers() async {
@@ -76,9 +104,30 @@ class _GroupInfoViewState extends State<GroupInfoView> {
   }
 
   Future<void> _leaveGroup() async {
+    if (_leaving) return;
     final confirmed = await showLeaveGroupSheet(context);
     if (!confirmed || !mounted) return;
-    context.go(RoutePaths.tribe.path);
+
+    final tribeId = widget.args.tribeId.trim();
+    if (tribeId.isEmpty) {
+      context.go(RoutePaths.tribe.path);
+      return;
+    }
+
+    setState(() => _leaving = true);
+    try {
+      await _tribes.leaveTribe(tribeId);
+      if (!mounted) return;
+      context.go(RoutePaths.tribe.path);
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _leaving = false);
+      AppSnackbar.instance.show(
+        context,
+        'group_info_leave_failed'.tr(),
+        isError: true,
+      );
+    }
   }
 
   void _openMember(_GroupMember member) {
@@ -146,9 +195,9 @@ class _GroupInfoViewState extends State<GroupInfoView> {
                         shape: BoxShape.circle,
                       ),
                       child: ClipOval(
-                        child: Image.asset(
-                          widget.args.avatarPath,
-                          fit: BoxFit.cover,
+                        child: ProfileAvatar(
+                          path: widget.args.avatarPath,
+                          size: 110,
                         ),
                       ),
                     ),
@@ -171,7 +220,7 @@ class _GroupInfoViewState extends State<GroupInfoView> {
               Center(
                 child: _StatChip(
                   label: 'group_info_members_count'.tr(
-                    namedArgs: {'count': '${widget.args.memberCount}'},
+                    namedArgs: {'count': '$_memberCount'},
                   ),
                   icon: AssetPaths.iconMember,
                 ),
@@ -244,27 +293,6 @@ class _GroupInfoViewState extends State<GroupInfoView> {
                         ],
                       ),
                     ),
-                    const Divider(height: 1, color: Color(0xFFE8E8F0)),
-                    _SettingsRow(
-                      icon: AssetPaths.iconLanguageSquare,
-                      title: 'group_info_language'.tr(),
-                      onTap: _pickLanguage,
-                      trailing: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            _languageLabel,
-                            style: const TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w500,
-                              color: AppColors.textSecondary,
-                            ),
-                          ),
-                          const SizedBox(width: 4),
-                          const AppIcon(AssetPaths.iconRight, size: 20),
-                        ],
-                      ),
-                    ),
                   ],
                 ),
                 const SizedBox(height: 20),
@@ -280,7 +308,7 @@ class _GroupInfoViewState extends State<GroupInfoView> {
                     children: [
                       Text(
                         'group_info_members_count'.tr(
-                          namedArgs: {'count': '${widget.args.memberCount}'},
+                          namedArgs: {'count': '$_memberCount'},
                         ),
                         style: const TextStyle(
                           fontSize: 14,
@@ -291,11 +319,14 @@ class _GroupInfoViewState extends State<GroupInfoView> {
                         ),
                       ),
                       const SizedBox(height: 16),
-                      for (final member in _members)
-                        _MemberRow(
-                          member: member,
-                          onTap: () => _openMember(member),
-                        ),
+                      if (_loadingMembers && _members.isEmpty)
+                        const _MembersListShimmer()
+                      else
+                        for (final member in _members)
+                          _MemberRow(
+                            member: member,
+                            onTap: () => _openMember(member),
+                          ),
                     ],
                   ),
                 ),
@@ -303,16 +334,19 @@ class _GroupInfoViewState extends State<GroupInfoView> {
                 _SectionLabel('group_info_group_settings'.tr()),
                 const SizedBox(height: 16),
                 GestureDetector(
-                  onTap: _leaveGroup,
+                  onTap: _leaving ? null : _leaveGroup,
                   behavior: HitTestBehavior.opaque,
-                  child: Text(
-                    'group_info_leave'.tr(),
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w500,
-                      height: 1,
-                      letterSpacing: -0.32,
-                      color: _leaveRed,
+                  child: Opacity(
+                    opacity: _leaving ? 0.45 : 1,
+                    child: Text(
+                      'group_info_leave'.tr(),
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                        height: 1,
+                        letterSpacing: -0.32,
+                        color: _leaveRed,
+                      ),
                     ),
                   ),
                 ),
@@ -330,21 +364,27 @@ class _GroupMember {
   const _GroupMember({
     required this.avatarPath,
     required this.streak,
+    this.userId = '',
     this.name,
     this.nameKey,
     this.fullName,
+    this.username = '',
     this.isMe = false,
   });
 
+  final String userId;
   final String? name;
   final String? nameKey;
   final String? fullName;
+  final String username;
   final String avatarPath;
   final int streak;
   final bool isMe;
 
   String get displayName => nameKey?.tr() ?? name ?? '';
   String get profileName => fullName ?? displayName;
+  String get profileKey =>
+      username.trim().isNotEmpty ? username.trim() : profileName;
 }
 
 class _StatChip extends StatelessWidget {
@@ -485,12 +525,7 @@ class _MemberRow extends StatelessWidget {
         child: Row(
           children: [
             ClipOval(
-              child: Image.asset(
-                member.avatarPath,
-                width: 40,
-                height: 40,
-                fit: BoxFit.cover,
-              ),
+              child: ProfileAvatar(path: member.avatarPath, size: 40),
             ),
             const SizedBox(width: 10),
             Expanded(
@@ -507,6 +542,47 @@ class _MemberRow extends StatelessWidget {
             ),
             if (!member.isMe) const AppIcon(AssetPaths.iconRight, size: 20),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _MembersListShimmer extends StatelessWidget {
+  const _MembersListShimmer();
+
+  @override
+  Widget build(BuildContext context) {
+    return Shimmer.fromColors(
+      baseColor: const Color(0xFFE8E8E8),
+      highlightColor: const Color(0xFFF5F5F5),
+      child: Column(
+        children: List.generate(
+          4,
+          (_) => Padding(
+            padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
+            child: Row(
+              children: [
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: const BoxDecoration(
+                    color: Colors.white,
+                    shape: BoxShape.circle,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Container(
+                  width: 120,
+                  height: 14,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );
@@ -643,12 +719,7 @@ class _MemberProfileSheet extends StatelessWidget {
             ),
             const SizedBox(height: 24),
             ClipOval(
-              child: Image.asset(
-                member.avatarPath,
-                width: 100,
-                height: 100,
-                fit: BoxFit.cover,
-              ),
+              child: ProfileAvatar(path: member.avatarPath, size: 100),
             ),
             const SizedBox(height: 14),
             Text(
@@ -677,8 +748,9 @@ class _MemberProfileSheet extends StatelessWidget {
                   RoutePaths.chatDetail.path,
                   extra: ChatDetailRouteArgs(
                     name: member.profileName,
-                    username: member.displayName,
+                    username: member.profileKey,
                     avatarPath: member.avatarPath,
+                    userId: member.userId,
                   ),
                 );
               },
@@ -689,7 +761,7 @@ class _MemberProfileSheet extends StatelessWidget {
                 Navigator.of(context).pop();
                 await openUserProfile(
                   parentContext,
-                  member.name ?? member.profileName,
+                  member.profileKey,
                 );
               },
               behavior: HitTestBehavior.opaque,

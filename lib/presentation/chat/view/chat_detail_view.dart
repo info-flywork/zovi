@@ -25,6 +25,7 @@ import 'package:zovi/core/widgets/profile_avatar.dart';
 import 'package:zovi/core/widgets/stamp_image.dart';
 import 'package:zovi/domain/auth/auth_repository.dart';
 import 'package:zovi/domain/chat/chat_repository.dart';
+import 'package:zovi/domain/tribe/tribe_repository.dart';
 import 'package:zovi/presentation/chat/model/chat_detail_exit_store.dart';
 import 'package:zovi/presentation/chat/model/chat_detail_route_args.dart';
 import 'package:zovi/presentation/chat/model/group_info_route_args.dart';
@@ -72,6 +73,9 @@ class _ChatDetailViewState extends State<ChatDetailView> {
   var _isRequest = false;
   String? _exitResult;
   var _booting = false;
+  late int _memberCount;
+  late String _avatarPath;
+  late String _headerName;
 
   /// Only true on cold open (no memory cache) — never when reopening a thread.
   var _showShimmer = false;
@@ -90,6 +94,27 @@ class _ChatDetailViewState extends State<ChatDetailView> {
         ? null
         : widget.args.userId.trim();
     _isRequest = widget.args.isRequest && !widget.args.isGroup;
+    _memberCount = widget.args.memberCount ?? 0;
+    _avatarPath = widget.args.avatarPath.trim();
+    _headerName = widget.args.name.trim();
+
+    if (widget.args.isGroup) {
+      final tribeId = widget.args.tribeId.trim();
+      final cached = getIt<TribeRepository>().findCachedTribe(
+        tribeId: tribeId,
+        conversationId: _conversationId ?? '',
+      );
+      if (cached != null) {
+        if ((_conversationId == null || _conversationId!.isEmpty) &&
+            cached.conversationId.isNotEmpty) {
+          _conversationId = cached.conversationId;
+        }
+        if (cached.memberCount > 0) {
+          _memberCount = cached.memberCount;
+        }
+        _applyGroupMetaFromTribe(cached);
+      }
+    }
 
     // Profile / connections açılışında conversationId yok — cache'ten çöz.
     if ((_conversationId == null || _conversationId!.isEmpty) &&
@@ -102,58 +127,58 @@ class _ChatDetailViewState extends State<ChatDetailView> {
         }
       }
     }
-    _messages = widget.args.isGroup
-        ? [
-            _ChatMessage(
-              text: 'chat_demo_incoming'.tr(),
-              isMine: false,
-              senderName: 'Julia Ivanova',
-              senderAvatarPath: AssetPaths.avatarJulia,
-            ),
-            const _ChatMessage(text: 'Hey!', isMine: true),
-            _ChatMessage(
-              text: 'chat_group_demo_incoming'.tr(),
-              isMine: false,
-              senderName: 'Sona Black',
-              senderAvatarPath: AssetPaths.avatarSona,
-            ),
-          ]
-        : [];
+    _messages = [];
 
-    // Paint cached bubbles immediately when reopening the same DM.
-    if (!widget.args.isGroup) {
-      final cachedId = _conversationId;
-      if (cachedId != null && cachedId.isNotEmpty) {
-        _hydrateFromCache(cachedId);
-      }
-      _showShimmer = _messages.isEmpty;
-      if (_messages.isNotEmpty) {
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (!mounted) return;
-          _scrollToBottom();
-        });
-      }
+    // Paint cached bubbles immediately when reopening the same thread.
+    final cachedId = _conversationId;
+    if (cachedId != null && cachedId.isNotEmpty) {
+      _hydrateFromCache(cachedId);
+    }
+    _showShimmer = _messages.isEmpty;
+    if (_messages.isNotEmpty) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        _scrollToBottom();
+      });
     }
 
     _controller.addListener(_onTextChanged);
-    if (!widget.args.isGroup) {
-      ActiveChatTracker.instance.enter(
-        conversationId: _conversationId,
-        peerUserId: _peerUserId,
-      );
+    ActiveChatTracker.instance.enter(
+      conversationId: _conversationId,
+      peerUserId: widget.args.isGroup ? null : _peerUserId,
+    );
+    if (widget.args.isGroup) {
+      unawaited(_bootstrapGroup());
+    } else {
       unawaited(_bootstrapDm());
-      _poll = Timer.periodic(
-        const Duration(seconds: 3),
-        (_) => unawaited(_pullMessages(silent: true)),
-      );
     }
+    _poll = Timer.periodic(
+      const Duration(seconds: 3),
+      (_) => unawaited(_pullMessages(silent: true)),
+    );
+  }
+
+  void _applyGroupMetaFromTribe(Tribe? tribe) {
+    if (!widget.args.isGroup || tribe == null) return;
+    var changed = false;
+    if (tribe.avatars.isNotEmpty) {
+      final nextAvatar = tribe.avatars.first.trim();
+      if (nextAvatar.isNotEmpty && nextAvatar != _avatarPath) {
+        _avatarPath = nextAvatar;
+        changed = true;
+      }
+    }
+    final nextName = tribe.name.trim();
+    if (nextName.isNotEmpty && nextName != _headerName) {
+      _headerName = nextName;
+      changed = true;
+    }
+    if (changed && mounted) setState(() {});
   }
 
   @override
   void dispose() {
-    if (!widget.args.isGroup) {
-      ActiveChatTracker.instance.leave(conversationId: _conversationId);
-    }
+    ActiveChatTracker.instance.leave(conversationId: _conversationId);
     _persistMessagesToCache();
     _poll?.cancel();
     _recordingTimer?.cancel();
@@ -194,7 +219,7 @@ class _ChatDetailViewState extends State<ChatDetailView> {
               userId: _peerUserId!,
               name: widget.args.name,
               username: widget.args.username,
-              avatarUrl: widget.args.avatarPath,
+              avatarUrl: _avatarPath,
             ),
           ),
         );
@@ -216,6 +241,83 @@ class _ChatDetailViewState extends State<ChatDetailView> {
           _scrollToBottom();
         }
         // Soft refresh: only newer messages when cursor exists.
+        await _pullMessages(silent: true);
+      } else {
+        if (mounted && !_showShimmer) {
+          setState(() => _showShimmer = true);
+        }
+        await _pullMessages();
+      }
+      unawaited(_repo.markRead(conversationId));
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _showShimmer = false);
+      AppSnackbar.instance.show(
+        context,
+        'chat_load_failed'.tr(),
+        isError: true,
+      );
+    } finally {
+      _booting = false;
+      if (mounted && _showShimmer) {
+        setState(() => _showShimmer = false);
+      }
+    }
+  }
+
+  Future<void> _bootstrapGroup() async {
+    if (_booting) return;
+    _booting = true;
+    try {
+      var conversationId = _conversationId;
+      final tribeId = widget.args.tribeId.trim();
+      final tribes = getIt<TribeRepository>();
+
+      Tribe? detail = tribes.findCachedTribe(
+        tribeId: tribeId,
+        conversationId: conversationId ?? '',
+      );
+      if ((conversationId == null || conversationId.isEmpty) &&
+          detail != null &&
+          detail.conversationId.isNotEmpty) {
+        conversationId = detail.conversationId;
+        if (mounted) setState(() => _memberCount = detail!.memberCount);
+        _applyGroupMetaFromTribe(detail);
+      }
+
+      if ((conversationId == null || conversationId.isEmpty) &&
+          tribeId.isNotEmpty) {
+        detail = await tribes.refreshTribeDetail(tribeId);
+        if (!mounted) return;
+        final resolved = detail?.conversationId.trim() ?? '';
+        if (resolved.isNotEmpty) conversationId = resolved;
+        if (detail != null && mounted) {
+          setState(() => _memberCount = detail!.memberCount);
+          _applyGroupMetaFromTribe(detail);
+        }
+      } else if (tribeId.isNotEmpty) {
+        unawaited(
+          tribes.refreshTribeDetail(tribeId).then((fresh) {
+            if (!mounted || fresh == null) return;
+            setState(() => _memberCount = fresh.memberCount);
+            _applyGroupMetaFromTribe(fresh);
+          }),
+        );
+      }
+
+      if (conversationId == null || conversationId.isEmpty) {
+        if (mounted) setState(() => _showShimmer = false);
+        return;
+      }
+      _conversationId = conversationId;
+      ActiveChatTracker.instance.enter(conversationId: conversationId);
+
+      final hadCache = _hydrateFromCache(conversationId);
+      if (hadCache) {
+        if (mounted) {
+          setState(() => _showShimmer = false);
+          _scrollToBottom();
+        }
         await _pullMessages(silent: true);
       } else {
         if (mounted && !_showShimmer) {
@@ -288,8 +390,23 @@ class _ChatDetailViewState extends State<ChatDetailView> {
       voicePath: m.type == 'voice' ? m.mediaUrl : null,
       voiceDuration: voiceDuration,
       isMine: myId.isNotEmpty && m.senderId == myId,
-      senderName: m.senderId == myId ? null : widget.args.name,
-      senderAvatarPath: m.senderId == myId ? null : widget.args.avatarPath,
+      senderName: myId.isNotEmpty && m.senderId == myId
+          ? null
+          : (m.senderName.trim().isNotEmpty
+                ? m.senderName.trim()
+                : (m.senderUsername.trim().isNotEmpty
+                      ? m.senderUsername.trim()
+                      : (widget.args.isGroup ? null : widget.args.name))),
+      senderUsername: myId.isNotEmpty && m.senderId == myId
+          ? null
+          : (m.senderUsername.trim().isNotEmpty
+                ? m.senderUsername.trim()
+                : null),
+      senderAvatarPath: myId.isNotEmpty && m.senderId == myId
+          ? null
+          : (m.senderAvatarUrl.trim().isNotEmpty
+                ? m.senderAvatarUrl.trim()
+                : _avatarPath),
       createdAt: m.createdAt,
       replyToId: m.replyToMessageId,
       replyToText: m.replyPreview.trim().isEmpty ? null : m.replyPreview,
@@ -505,7 +622,7 @@ class _ChatDetailViewState extends State<ChatDetailView> {
             padding: const EdgeInsets.only(bottom: 12),
             child: _MessageBubble(
               message: removed,
-              avatarPath: widget.args.avatarPath,
+              avatarPath: _avatarPath,
               username: widget.args.username,
               isGroup: widget.args.isGroup,
               peerName: widget.args.name,
@@ -680,28 +797,12 @@ class _ChatDetailViewState extends State<ChatDetailView> {
     final text = _controller.text.trim();
     if (text.isEmpty || _sending) return;
 
-    if (widget.args.isGroup) {
-      final reply = _replyingTo;
-      _addMessage(
-        _ChatMessage(
-          text: text,
-          isMine: true,
-          replyToId: reply?.id,
-          replyToText: reply == null ? null : _previewForReply(reply),
-          replyToIsMine: reply?.isMine,
-        ),
-      );
-      _controller.clear();
-      setState(() {
-        _hasText = false;
-        _replyingTo = null;
-      });
-      _focusNode.requestFocus();
-      return;
-    }
-
     if (_conversationId == null || _conversationId!.isEmpty) {
-      await _bootstrapDm();
+      if (widget.args.isGroup) {
+        await _bootstrapGroup();
+      } else {
+        await _bootstrapDm();
+      }
     }
     final conversationId = _conversationId;
     if (conversationId == null || conversationId.isEmpty) {
@@ -847,21 +948,12 @@ class _ChatDetailViewState extends State<ChatDetailView> {
     final path = mediaPath.trim();
     if (path.isEmpty) return;
 
-    if (widget.args.isGroup) {
-      _addMessage(
-        _ChatMessage(
-          stampPath: type == 'stamp' ? path : null,
-          imagePath: type == 'image' ? path : null,
-          voicePath: type == 'voice' ? path : null,
-          voiceDuration: voiceDuration,
-          isMine: true,
-        ),
-      );
-      return;
-    }
-
     if (_conversationId == null || _conversationId!.isEmpty) {
-      await _bootstrapDm();
+      if (widget.args.isGroup) {
+        await _bootstrapGroup();
+      } else {
+        await _bootstrapDm();
+      }
     }
     final conversationId = _conversationId;
     if (conversationId == null || conversationId.isEmpty) {
@@ -901,7 +993,8 @@ class _ChatDetailViewState extends State<ChatDetailView> {
         return _repo.sendMessage(
           conversationId: conversationId,
           type: type,
-          body: body ??
+          body:
+              body ??
               (type == 'voice'
                   ? '${voiceDuration?.inMilliseconds ?? 0}'
                   : null),
@@ -1191,7 +1284,15 @@ class _ChatDetailViewState extends State<ChatDetailView> {
       body: SafeArea(
         child: Column(
           children: [
-            _ChatDetailHeader(args: widget.args, onBack: _popDetail),
+            _ChatDetailHeader(
+              args: widget.args,
+              title: _headerName,
+              avatarPath: _avatarPath,
+              memberCount: _memberCount,
+              conversationId: (_conversationId ?? widget.args.conversationId)
+                  .trim(),
+              onBack: _popDetail,
+            ),
             const Padding(
               padding: EdgeInsets.symmetric(vertical: 2),
               child: Divider(
@@ -1229,7 +1330,7 @@ class _ChatDetailViewState extends State<ChatDetailView> {
                               onReply: () => _startReply(message),
                               child: _MessageBubble(
                                 message: message,
-                                avatarPath: widget.args.avatarPath,
+                                avatarPath: _avatarPath,
                                 username: widget.args.username,
                                 isGroup: widget.args.isGroup,
                                 peerName: widget.args.name,
@@ -1291,6 +1392,7 @@ class _ChatMessage {
     this.voicePath,
     this.voiceDuration,
     this.senderName,
+    this.senderUsername,
     this.senderAvatarPath,
     this.createdAt,
     this.replyToId,
@@ -1306,6 +1408,7 @@ class _ChatMessage {
   final String? voicePath;
   final Duration? voiceDuration;
   final String? senderName;
+  final String? senderUsername;
   final String? senderAvatarPath;
   final DateTime? createdAt;
   final String? replyToId;
@@ -1371,10 +1474,7 @@ class _ChatBubbleShimmer extends StatelessWidget {
 }
 
 class _SwipeToReply extends StatefulWidget {
-  const _SwipeToReply({
-    required this.child,
-    required this.onReply,
-  });
+  const _SwipeToReply({required this.child, required this.onReply});
 
   final Widget child;
   final VoidCallback onReply;
@@ -1387,6 +1487,7 @@ class _SwipeToReplyState extends State<_SwipeToReply>
     with SingleTickerProviderStateMixin {
   static const _threshold = 56.0;
   static const _maxDrag = 72.0;
+
   /// Leave the left edge free for iOS / system back gesture.
   static const _edgeBackReserve = 28.0;
 
@@ -1398,14 +1499,16 @@ class _SwipeToReplyState extends State<_SwipeToReply>
   @override
   void initState() {
     super.initState();
-    _spring = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 220),
-    )..addListener(() {
-        setState(() {
-          _dx = _snapFrom * (1 - Curves.easeOutCubic.transform(_spring.value));
+    _spring =
+        AnimationController(
+          vsync: this,
+          duration: const Duration(milliseconds: 220),
+        )..addListener(() {
+          setState(() {
+            _dx =
+                _snapFrom * (1 - Curves.easeOutCubic.transform(_spring.value));
+          });
         });
-      });
   }
 
   @override
@@ -1762,17 +1865,26 @@ class _ChatRequestActionsBanner extends StatelessWidget {
 }
 
 class _ChatDetailHeader extends StatelessWidget {
-  const _ChatDetailHeader({required this.args, required this.onBack});
+  const _ChatDetailHeader({
+    required this.args,
+    required this.title,
+    required this.avatarPath,
+    required this.memberCount,
+    required this.conversationId,
+    required this.onBack,
+  });
 
   final ChatDetailRouteArgs args;
+  final String title;
+  final String avatarPath;
+  final int memberCount;
+  final String conversationId;
   final VoidCallback onBack;
 
   @override
   Widget build(BuildContext context) {
     final subtitle = args.isGroup
-        ? 'chat_member_count'.tr(
-            namedArgs: {'count': '${args.memberCount ?? 0}'},
-          )
+        ? 'chat_member_count'.tr(namedArgs: {'count': '$memberCount'})
         : (args.lastActive.trim().isEmpty
               ? ''
               : 'chat_active_ago'.tr(namedArgs: {'time': args.lastActive}));
@@ -1795,14 +1907,14 @@ class _ChatDetailHeader extends StatelessWidget {
               behavior: HitTestBehavior.opaque,
               child: Row(
                 children: [
-                  ProfileAvatar(path: args.avatarPath, size: 40),
+                  ProfileAvatar(path: avatarPath, size: 40),
                   const SizedBox(width: 10),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          args.name,
+                          title.isNotEmpty ? title : args.name,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
@@ -1844,9 +1956,11 @@ class _ChatDetailHeader extends StatelessWidget {
                 context.push(
                   RoutePaths.groupInfo.path,
                   extra: GroupInfoRouteArgs(
-                    name: args.name,
-                    avatarPath: args.avatarPath,
-                    memberCount: args.memberCount ?? 0,
+                    name: title.isNotEmpty ? title : args.name,
+                    avatarPath: avatarPath,
+                    memberCount: memberCount,
+                    tribeId: args.tribeId,
+                    conversationId: conversationId,
                   ),
                 );
               },
@@ -1898,12 +2012,14 @@ class _MessageBubble extends StatelessWidget {
   Widget _wrapIncoming({required BuildContext context, required Widget child}) {
     final senderAvatar = message.senderAvatarPath ?? avatarPath;
     final senderName = message.senderName;
+    final profileKey = isGroup
+        ? ((message.senderUsername?.trim().isNotEmpty ?? false)
+              ? message.senderUsername!.trim()
+              : (senderName ?? username))
+        : username;
 
     final avatar = GestureDetector(
-      onTap: () => openUserProfile(
-        context,
-        isGroup ? (senderName ?? username) : username,
-      ),
+      onTap: () => openUserProfile(context, profileKey),
       behavior: HitTestBehavior.opaque,
       child: ProfileAvatar(path: senderAvatar, size: 32),
     );
@@ -1915,10 +2031,7 @@ class _MessageBubble extends StatelessWidget {
           avatar,
           const SizedBox(width: 8),
           Flexible(
-            child: Align(
-              alignment: Alignment.centerLeft,
-              child: child,
-            ),
+            child: Align(alignment: Alignment.centerLeft, child: child),
           ),
         ],
       );
@@ -1938,7 +2051,7 @@ class _MessageBubble extends StatelessWidget {
               children: [
                 if (senderName != null && senderName.isNotEmpty) ...[
                   GestureDetector(
-                    onTap: () => openUserProfile(context, senderName),
+                    onTap: () => openUserProfile(context, profileKey),
                     behavior: HitTestBehavior.opaque,
                     child: Text(
                       senderName,
@@ -2003,7 +2116,7 @@ class _MessageBubble extends StatelessWidget {
                     width: 220,
                     height: 220,
                     fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => Container(
+                    errorBuilder: (_, _, _) => Container(
                       width: 220,
                       height: 220,
                       color: AppColors.surfaceGray,
@@ -2103,9 +2216,7 @@ class _MessageBubble extends StatelessWidget {
                 bottomRight: Radius.circular(16),
                 bottomLeft: Radius.circular(16),
               ),
-              border: Border.all(
-                color: AppColors.white.withValues(alpha: 0.2),
-              ),
+              border: Border.all(color: AppColors.white.withValues(alpha: 0.2)),
             ),
             child: Column(
               mainAxisSize: MainAxisSize.min,

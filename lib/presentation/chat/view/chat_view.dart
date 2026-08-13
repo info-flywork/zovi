@@ -16,6 +16,7 @@ import 'package:zovi/core/widgets/app_search_field.dart';
 import 'package:zovi/core/widgets/bottom_navigation_bar/main_wrapper.dart';
 import 'package:zovi/core/widgets/profile_avatar.dart';
 import 'package:zovi/domain/chat/chat_repository.dart';
+import 'package:zovi/domain/tribe/tribe_repository.dart';
 import 'package:zovi/presentation/chat/bloc/chat_bloc.dart';
 import 'package:zovi/presentation/chat/model/chat_detail_route_args.dart';
 import 'package:zovi/presentation/chat/model/chat_request_item.dart';

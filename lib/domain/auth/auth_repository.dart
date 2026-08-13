@@ -25,6 +25,10 @@ import 'package:zovi/domain/auth/models/username_taken_exception.dart';
 
 export 'package:zovi/domain/auth/models/story_draft_item.dart';
 
+class SessionExpiredException implements Exception {
+  const SessionExpiredException();
+}
+
 class AuthRepository {
   AuthRepository(
     this._authCache,
@@ -90,6 +94,7 @@ class AuthRepository {
   Future<bool> isIntroDone() => _prefs.isIntroDone();
 
   Future<bool> isAuthenticated() async {
+    if (await _authCache.isSessionExpired()) return false;
     // currentUser varsa token'ı burada zorlamaya gerek yok — splash / sync
     // zaten soft getIdToken ile kaydeder. Çift Firebase round-trip'i önler.
     if (_firebaseAuth.currentUser != null) return true;
@@ -212,7 +217,11 @@ class AuthRepository {
 
   /// Cold-start / session restore. Soft token (force refresh yok).
   /// Onboarding bitmişse `/auth/sync` arka planda kalır — splash beklemez.
+  /// App'e 7 gün içinde yeniden girince oturum süresi baştan sayılır.
   Future<AuthSession> resumeSessionForSplash() async {
+    if (await _authCache.isSessionExpired()) {
+      throw const SessionExpiredException();
+    }
     await _ensureAccessToken(forceRefresh: false);
 
     if (await isOnboardingDone()) {
@@ -238,12 +247,22 @@ class AuthRepository {
   Future<void> completeOnboarding({String? mockToken}) async {
     if (mockToken != null) {
       await _authCache.saveAccessToken(mockToken);
+      await _authCache.touchSession();
     } else {
       await _persistIdToken();
     }
     await _prefs.setOnboardingDone();
     await _prefs.setIntroDone();
     await _prefs.setFirstLaunchDone();
+  }
+
+  /// Drops leftover Firebase/cache when the 7-day window ended or token is dead.
+  Future<void> logoutIfStaleSession() async {
+    final hasFirebase = _firebaseAuth.currentUser != null;
+    final cached = await _authCache.getAccessToken();
+    final hasToken = cached != null && cached.isNotEmpty;
+    if (!hasFirebase && !hasToken) return;
+    await logout();
   }
 
   Future<void> logout() async {
@@ -283,9 +302,35 @@ class AuthRepository {
   Future<void> _ensureAccessToken({required bool forceRefresh}) async {
     final token = await _firebaseAuth.currentUser?.getIdToken(forceRefresh);
     if (token == null || token.isEmpty) {
-      throw StateError('Firebase user has no ID token.');
+      throw const SessionExpiredException();
     }
     await _authCache.saveAccessToken(token);
+    await _authCache.touchSession();
+  }
+
+  /// Foreground'a dönüş: 7 günlük pencere dolmadıysa yeniler, dolduysa logout.
+  /// `true` = oturum duruyor (veya zaten login yok). `false` = login'e at.
+  Future<bool> renewSessionOnResume() async {
+    final hasFirebase = _firebaseAuth.currentUser != null;
+    final cached = await _authCache.getAccessToken();
+    final hasToken = cached != null && cached.isNotEmpty;
+    if (!hasFirebase && !hasToken) return true;
+
+    if (await _authCache.isSessionExpired()) {
+      await logout();
+      return false;
+    }
+    if (!hasFirebase) {
+      await logout();
+      return false;
+    }
+    try {
+      await _ensureAccessToken(forceRefresh: false);
+      return true;
+    } catch (_) {
+      await logout();
+      return false;
+    }
   }
 
   /// Upserts the Firebase user into MySQL via Node API.
@@ -2151,6 +2196,7 @@ class AppNotificationItem {
     this.bodyKey,
     this.readAt,
     this.aggCount,
+    this.payload,
   });
 
   factory AppNotificationItem.fromJson(Map<String, dynamic> json) {
@@ -2160,6 +2206,10 @@ class AppNotificationItem {
     final agg = aggRaw is num
         ? aggRaw.toInt()
         : int.tryParse('${aggRaw ?? ''}');
+    final payloadRaw = json['payload'];
+    final payload = payloadRaw is Map
+        ? Map<String, dynamic>.from(payloadRaw)
+        : null;
     return AppNotificationItem(
       id: (json['id'] as String?)?.trim() ?? '',
       type: (json['type'] as String?)?.trim() ?? '',
@@ -2176,6 +2226,7 @@ class AppNotificationItem {
       bodyKey: (json['bodyKey'] as String?)?.trim(),
       readAt: _parseApiDate(json['readAt']),
       aggCount: agg != null && agg > 0 ? agg : null,
+      payload: payload,
     );
   }
 
@@ -2205,5 +2256,6 @@ class AppNotificationItem {
   final String? bodyKey;
   final DateTime? readAt;
   final int? aggCount;
+  final Map<String, dynamic>? payload;
 }
 

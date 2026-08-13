@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:zovi/core/cache/music_audio_cache.dart';
 import 'package:zovi/core/cache/music_catalog_cache.dart';
 import 'package:zovi/core/cache/chat_messages_cache.dart';
+import 'package:zovi/core/cache/tribe_detail_cache.dart';
 import 'package:zovi/core/cache/stamp_catalog_cache.dart';
 import 'package:zovi/core/cache/stamp_image_cache.dart';
 import 'package:zovi/core/cache/story_catalog_cache.dart';
@@ -18,13 +19,13 @@ import 'package:zovi/core/notifications/notification_inbox_watcher.dart';
 import 'package:zovi/core/notifications/chat_notification_watcher.dart';
 import 'package:zovi/domain/auth/auth_repository.dart';
 import 'package:zovi/domain/chat/chat_repository.dart';
+import 'package:zovi/domain/tribe/tribe_repository.dart';
 import 'package:zovi/domain/user/user_repository.dart';
 import 'package:zovi/presentation/auth/create_profile/bloc/create_profile_bloc.dart';
 import 'package:zovi/presentation/auth/intro/bloc/intro_bloc.dart';
 import 'package:zovi/presentation/auth/onboarding/bloc/onboarding_bloc.dart';
 import 'package:zovi/presentation/auth/splash/bloc/splash_bloc.dart';
 import 'package:zovi/presentation/chat/bloc/chat_bloc.dart';
-import 'package:zovi/presentation/discover/bloc/discover_bloc.dart';
 import 'package:zovi/presentation/home/bloc/home_bloc.dart';
 import 'package:zovi/presentation/profile/bloc/profile_bloc.dart';
 import 'package:zovi/presentation/stories/bloc/stories_bloc.dart';
@@ -38,6 +39,9 @@ Future<void> configureDependencies() async {
 
   if (!getIt.isRegistered<ChatMessagesCache>()) {
     getIt.registerLazySingleton(ChatMessagesCache.new);
+  }
+  if (!getIt.isRegistered<TribeDetailCache>()) {
+    getIt.registerLazySingleton(TribeDetailCache.new);
   }
 
   if (getIt.isRegistered<AuthRepository>()) {
@@ -78,6 +82,7 @@ Future<void> configureDependencies() async {
     )
     ..registerLazySingleton(() => UserRepository(getIt()))
     ..registerLazySingleton(() => ChatRepository(getIt()))
+    ..registerLazySingleton(() => TribeRepository(getIt(), detailCache: getIt()))
     ..registerLazySingleton(() => DeepLinkService(getIt()))
     ..registerLazySingleton(PushNotificationService.new)
     ..registerLazySingleton(() => NotificationInboxWatcher(getIt()))
@@ -88,8 +93,7 @@ Future<void> configureDependencies() async {
     ..registerLazySingleton(() => HomeBloc(getIt(), getIt()))
     ..registerLazySingleton(() => StoriesBloc(getIt()))
     ..registerFactory(() => ChatBloc())
-    ..registerLazySingleton(() => ProfileBloc(getIt()))
-    ..registerFactory(() => DiscoverBloc());
+    ..registerLazySingleton(() => ProfileBloc(getIt()));
 }
 
 /// Blocs kept as singletons hold the signed-in user's data — drop them on
@@ -109,5 +113,8 @@ Future<void> resetUserScopedSingletons() async {
   }
   if (getIt.isRegistered<ChatMessagesCache>()) {
     getIt<ChatMessagesCache>().clear();
+  }
+  if (getIt.isRegistered<TribeRepository>()) {
+    getIt<TribeRepository>().clearDetailCache();
   }
 }

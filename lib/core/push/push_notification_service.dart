@@ -11,8 +11,8 @@ import 'package:zovi/core/notifications/chat_notification_watcher.dart';
 import 'package:zovi/core/router/app_router.dart';
 import 'package:zovi/core/utils/constants/asset_paths.dart';
 import 'package:zovi/core/utils/enum/route_paths.dart';
+import 'package:zovi/core/utils/navigation/open_chat_detail.dart';
 import 'package:zovi/core/utils/navigation/open_story_by_id.dart';
-import 'package:zovi/presentation/chat/model/chat_detail_route_args.dart';
 
 /// Push + foreground in-app banner bridge for OneSignal.
 class PushNotificationService {
@@ -106,6 +106,16 @@ class PushNotificationService {
     );
     _chatSeenSink?.call(key);
 
+    final notificationId = (data['notificationId'] as String?)?.trim() ?? '';
+    final aggForSeen =
+        int.tryParse((data['aggCount'] as String?)?.trim() ?? '') ??
+        (data['aggCount'] is num ? (data['aggCount'] as num).toInt() : 1);
+    if (notificationId.isNotEmpty) {
+      _seenSink?.call(
+        '$notificationId:${aggForSeen < 1 ? 1 : aggForSeen}',
+      );
+    }
+
     if (ActiveChatTracker.instance.isViewing(
       conversationId: conversationId,
       peerUserId: actorId,
@@ -122,6 +132,19 @@ class PushNotificationService {
         data['isRequest'] == 'true' ||
         (data['folder'] as String?)?.trim() == 'request' ||
         typeIsRequest(data);
+    final tribeId = (data['tribeId'] as String?)?.trim() ?? '';
+    final groupName =
+        (data['groupName'] as String?)?.trim().isNotEmpty == true
+        ? (data['groupName'] as String).trim()
+        : ((data['tribeName'] as String?)?.trim() ?? '');
+    final isGroup =
+        data['isGroup'] == true ||
+        data['isGroup'] == 'true' ||
+        tribeId.isNotEmpty;
+    final aggCount =
+        int.tryParse((data['aggCount'] as String?)?.trim() ?? '') ??
+        (data['aggCount'] is num ? (data['aggCount'] as num).toInt() : 1);
+    final isAgg = aggCount >= 2;
 
     final name = (displayName?.isNotEmpty ?? false)
         ? displayName!
@@ -129,20 +152,26 @@ class PushNotificationService {
 
     return AppInAppNotification.instance.show(
       InAppNotificationData(
-        username: username.isNotEmpty ? username : name,
-        displayName: name,
-        messageKey: isRequest
-            ? 'chat_message_request'
-            : 'chat_message_received',
+        username: isAgg ? '' : (username.isNotEmpty ? username : name),
+        displayName: isAgg ? displayName : name,
+        messageKey: isAgg
+            ? 'notifications_chat_messages_batch'
+            : (isRequest
+                ? 'chat_message_request'
+                : 'chat_message_received'),
+        messageNamedArgs: isAgg ? {'count': '$aggCount'} : const {},
         avatarPath: avatarUrl,
         action: InAppNotificationAction.openChat,
         conversationId: conversationId,
         userId: actorId,
         isRequest: isRequest,
-        subtitleKey: preview.isEmpty ? null : 'chat_push_preview',
-        subtitleNamedArgs: preview.isEmpty
-            ? const {}
-            : {'text': preview},
+        isGroup: isGroup,
+        tribeId: tribeId,
+        groupName: groupName,
+        useFullTitle: isAgg,
+        subtitleKey: !isAgg && preview.isNotEmpty ? 'chat_push_preview' : null,
+        subtitleNamedArgs:
+            !isAgg && preview.isNotEmpty ? {'text': preview} : const {},
       ),
     );
   }
@@ -241,18 +270,25 @@ class PushNotificationService {
         raw['isRequest'] == 'true' ||
         (raw['folder'] as String?)?.trim() == 'request' ||
         type == 'chat_request';
-    final name = (displayName?.isNotEmpty ?? false)
-        ? displayName!
-        : (username.isNotEmpty ? username : 'user');
+    final isGroup =
+        raw['isGroup'] == true || raw['isGroup'] == 'true';
+    final tribeId = (raw['tribeId'] as String?)?.trim() ?? '';
+    final groupName =
+        (raw['groupName'] as String?)?.trim().isNotEmpty == true
+        ? (raw['groupName'] as String).trim()
+        : ((raw['tribeName'] as String?)?.trim() ?? '');
 
     context.push(
       RoutePaths.chatDetail.path,
-      extra: ChatDetailRouteArgs(
-        name: name,
-        username: username.isNotEmpty ? username : name,
-        avatarPath: avatarUrl,
-        userId: actorId,
+      extra: chatDetailArgsFromNotification(
         conversationId: conversationId,
+        isGroup: isGroup,
+        tribeId: tribeId,
+        groupName: groupName,
+        actorName: displayName ?? '',
+        actorUsername: username,
+        actorAvatar: avatarUrl,
+        actorUserId: actorId,
         isRequest: isRequest,
       ),
     );

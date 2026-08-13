@@ -9,20 +9,31 @@ class _ChatPreview {
     required this.avatarPath,
     required this.preview,
     required this.isUnread,
+    required this.isGroup,
+    required this.tribeId,
   });
 
   factory _ChatPreview.fromConversation(ChatConversation c) {
     final name = c.peer.name.trim().isNotEmpty
         ? c.peer.name.trim()
         : (c.peer.username.trim().isNotEmpty ? c.peer.username : 'user');
+    var avatarPath = c.peer.avatarUrl.trim();
+    if (c.peer.isGroup && avatarPath.isEmpty && c.peer.tribeId.isNotEmpty) {
+      final tribe = getIt<TribeRepository>().peekTribeDetail(c.peer.tribeId);
+      if (tribe != null && tribe.avatars.isNotEmpty) {
+        avatarPath = tribe.avatars.first;
+      }
+    }
     return _ChatPreview(
       conversationId: c.id,
       userId: c.peer.userId,
       name: name,
       username: c.peer.username,
-      avatarPath: c.peer.avatarUrl,
+      avatarPath: avatarPath,
       preview: c.lastMessagePreview,
       isUnread: c.isUnread,
+      isGroup: c.peer.isGroup,
+      tribeId: c.peer.tribeId,
     );
   }
 
@@ -33,6 +44,8 @@ class _ChatPreview {
   final String avatarPath;
   final String preview;
   final bool isUnread;
+  final bool isGroup;
+  final String tribeId;
 
   _ChatPreview copyWith({bool? isUnread, String? preview}) {
     return _ChatPreview(
@@ -43,6 +56,8 @@ class _ChatPreview {
       avatarPath: avatarPath,
       preview: preview ?? this.preview,
       isUnread: isUnread ?? this.isUnread,
+      isGroup: isGroup,
+      tribeId: tribeId,
     );
   }
 }
@@ -164,6 +179,8 @@ class _ChatLoadedBodyState extends State<ChatLoadedBody>
         avatarPath: chat.avatarPath,
         userId: chat.userId,
         conversationId: chat.conversationId,
+        isGroup: chat.isGroup,
+        tribeId: chat.tribeId,
       ),
     );
     if (!mounted) return;
@@ -331,8 +348,10 @@ class _ChatLoadedBodyState extends State<ChatLoadedBody>
                           child: _ChatTile(
                             chat: chat,
                             onTap: () => _openChat(chat),
-                            onAvatarTap: () =>
-                                openUserProfile(context, chat.username),
+                            onAvatarTap: () {
+                              if (chat.isGroup) return;
+                              openUserProfile(context, chat.username);
+                            },
                           ),
                         ),
                       ),

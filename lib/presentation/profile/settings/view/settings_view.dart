@@ -283,7 +283,7 @@ class _SettingsViewState extends State<SettingsView>
       body: SafeArea(
         child: Column(
           children: [
-            const _SettingsHeader(),
+            _SettingsHeader(),
             Expanded(
               child: ListView(
                 physics: const ClampingScrollPhysics(),
@@ -366,7 +366,7 @@ class _SettingsViewState extends State<SettingsView>
 }
 
 class _SettingsHeader extends StatelessWidget {
-  const _SettingsHeader();
+  _SettingsHeader();
 
   @override
   Widget build(BuildContext context) {

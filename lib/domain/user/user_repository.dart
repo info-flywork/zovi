@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:easy_localization/easy_localization.dart';
 import 'package:equatable/equatable.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/painting.dart';
@@ -2057,7 +2058,7 @@ class UserRepository {
 
     final base = [
       StoryPreview(
-        name: 'Your story',
+        name: 'your_story'.tr(),
         avatarPath: myAvatar,
         isYou: true,
         hasStory: ownHasStory,

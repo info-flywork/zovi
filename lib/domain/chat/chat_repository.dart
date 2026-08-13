@@ -9,6 +9,8 @@ final class ChatPeer {
     required this.name,
     required this.username,
     required this.avatarUrl,
+    this.isGroup = false,
+    this.tribeId = '',
   });
 
   factory ChatPeer.fromJson(Map<String, dynamic> json) {
@@ -17,6 +19,8 @@ final class ChatPeer {
       name: (json['name'] as String?)?.trim() ?? '',
       username: (json['username'] as String?)?.trim() ?? '',
       avatarUrl: (json['avatarUrl'] as String?)?.trim() ?? '',
+      isGroup: json['isGroup'] == true,
+      tribeId: (json['tribeId'] as String?)?.trim() ?? '',
     );
   }
 
@@ -24,6 +28,8 @@ final class ChatPeer {
   final String name;
   final String username;
   final String avatarUrl;
+  final bool isGroup;
+  final String tribeId;
 }
 
 @immutable
@@ -49,7 +55,12 @@ final class ChatConversation {
       lastMessageSenderId: (json['lastMessageSenderId'] as String?)?.trim(),
       peer: peerRaw is Map
           ? ChatPeer.fromJson(Map<String, dynamic>.from(peerRaw))
-          : const ChatPeer(userId: '', name: '', username: '', avatarUrl: ''),
+          : const ChatPeer(
+              userId: '',
+              name: '',
+              username: '',
+              avatarUrl: '',
+            ),
     );
   }
 
@@ -77,6 +88,9 @@ final class ChatMessage {
     required this.createdAt,
     this.replyToMessageId,
     this.replyPreview = '',
+    this.senderName = '',
+    this.senderUsername = '',
+    this.senderAvatarUrl = '',
   });
 
   factory ChatMessage.fromJson(Map<String, dynamic> json) {
@@ -90,6 +104,9 @@ final class ChatMessage {
       replyToMessageId: (json['replyToMessageId'] as String?)?.trim(),
       replyPreview: (json['replyPreview'] as String?)?.trim() ?? '',
       createdAt: DateTime.tryParse('${json['createdAt'] ?? ''}')?.toLocal(),
+      senderName: (json['senderName'] as String?)?.trim() ?? '',
+      senderUsername: (json['senderUsername'] as String?)?.trim() ?? '',
+      senderAvatarUrl: (json['senderAvatarUrl'] as String?)?.trim() ?? '',
     );
   }
 
@@ -102,6 +119,9 @@ final class ChatMessage {
   final String? replyToMessageId;
   final String replyPreview;
   final DateTime? createdAt;
+  final String senderName;
+  final String senderUsername;
+  final String senderAvatarUrl;
 }
 
 class ChatRepository {
@@ -327,4 +347,46 @@ class ChatRepository {
     );
     return (result?['unreadCount'] as num?)?.toInt() ?? 0;
   }
+
+  Future<List<ChatGalleryMedia>> listConversationMedia(
+    String conversationId, {
+    int limit = 100,
+  }) async {
+    final id = conversationId.trim();
+    if (id.isEmpty) return const [];
+    final result = await _network.send<Map<String, dynamic>>(
+      path: '/chat/conversations/${Uri.encodeComponent(id)}/media',
+      method: RequestType.get,
+      queryParameters: {'limit': '$limit'},
+      parserModel: (json) => json,
+    );
+    final raw = result?['media'];
+    if (raw is! List) return const [];
+    return [
+      for (final item in raw)
+        if (item is Map)
+          ChatGalleryMedia.fromJson(Map<String, dynamic>.from(item)),
+    ];
+  }
+}
+
+@immutable
+final class ChatGalleryMedia {
+  const ChatGalleryMedia({
+    required this.id,
+    required this.type,
+    required this.mediaUrl,
+  });
+
+  factory ChatGalleryMedia.fromJson(Map<String, dynamic> json) {
+    return ChatGalleryMedia(
+      id: (json['id'] as String?)?.trim() ?? '',
+      type: (json['type'] as String?)?.trim() ?? 'image',
+      mediaUrl: (json['mediaUrl'] as String?)?.trim() ?? '',
+    );
+  }
+
+  final String id;
+  final String type;
+  final String mediaUrl;
 }

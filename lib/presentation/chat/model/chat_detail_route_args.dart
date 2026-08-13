@@ -11,6 +11,7 @@ final class ChatDetailRouteArgs {
     this.isGroup = false,
     this.isRequest = false,
     this.memberCount,
+    this.tribeId = '',
   });
 
   final String name;
@@ -23,6 +24,7 @@ final class ChatDetailRouteArgs {
   /// True when opened from the message-requests folder.
   final bool isRequest;
   final int? memberCount;
+  final String tribeId;
 
   String get headerTitle => isGroup ? name : username;
 }

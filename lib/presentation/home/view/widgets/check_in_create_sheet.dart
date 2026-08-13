@@ -391,7 +391,7 @@ class _CheckInCreateSheetState extends State<CheckInCreateSheet> {
           photoPrivacy: photoPrivacy,
           taggedUserIds: taggedIds,
           photoUrls: photoUrls,
-          category: (category == null || category.isEmpty) ? null : category,
+          category: (category == null || category.isEmpty) ? 'culture' : category,
         );
       }().withLoading(context);
     } catch (e, st) {

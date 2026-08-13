@@ -53,6 +53,14 @@ class ChatNotificationWatcher with WidgetsBindingObserver {
     _remember(k);
   }
 
+  void Function(String key)? _inboxBannerSink;
+
+  /// Lets the inbox watcher skip a chat banner the conversation poll already showed.
+  // ignore: use_setters_to_change_properties
+  void attachInboxBannerSink(void Function(String key) sink) {
+    _inboxBannerSink = sink;
+  }
+
   static String seenKey({
     required String conversationId,
     String? messagePreview,
@@ -147,8 +155,11 @@ class ChatNotificationWatcher with WidgetsBindingObserver {
             avatarPath: c.peer.avatarUrl,
             action: InAppNotificationAction.openChat,
             conversationId: c.id,
-            userId: c.peer.userId,
+            userId: c.peer.isGroup ? '' : c.peer.userId,
             isRequest: c.isRequest,
+            isGroup: c.peer.isGroup,
+            tribeId: c.peer.tribeId,
+            groupName: c.peer.isGroup ? name : '',
             subtitleKey: c.lastMessagePreview.trim().isEmpty
                 ? null
                 : 'chat_push_preview',
@@ -157,7 +168,10 @@ class ChatNotificationWatcher with WidgetsBindingObserver {
                 : {'text': c.lastMessagePreview.trim()},
           ),
         );
-        if (shown) _remember(key);
+        if (shown) {
+          _remember(key);
+          _inboxBannerSink?.call(key);
+        }
       }
     } catch (error) {
       if (kDebugMode) debugPrint('chat_watcher: poll failed: $error');

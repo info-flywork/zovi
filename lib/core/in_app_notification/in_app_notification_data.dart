@@ -24,6 +24,9 @@ class InAppNotificationData {
     this.conversationId = '',
     this.userId = '',
     this.isRequest = false,
+    this.isGroup = false,
+    this.tribeId = '',
+    this.groupName = '',
     this.storyId = '',
   });
 
@@ -49,6 +52,9 @@ class InAppNotificationData {
   final String conversationId;
   final String userId;
   final bool isRequest;
+  final bool isGroup;
+  final String tribeId;
+  final String groupName;
 
   /// Story deep-link (liked story).
   final String storyId;

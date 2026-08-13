@@ -9,6 +9,7 @@ import 'package:zovi/core/snackbar/app_snackbar.dart';
 import 'package:zovi/core/theme/app_colors.dart';
 import 'package:zovi/core/utils/constants/asset_paths.dart';
 import 'package:zovi/core/utils/enum/route_paths.dart';
+import 'package:zovi/core/utils/navigation/open_chat_detail.dart';
 import 'package:zovi/core/utils/navigation/open_story_by_id.dart';
 import 'package:zovi/core/utils/navigation/open_user_profile.dart';
 import 'package:zovi/core/widgets/app_icon.dart';
@@ -41,6 +42,11 @@ class _NotificationItem {
     this.displayName,
     this.objectId,
     this.actorUserId,
+    this.conversationId = '',
+    this.isGroupChat = false,
+    this.tribeId = '',
+    this.groupName = '',
+    this.preview = '',
   });
 
   final String id;
@@ -57,6 +63,11 @@ class _NotificationItem {
   final String? displayName;
   final String? objectId;
   final String? actorUserId;
+  final String conversationId;
+  final bool isGroupChat;
+  final String tribeId;
+  final String groupName;
+  final String preview;
 
   bool get isStoryLike =>
       showLikeBadge ||
@@ -64,6 +75,16 @@ class _NotificationItem {
       type == 'story_like' ||
       messageKey == 'notifications_liked_story' ||
       messageKey == 'notifications_people_liked_story';
+
+  bool get isChatMessage =>
+      type == 'chat_message' ||
+      type == 'chat_request' ||
+      messageKey == 'chat_message_received' ||
+      messageKey == 'chat_message_request' ||
+      messageKey == 'notifications_chat_messages_batch';
+
+  bool get isChatBatch =>
+      isChatMessage && (count != null && count! >= 2);
 
   _NotificationItem copyWith({
     String? messageKey,
@@ -85,6 +106,11 @@ class _NotificationItem {
       displayName: displayName,
       objectId: objectId,
       actorUserId: actorUserId,
+      conversationId: conversationId,
+      isGroupChat: isGroupChat,
+      tribeId: tribeId,
+      groupName: groupName,
+      preview: preview,
     );
   }
 }
@@ -188,8 +214,30 @@ class _NotificationsViewState extends State<NotificationsView> {
       'follow_back' => _NotificationAction.followBack,
       'request_sent' => _NotificationAction.requestSent,
       'send_message' => _NotificationAction.sendMessage,
+      'open_chat' => _NotificationAction.sendMessage,
       _ => null,
     };
+    final payload = n.payload ?? const {};
+    final conversationId =
+        (payload['conversationId'] as String?)?.trim().isNotEmpty == true
+        ? (payload['conversationId'] as String).trim()
+        : (n.objectId?.trim() ?? '');
+    final tribeId = (payload['tribeId'] as String?)?.trim() ?? '';
+    final preview = (payload['preview'] as String?)?.trim() ?? '';
+    final groupName =
+        (payload['groupName'] as String?)?.trim().isNotEmpty == true
+        ? (payload['groupName'] as String).trim()
+        : ((payload['tribeName'] as String?)?.trim().isNotEmpty == true
+              ? (payload['tribeName'] as String).trim()
+              : ((payload['title'] as String?)?.trim() ?? ''));
+    final isGroupChat =
+        payload['isGroup'] == true ||
+        payload['isGroup'] == 'true' ||
+        tribeId.isNotEmpty;
+    final isChat =
+        n.type == 'chat_message' || n.type == 'chat_request';
+    final isChatBatch = isChat && (n.aggCount ?? 0) >= 2;
+
     final messageKey = switch (n.type) {
       'follow_request' => 'notifications_follow_request',
       'started_following' => 'notifications_started_following',
@@ -198,6 +246,12 @@ class _NotificationsViewState extends State<NotificationsView> {
           ? 'notifications_people_liked_story'
           : 'notifications_liked_story',
       'check_in_tagged' => 'notifications_check_in_tagged',
+      'chat_message' => isChatBatch
+          ? 'notifications_chat_messages_batch'
+          : 'chat_message_received',
+      'chat_request' => isChatBatch
+          ? 'notifications_chat_messages_batch'
+          : 'chat_message_request',
       _ => n.bodyKey ?? 'notifications_started_following',
     };
     final isStoryLike =
@@ -208,8 +262,14 @@ class _NotificationsViewState extends State<NotificationsView> {
     return _NotificationItem(
       id: n.id,
       type: n.type,
-      username: isAggStoryLike ? '' : (n.actorUsername ?? ''),
-      displayName: isAggStoryLike ? null : n.actorName,
+      username: isAggStoryLike || (isChatBatch && isGroupChat)
+          ? ''
+          : (n.actorUsername ?? ''),
+      displayName: isAggStoryLike
+          ? null
+          : (isChatBatch && isGroupChat && groupName.isNotEmpty
+              ? groupName
+              : n.actorName),
       messageKey: messageKey,
       createdAt: n.createdAt,
       // Single like → actor avatar + heart badge; multi → red heart circle.
@@ -219,10 +279,15 @@ class _NotificationsViewState extends State<NotificationsView> {
       avatarPath: n.actorAvatarUrl,
       thumbnailPath: n.thumbnailUrl,
       showLikeBadge: isStoryLike && !isAggStoryLike,
-      count: isAggStoryLike ? n.aggCount : null,
+      count: isAggStoryLike || isChatBatch ? n.aggCount : null,
       action: action,
       objectId: n.objectId,
       actorUserId: n.actorId,
+      conversationId: conversationId,
+      isGroupChat: isGroupChat,
+      tribeId: tribeId,
+      groupName: groupName,
+      preview: preview,
     );
   }
 
@@ -384,6 +449,24 @@ class _NotificationsViewState extends State<NotificationsView> {
       case _NotificationAction.requestSent:
         return;
       case _NotificationAction.sendMessage:
+        final conversationId = item.conversationId.trim();
+        if (conversationId.isNotEmpty) {
+          context.push(
+            RoutePaths.chatDetail.path,
+            extra: chatDetailArgsFromNotification(
+              conversationId: conversationId,
+              isGroup: item.isGroupChat,
+              tribeId: item.tribeId,
+              groupName: item.groupName,
+              actorName: item.displayName ?? '',
+              actorUsername: item.username,
+              actorAvatar: item.avatarPath ?? '',
+              actorUserId: item.actorUserId ?? '',
+              isRequest: item.type == 'chat_request',
+            ),
+          );
+          return;
+        }
         context.push(
           RoutePaths.chatDetail.path,
           extra: ChatDetailRouteArgs(
@@ -403,6 +486,25 @@ class _NotificationsViewState extends State<NotificationsView> {
   }
 
   Future<void> _openActor(_NotificationItem item) async {
+    if (item.isChatMessage) {
+      final conversationId = item.conversationId.trim();
+      if (conversationId.isEmpty) return;
+      await context.push(
+        RoutePaths.chatDetail.path,
+        extra: chatDetailArgsFromNotification(
+          conversationId: conversationId,
+          isGroup: item.isGroupChat,
+          tribeId: item.tribeId,
+          groupName: item.groupName,
+          actorName: item.displayName ?? '',
+          actorUsername: item.username,
+          actorAvatar: item.avatarPath ?? '',
+          actorUserId: item.actorUserId ?? '',
+          isRequest: item.type == 'chat_request',
+        ),
+      );
+      return;
+    }
     if (item.isStoryLike && (item.thumbnailPath ?? '').isNotEmpty) {
       _openStory(item);
       return;
@@ -703,7 +805,8 @@ class _NotificationTile extends StatelessWidget {
             state: actionState,
             onTap: onAction,
           ),
-        ] else if (item.isStoryLike && item.thumbnailPath != null) ...[
+        ] else if ((item.isStoryLike || item.isChatMessage) &&
+            item.thumbnailPath != null) ...[
           const SizedBox(width: 10),
           GestureDetector(
             onTap: onOpenStory,
@@ -794,8 +897,36 @@ class _NotificationText extends StatelessWidget {
       color: AppColors.black.withValues(alpha: 0.5),
     );
 
-    // Aggregated likes: "**120 kişi** story'yi beğendi."
+    // Aggregated likes / chat bursts: bold count line.
     if (item.count != null) {
+      if (item.isChatBatch) {
+        final groupSuffix = item.isGroupChat &&
+                (item.displayName ?? '').trim().isNotEmpty
+            ? 'notifications_chat_messages_batch_group_rest'.tr(
+                namedArgs: {'group': item.displayName!.trim()},
+              )
+            : (item.username.trim().isNotEmpty
+                ? ' — ${item.username.trim()}'
+                : (item.displayName ?? '').trim().isNotEmpty
+                    ? ' — ${item.displayName!.trim()}'
+                    : '');
+        return Text.rich(
+          TextSpan(
+            children: [
+              TextSpan(
+                text: 'notifications_chat_messages_batch_count'.tr(
+                  namedArgs: {'count': '${item.count}'},
+                ),
+                style: usernameStyle,
+              ),
+              if (groupSuffix.isNotEmpty)
+                TextSpan(text: '$groupSuffix$timeSuffix', style: bodyStyle),
+              if (groupSuffix.isEmpty)
+                TextSpan(text: timeSuffix, style: bodyStyle),
+            ],
+          ),
+        );
+      }
       return Text.rich(
         TextSpan(
           children: [

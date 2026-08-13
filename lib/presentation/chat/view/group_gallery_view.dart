@@ -1,31 +1,75 @@
+import 'dart:async';
+
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:shimmer/shimmer.dart';
+import 'package:zovi/core/di/injection.dart';
 import 'package:zovi/core/theme/app_colors.dart';
 import 'package:zovi/core/utils/constants/asset_paths.dart';
 import 'package:zovi/core/widgets/app_icon.dart';
+import 'package:zovi/domain/chat/chat_repository.dart';
+import 'package:zovi/domain/tribe/tribe_repository.dart';
 import 'package:zovi/presentation/chat/model/group_info_route_args.dart';
 import 'package:zovi/presentation/chat/view/widgets/chat_media_viewer.dart';
 
-class GroupGalleryView extends StatelessWidget {
+class GroupGalleryView extends StatefulWidget {
   const GroupGalleryView({required this.args, super.key});
 
   final GroupInfoRouteArgs args;
 
-  static const _media = [
-    AssetPaths.checkinPlace,
-    AssetPaths.mapFirst,
-    AssetPaths.mapSecond,
-    AssetPaths.storyJulia,
-    AssetPaths.pulse1,
-    AssetPaths.pulse2,
-    AssetPaths.pulse3,
-    AssetPaths.pulseJhon,
-    AssetPaths.pulseJessica,
-    AssetPaths.blueLocation,
-    AssetPaths.avatarLyra,
-    AssetPaths.avatarJessica,
-  ];
+  @override
+  State<GroupGalleryView> createState() => _GroupGalleryViewState();
+}
+
+class _GroupGalleryViewState extends State<GroupGalleryView> {
+  final ChatRepository _chat = getIt<ChatRepository>();
+  final TribeRepository _tribes = getIt<TribeRepository>();
+
+  var _loading = true;
+  List<ChatGalleryMedia> _media = const [];
+
+  @override
+  void initState() {
+    super.initState();
+    unawaited(_load());
+  }
+
+  Future<String?> _resolveConversationId() async {
+    final fromArgs = widget.args.conversationId.trim();
+    if (fromArgs.isNotEmpty) return fromArgs;
+
+    final tribeId = widget.args.tribeId.trim();
+    if (tribeId.isEmpty) return null;
+
+    final cached = _tribes.peekTribeDetail(tribeId);
+    if (cached != null && cached.conversationId.trim().isNotEmpty) {
+      return cached.conversationId.trim();
+    }
+
+    final detail = await _tribes.refreshTribeDetail(tribeId);
+    final resolved = detail?.conversationId.trim() ?? '';
+    return resolved.isEmpty ? null : resolved;
+  }
+
+  Future<void> _load() async {
+    try {
+      final conversationId = await _resolveConversationId();
+      if (conversationId == null) {
+        if (mounted) setState(() => _loading = false);
+        return;
+      }
+      final media = await _chat.listConversationMedia(conversationId);
+      if (!mounted) return;
+      setState(() {
+        _media = media;
+        _loading = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _loading = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -62,7 +106,7 @@ class GroupGalleryView extends StatelessWidget {
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          args.name,
+                          widget.args.name,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           textAlign: TextAlign.center,
@@ -100,7 +144,9 @@ class GroupGalleryView extends StatelessWidget {
               ),
             ),
             Expanded(
-              child: _media.isEmpty
+              child: _loading
+                  ? _GalleryShimmer()
+                  : _media.isEmpty
                   ? Center(
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
@@ -136,24 +182,49 @@ class GroupGalleryView extends StatelessWidget {
                             childAspectRatio: 1,
                           ),
                       itemBuilder: (context, index) {
-                        final path = _media[index];
-                        final heroTag = 'group-gallery-$index';
+                        final item = _media[index];
+                        final url = item.mediaUrl.trim();
+                        final heroTag = 'group-gallery-${item.id}';
                         return GestureDetector(
                           onTap: () {
+                            if (url.isEmpty) return;
                             showChatMediaViewer(
                               context,
                               heroTag: heroTag,
-                              assetPath: path,
+                              networkUrl: url,
                             );
                           },
                           child: Hero(
                             tag: heroTag,
                             child: ClipRRect(
                               borderRadius: BorderRadius.circular(12),
-                              child: Image.asset(
-                                path,
-                                fit: BoxFit.cover,
-                              ),
+                              child: url.isEmpty
+                                  ? ColoredBox(
+                                      color: AppColors.textSecondary
+                                          .withValues(alpha: 0.12),
+                                      child: const Center(
+                                        child: AppIcon(
+                                          AssetPaths.iconUserSquare,
+                                          size: 24,
+                                          color: AppColors.textSecondary,
+                                        ),
+                                      ),
+                                    )
+                                  : Image.network(
+                                      url,
+                                      fit: BoxFit.cover,
+                                      errorBuilder: (_, _, _) => ColoredBox(
+                                        color: AppColors.textSecondary
+                                            .withValues(alpha: 0.12),
+                                        child: const Center(
+                                          child: AppIcon(
+                                            AssetPaths.iconUserSquare,
+                                            size: 24,
+                                            color: AppColors.textSecondary,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
                             ),
                           ),
                         );
@@ -163,6 +234,33 @@ class GroupGalleryView extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+class _GalleryShimmer extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return GridView.builder(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: 9,
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 3,
+        mainAxisSpacing: 8,
+        crossAxisSpacing: 8,
+        childAspectRatio: 1,
+      ),
+      itemBuilder: (context, index) {
+        return Shimmer.fromColors(
+          baseColor: const Color(0xFFE8E8F0),
+          highlightColor: const Color(0xFFF5F5FA),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: const ColoredBox(color: Color(0xFFE8E8F0)),
+          ),
+        );
+      },
     );
   }
 }

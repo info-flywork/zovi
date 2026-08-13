@@ -163,8 +163,6 @@ abstract final class AssetPaths {
   static const String avatarJessica = 'assets/images/avatar_jessica.png';
   static const String avatarSona = 'assets/images/avatar_sona.png';
   static const String avatarNova = 'assets/images/avatar_nova.png';
-  static const String avatarJulia = 'assets/images/avatar_julia.png';
-  static const String storyJulia = 'assets/images/story_julia.png';
   static const String shareLink = 'assets/images/share_link.png';
   static const String checkinPlace = 'assets/images/checkin_place.png';
   static const String notification = 'assets/images/notification.png';
