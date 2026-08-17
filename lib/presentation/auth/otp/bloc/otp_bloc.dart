@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:easy_localization/easy_localization.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:zovi/core/models/country.dart';
 import 'package:zovi/domain/auth/auth_repository.dart';
@@ -90,10 +91,25 @@ final class OtpBloc extends Bloc<OtpEvent, OtpState> {
           resendSeconds: state.resendSeconds,
         ),
       );
+    } on FirebaseAuthException catch (error) {
+      final invalidCode = error.code == 'invalid-verification-code' ||
+          error.code == 'invalid-verification-id' ||
+          error.code == 'session-expired';
+      emit(
+        OtpError(
+          message: invalidCode
+              ? 'error_invalid_otp'.tr()
+              : mapPhoneAuthError(error),
+          phone: state.phone,
+          selectedCountry: state.selectedCountry,
+          code: state.code,
+          resendSeconds: state.resendSeconds,
+        ),
+      );
     } catch (_) {
       emit(
         OtpError(
-          message: 'error_invalid_otp'.tr(),
+          message: 'error_login_failed'.tr(),
           phone: state.phone,
           selectedCountry: state.selectedCountry,
           code: state.code,

@@ -1,0 +1,9 @@
+/* Native iOS permission descriptions. */
+
+"NSCameraUsageDescription" = "사진과 영상을 찍고 공유하려면 카메라 접근이 필요합니다.";
+"NSLocationAlwaysAndWhenInUseUsageDescription" = "체크인, 근처 친구, 나만의 지도를 위해 위치를 사용합니다.";
+"NSLocationAlwaysUsageDescription" = "체크인, 근처 친구, 나만의 지도를 위해 위치를 사용합니다.";
+"NSLocationWhenInUseUsageDescription" = "체크인, 근처 친구, 나만의 지도를 위해 위치를 사용합니다.";
+"NSMicrophoneUsageDescription" = "영상 촬영과 음성 메시지를 위해 마이크가 필요합니다.";
+"NSPhotoLibraryAddUsageDescription" = "카메라로 찍은 사진과 영상을 저장하려면 접근이 필요합니다.";
+"NSPhotoLibraryUsageDescription" = "사진과 영상 공유, 프로필 업데이트를 위해 사진 보관함이 필요합니다.";

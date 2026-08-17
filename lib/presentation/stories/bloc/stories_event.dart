@@ -13,9 +13,13 @@ final class StoriesStarted extends StoriesEvent {
   const StoriesStarted();
 }
 
-/// Re-reads the feed without blanking the grid — used after the viewer closes
-/// so like/viewed changes are reflected.
+/// Re-reads the feed without blanking the grid.
 @immutable
 final class StoriesRefreshRequested extends StoriesEvent {
-  const StoriesRefreshRequested();
+  const StoriesRefreshRequested({this.force = false});
+
+  final bool force;
+
+  @override
+  List<Object?> get props => [force];
 }

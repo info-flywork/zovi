@@ -24,7 +24,10 @@ import 'package:zovi/presentation/home/model/check_in_success_route_args.dart';
 import 'package:zovi/presentation/home/view/widgets/check_in_add_friends_sheet.dart';
 import 'package:zovi/presentation/home/view/widgets/check_in_add_photo_sheet.dart';
 import 'package:zovi/presentation/home/view/widgets/check_in_place_picker_sheet.dart';
+import 'package:zovi/presentation/profile/bloc/profile_bloc.dart';
 import 'package:zovi/presentation/profile/settings/view/widgets/account_privacy_sheet.dart';
+import 'package:zovi/presentation/stories/bloc/stories_bloc.dart';
+import 'package:zovi/presentation/stories/bloc/stories_event.dart';
 
 Future<void> showCheckInCreateSheet(BuildContext context) {
   return showModalBottomSheet<void>(
@@ -38,6 +41,16 @@ Future<void> showCheckInCreateSheet(BuildContext context) {
     ),
     builder: (context) => const CheckInCreateSheet(),
   );
+}
+
+bool _asBoolFlag(Object? value) {
+  return value == true || value == 1 || value == '1' || value == 'true';
+}
+
+int? _asInt(Object? value) {
+  if (value is num) return value.toInt();
+  if (value is String) return int.tryParse(value);
+  return null;
 }
 
 class CheckInCreateSheet extends StatefulWidget {
@@ -347,11 +360,13 @@ class _CheckInCreateSheetState extends State<CheckInCreateSheet> {
     final photoPrivacy = _photoPrivacy == AccountPrivacy.public
         ? 'public'
         : 'friends';
-    final lat = _selectedPlace != null &&
+    final lat =
+        _selectedPlace != null &&
             (_selectedPlace!.lat != 0 || _selectedPlace!.lng != 0)
         ? _selectedPlace!.lat
         : _center.latitude;
-    final lng = _selectedPlace != null &&
+    final lng =
+        _selectedPlace != null &&
             (_selectedPlace!.lat != 0 || _selectedPlace!.lng != 0)
         ? _selectedPlace!.lng
         : _center.longitude;
@@ -391,7 +406,10 @@ class _CheckInCreateSheetState extends State<CheckInCreateSheet> {
           photoPrivacy: photoPrivacy,
           taggedUserIds: taggedIds,
           photoUrls: photoUrls,
-          category: (category == null || category.isEmpty) ? 'culture' : category,
+          category: (category == null || category.isEmpty)
+              ? 'culture'
+              : category,
+          locale: context.locale.languageCode,
         );
       }().withLoading(context);
     } catch (e, st) {
@@ -424,23 +442,35 @@ class _CheckInCreateSheetState extends State<CheckInCreateSheet> {
     final founderOffer = founderRaw is Map
         ? CheckInFounderOffer.fromJson(Map<String, dynamic>.from(founderRaw))
         : null;
+    final stampRaw = submitResult['stampOffer'];
+    final parsedStampOffer = stampRaw is Map
+        ? CheckInStampOffer.fromJson(Map<String, dynamic>.from(stampRaw))
+        : null;
+    final stampOffer = parsedStampOffer != null && parsedStampOffer.isValid
+        ? parsedStampOffer
+        : null;
     final checkInRaw = submitResult['checkIn'];
-    final checkInMap =
-        checkInRaw is Map ? Map<String, dynamic>.from(checkInRaw) : null;
+    final checkInMap = checkInRaw is Map
+        ? Map<String, dynamic>.from(checkInRaw)
+        : null;
 
     final args = CheckInSuccessRouteArgs(
       placeName: placeName,
       friendNames: friendNames,
       hasPhoto: photos.isNotEmpty,
       photoPaths: photos,
-      totalCoins: (submitResult['totalCoins'] as num?)?.toInt() ??
+      totalCoins:
+          _asInt(submitResult['totalCoins']) ??
           rewards.fold<int>(0, (sum, r) => sum + r.coins),
       rewards: rewards,
       checkInId: (checkInMap?['id'] as String?)?.trim(),
       founderOffer: founderOffer,
-      isFirstEver: checkInMap?['isFirstEver'] == true ||
-          (checkInMap?['isFirstEver'] as num?)?.toInt() == 1,
+      stampOffer: stampOffer,
+      isFirstEver: _asBoolFlag(checkInMap?['isFirstEver']),
     );
+
+    getIt<StoriesBloc>().add(const StoriesRefreshRequested());
+    getIt<ProfileBloc>().add(const ProfileStarted());
 
     Navigator.of(context).pop();
     router.push(RoutePaths.checkInSuccess.path, extra: args);
@@ -1083,10 +1113,7 @@ class _TaggedFriendChip extends StatelessWidget {
                       border: Border.all(color: AppColors.white, width: 2),
                     ),
                     clipBehavior: Clip.antiAlias,
-                    child: ProfileAvatar(
-                      path: friend.avatarPath,
-                      size: 25,
-                    ),
+                    child: ProfileAvatar(path: friend.avatarPath, size: 25),
                   ),
                   const SizedBox(width: 10),
                   Text(
@@ -1163,10 +1190,7 @@ class _CheckInLocationPin extends StatelessWidget {
                   border: Border.all(color: AppColors.white, width: 2),
                 ),
                 clipBehavior: Clip.antiAlias,
-                child: ProfileAvatar(
-                  path: avatarPath,
-                  size: _avatarSize - 4,
-                ),
+                child: ProfileAvatar(path: avatarPath, size: _avatarSize - 4),
               ),
             ),
           ],

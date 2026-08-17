@@ -449,46 +449,13 @@ class _NotificationsViewState extends State<NotificationsView> {
       case _NotificationAction.requestSent:
         return;
       case _NotificationAction.sendMessage:
-        final conversationId = item.conversationId.trim();
-        if (conversationId.isNotEmpty) {
-          context.push(
-            RoutePaths.chatDetail.path,
-            extra: chatDetailArgsFromNotification(
-              conversationId: conversationId,
-              isGroup: item.isGroupChat,
-              tribeId: item.tribeId,
-              groupName: item.groupName,
-              actorName: item.displayName ?? '',
-              actorUsername: item.username,
-              actorAvatar: item.avatarPath ?? '',
-              actorUserId: item.actorUserId ?? '',
-              isRequest: item.type == 'chat_request',
-            ),
-          );
-          return;
-        }
-        context.push(
-          RoutePaths.chatDetail.path,
-          extra: ChatDetailRouteArgs(
-            name: item.displayName ?? item.username,
-            username: item.username,
-            avatarPath: item.avatarPath ?? AssetPaths.avatarYou,
-          ),
-        );
+        await _openChat(item);
     }
   }
 
-  Future<void> _openStory(_NotificationItem item) async {
-    final storyId = item.objectId?.trim() ?? '';
-    if (storyId.isEmpty) return;
-    // story_like: recipient owns the story; open their real ring.
-    await openStoryById(context, storyId: storyId);
-  }
-
-  Future<void> _openActor(_NotificationItem item) async {
-    if (item.isChatMessage) {
-      final conversationId = item.conversationId.trim();
-      if (conversationId.isEmpty) return;
+  Future<void> _openChat(_NotificationItem item) async {
+    final conversationId = item.conversationId.trim();
+    if (conversationId.isNotEmpty) {
       await context.push(
         RoutePaths.chatDetail.path,
         extra: chatDetailArgsFromNotification(
@@ -505,10 +472,32 @@ class _NotificationsViewState extends State<NotificationsView> {
       );
       return;
     }
-    if (item.isStoryLike && (item.thumbnailPath ?? '').isNotEmpty) {
-      _openStory(item);
+    await context.push(
+      RoutePaths.chatDetail.path,
+      extra: ChatDetailRouteArgs(
+        name: item.displayName ?? item.username,
+        username: item.username,
+        avatarPath: item.avatarPath ?? AssetPaths.avatarYou,
+      ),
+    );
+  }
+
+  Future<void> _openStory(_NotificationItem item) async {
+    final storyId = item.objectId?.trim() ?? '';
+    if (storyId.isEmpty) return;
+    // story_like: recipient owns the story; open their real ring.
+    await openStoryById(context, storyId: storyId);
+  }
+
+  Future<void> _openPreview(_NotificationItem item) async {
+    if (item.isChatMessage) {
+      await _openChat(item);
       return;
     }
+    await _openStory(item);
+  }
+
+  Future<void> _openActor(_NotificationItem item) async {
     final username = item.username.trim();
     if (username.isEmpty) return;
     await openUserProfile(
@@ -620,7 +609,7 @@ class _NotificationsViewState extends State<NotificationsView> {
                           },
                           onAction: _onAction,
                           onOpenActor: _openActor,
-                          onOpenStory: _openStory,
+                          onOpenStory: _openPreview,
                           onDelete: _deleteNotification,
                         ),
                       ],

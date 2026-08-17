@@ -873,9 +873,14 @@ class _HomeMapSectionState extends State<HomeMapSection>
     }
 
     final friend = pin.friend!;
+    final friendHasPhoto = HomeMapCheckInMarker.hasPhotos(
+      friend.checkIn?.photoPaths ?? const [],
+    );
     return Marker(
       point: point,
-      width: friend.hasCheckIn ? HomeMapCheckInMarker.width : 96,
+      width: friend.hasCheckIn
+          ? HomeMapCheckInMarker.widthFor(hasPhoto: friendHasPhoto)
+          : 96,
       height: friend.hasCheckIn ? HomeMapCheckInMarker.height : 100,
       alignment: friend.hasCheckIn ? Alignment.center : Alignment.topCenter,
       child: _animatedMarker(
@@ -954,7 +959,7 @@ class _HomeMapSectionState extends State<HomeMapSection>
                     title: Text(
                       member.isSelf
                           ? 'map_cluster_you'.tr()
-                          : (member.friend?.name ?? 'user'),
+                          : (member.friend?.mapLabel ?? 'user'),
                       style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w600,
@@ -1272,7 +1277,11 @@ class _HomeMapSectionState extends State<HomeMapSection>
                     Marker(
                       point: _friendPoint(person),
                       width: person.hasCheckIn
-                          ? HomeMapCheckInMarker.width
+                          ? HomeMapCheckInMarker.widthFor(
+                              hasPhoto: HomeMapCheckInMarker.hasPhotos(
+                                person.checkIn?.photoPaths ?? const [],
+                              ),
+                            )
                           : 96,
                       height: person.hasCheckIn
                           ? HomeMapCheckInMarker.height

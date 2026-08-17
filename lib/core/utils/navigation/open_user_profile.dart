@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:zovi/core/di/injection.dart';
 import 'package:zovi/core/utils/enum/route_paths.dart';
+import 'package:zovi/domain/auth/auth_repository.dart';
 import 'package:zovi/domain/user/user_repository.dart';
 import 'package:zovi/presentation/profile/user_profile/model/user_profile_route_args.dart';
 
@@ -20,6 +21,11 @@ Future<void> openUserProfile(
 
   final handle = value.startsWith('@') ? value.substring(1) : value;
   final repo = getIt<UserRepository>();
+  final myHandle = repo.cachedCurrentUser?.usernameHandle.trim().toLowerCase() ?? '';
+  if (myHandle.isNotEmpty && myHandle == handle.toLowerCase()) return;
+  final myId = getIt<AuthRepository>().backendUserId?.trim() ?? '';
+  final seedId = seed?.userId.trim() ?? '';
+  if (myId.isNotEmpty && seedId.isNotEmpty && myId == seedId) return;
   final peeked = repo.peekPublicUserProfile(handle);
   final initial = peeked ??
       seed ??

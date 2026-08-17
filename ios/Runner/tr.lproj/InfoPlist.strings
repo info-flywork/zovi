@@ -1,0 +1,9 @@
+/* Native iOS permission descriptions. */
+
+"NSCameraUsageDescription" = "Fotoğraf ve video çekip paylaşabilmen için kamera erişimine ihtiyacımız var.";
+"NSLocationAlwaysAndWhenInUseUsageDescription" = "Check-in yapmak, yakındaki arkadaşlarını görmek ve kişisel haritanı oluşturmak için konumunu kullanıyoruz.";
+"NSLocationAlwaysUsageDescription" = "Check-in yapmak, yakındaki arkadaşlarını görmek ve kişisel haritanı oluşturmak için konumunu kullanıyoruz.";
+"NSLocationWhenInUseUsageDescription" = "Check-in yapmak, yakındaki arkadaşlarını görmek ve kişisel haritanı oluşturmak için konumunu kullanıyoruz.";
+"NSMicrophoneUsageDescription" = "Video kaydetmek ve sesli mesaj göndermek için mikrofon erişimine ihtiyacımız var.";
+"NSPhotoLibraryAddUsageDescription" = "Kamerada çektiğin fotoğraf ve videoları kaydetmek için erişime ihtiyacımız var.";
+"NSPhotoLibraryUsageDescription" = "Fotoğraf ve video paylaşmak ve profilini güncellemek için fotoğraf kitaplığına ihtiyacımız var.";

@@ -5,16 +5,6 @@ class ProfilePlans extends StatelessWidget {
 
   final List<PlanItem> plans;
 
-  static String _localizedFriendsLabel(String friendsLabel) {
-    final match = RegExp(r'^(\d+)').firstMatch(friendsLabel.trim());
-    if (match != null) {
-      final count = int.tryParse(match.group(1)!) ?? 0;
-      if (count <= 0) return 'no_friends_joining'.tr();
-      return 'friends_are_joining'.tr(namedArgs: {'count': match.group(1)!});
-    }
-    return friendsLabel;
-  }
-
   @override
   Widget build(BuildContext context) {
     final hasPlans = plans.isNotEmpty;
@@ -126,12 +116,10 @@ class _PlanCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final countMatch =
-        RegExp(r'^(\d+)').firstMatch(plan.friendsLabel.trim());
-    final joiningCount =
-        int.tryParse(countMatch?.group(1) ?? '') ??
-        (plan.friendAvatars.isNotEmpty ? plan.friendAvatars.length : 0);
-    final hasJoiningFriends = joiningCount > 0;
+    final hasFriends = plan.hasJoiningFriends;
+    final friendsText = hasFriends
+        ? 'friends_are_joining'.tr(namedArgs: {'count': plan.friendsLabel})
+        : 'no_friends_joining'.tr();
 
     return Container(
       padding: const EdgeInsets.fromLTRB(8, 16, 8, 16),
@@ -187,13 +175,16 @@ class _PlanCard extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 10),
-          if (hasJoiningFriends && plan.friendAvatars.isNotEmpty) ...[
-            _OverlappingAvatars(avatars: plan.friendAvatars),
+          if (hasFriends) ...[
+            OverlappingProfileAvatars(
+              avatars: plan.friendAvatars,
+              overlap: 12,
+            ),
             const SizedBox(width: 6),
           ],
           Flexible(
             child: Text(
-              ProfilePlans._localizedFriendsLabel(plan.friendsLabel),
+              friendsText,
               textAlign: TextAlign.center,
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
@@ -212,40 +203,3 @@ class _PlanCard extends StatelessWidget {
   }
 }
 
-class _OverlappingAvatars extends StatelessWidget {
-  const _OverlappingAvatars({required this.avatars});
-
-  final List<String> avatars;
-
-  @override
-  Widget build(BuildContext context) {
-    const size = 34.0;
-    const overlap = 12.0;
-    final shown = avatars.take(3).toList();
-    final width = size + (shown.length - 1) * (size - overlap);
-
-    return SizedBox(
-      width: width,
-      height: size,
-      child: Stack(
-        children: [
-          for (var i = 0; i < shown.length; i++)
-            Positioned(
-              left: i * (size - overlap),
-              child: Container(
-                width: size,
-                height: size,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  border: Border.all(color: AppColors.white, width: 3),
-                ),
-                child: ClipOval(
-                  child: Image.asset(shown[i], fit: BoxFit.cover),
-                ),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-}

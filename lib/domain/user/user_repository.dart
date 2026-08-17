@@ -38,6 +38,7 @@ final class UserProfile extends Equatable {
     required this.checkIns,
     required this.followers,
     required this.friends,
+    this.coins = 0,
     this.accountPrivacy = 'public',
     this.links = const [],
   });
@@ -77,6 +78,7 @@ final class UserProfile extends Equatable {
           (profileMap['followingCount'] as num?)?.toInt() ??
           (profileMap['friendsCount'] as num?)?.toInt() ??
           0,
+      coins: (profileMap['coins'] as num?)?.toInt() ?? 0,
       accountPrivacy:
           (profileMap['accountPrivacy'] as String?)?.trim().toLowerCase() ??
           'public',
@@ -92,6 +94,7 @@ final class UserProfile extends Equatable {
   final int checkIns;
   final int followers;
   final int friends;
+  final int coins;
   final String accountPrivacy;
   final List<ProfileLink> links;
 
@@ -116,6 +119,7 @@ final class UserProfile extends Equatable {
     int? checkIns,
     int? followers,
     int? friends,
+    int? coins,
     String? accountPrivacy,
     List<ProfileLink>? links,
   }) {
@@ -128,6 +132,7 @@ final class UserProfile extends Equatable {
       checkIns: checkIns ?? this.checkIns,
       followers: followers ?? this.followers,
       friends: friends ?? this.friends,
+      coins: coins ?? this.coins,
       accountPrivacy: accountPrivacy ?? this.accountPrivacy,
       links: links ?? this.links,
     );
@@ -143,6 +148,7 @@ final class UserProfile extends Equatable {
     checkIns,
     followers,
     friends,
+    coins,
     accountPrivacy,
     links,
   ];
@@ -393,6 +399,7 @@ final class StoryPreview extends Equatable {
   const StoryPreview({
     required this.name,
     required this.avatarPath,
+    this.username,
     this.isYou = false,
     this.hasStory = true,
     this.isViewed = false,
@@ -401,14 +408,22 @@ final class StoryPreview extends Equatable {
 
   final String name;
   final String avatarPath;
+  final String? username;
   final bool isYou;
   final bool hasStory;
   final bool isViewed;
   final String? userId;
 
+  String get storyLabel {
+    final handle = (username ?? '').trim();
+    if (handle.isEmpty) return name;
+    return handle.startsWith('@') ? handle.substring(1) : handle;
+  }
+
   StoryPreview copyWith({
     String? name,
     String? avatarPath,
+    String? username,
     bool? isYou,
     bool? hasStory,
     bool? isViewed,
@@ -417,6 +432,7 @@ final class StoryPreview extends Equatable {
     return StoryPreview(
       name: name ?? this.name,
       avatarPath: avatarPath ?? this.avatarPath,
+      username: username ?? this.username,
       isYou: isYou ?? this.isYou,
       hasStory: hasStory ?? this.hasStory,
       isViewed: isViewed ?? this.isViewed,
@@ -428,6 +444,7 @@ final class StoryPreview extends Equatable {
   List<Object?> get props => [
     name,
     avatarPath,
+    username,
     isYou,
     hasStory,
     isViewed,
@@ -441,6 +458,7 @@ final class StoryMediaItem extends Equatable {
     required this.imagePath,
     required this.label,
     required this.avatarPath,
+    this.thumbnailPath,
     this.caption = '',
     this.isReel = false,
     this.isVerified = true,
@@ -458,11 +476,14 @@ final class StoryMediaItem extends Equatable {
     this.likeCount = 0,
     this.likedByMe = false,
     this.isViewed = false,
+    this.isPulse = false,
+    this.isVideo = false,
   });
 
   final String imagePath;
   final String label;
   final String avatarPath;
+  final String? thumbnailPath;
   final String caption;
   final bool isReel;
   final bool isVerified;
@@ -471,6 +492,12 @@ final class StoryMediaItem extends Equatable {
 
   /// Handle for profile navigation — [label] is a display name, not a username.
   final String? username;
+
+  String get storyLabel {
+    final handle = (username ?? '').trim();
+    if (handle.isEmpty) return label;
+    return handle.startsWith('@') ? handle.substring(1) : handle;
+  }
   final String? musicAudioUrl;
   final String? musicTrackId;
   final String? musicTitle;
@@ -482,9 +509,18 @@ final class StoryMediaItem extends Equatable {
   final int likeCount;
   final bool likedByMe;
   final bool isViewed;
+  final bool isPulse;
+  final bool isVideo;
 
   bool get isNetworkImage =>
       imagePath.startsWith('http://') || imagePath.startsWith('https://');
+
+  /// Grid tile URL — prefers API thumbnail when available.
+  String get gridImagePath {
+    final thumb = thumbnailPath?.trim() ?? '';
+    if (thumb.isNotEmpty) return thumb;
+    return imagePath;
+  }
 
   bool get hasMusic =>
       musicAudioUrl != null && musicAudioUrl!.trim().isNotEmpty;
@@ -499,6 +535,7 @@ final class StoryMediaItem extends Equatable {
     String? imagePath,
     String? label,
     String? avatarPath,
+    String? thumbnailPath,
     String? caption,
     bool? isReel,
     bool? isVerified,
@@ -516,11 +553,14 @@ final class StoryMediaItem extends Equatable {
     int? likeCount,
     bool? likedByMe,
     bool? isViewed,
+    bool? isPulse,
+    bool? isVideo,
   }) {
     return StoryMediaItem(
       imagePath: imagePath ?? this.imagePath,
       label: label ?? this.label,
       avatarPath: avatarPath ?? this.avatarPath,
+      thumbnailPath: thumbnailPath ?? this.thumbnailPath,
       caption: caption ?? this.caption,
       isReel: isReel ?? this.isReel,
       isVerified: isVerified ?? this.isVerified,
@@ -538,6 +578,8 @@ final class StoryMediaItem extends Equatable {
       likeCount: likeCount ?? this.likeCount,
       likedByMe: likedByMe ?? this.likedByMe,
       isViewed: isViewed ?? this.isViewed,
+      isPulse: isPulse ?? this.isPulse,
+      isVideo: isVideo ?? this.isVideo,
     );
   }
 
@@ -546,6 +588,7 @@ final class StoryMediaItem extends Equatable {
     imagePath,
     label,
     avatarPath,
+    thumbnailPath,
     caption,
     isReel,
     isVerified,
@@ -563,6 +606,8 @@ final class StoryMediaItem extends Equatable {
     likeCount,
     likedByMe,
     isViewed,
+    isPulse,
+    isVideo,
   ];
 }
 
@@ -620,9 +665,7 @@ final class MapFriend extends Equatable {
       } else {
         checkIn = FriendMapCheckIn(
           placeName: place,
-          photoPaths: photos.isNotEmpty
-              ? photos
-              : const [AssetPaths.mapSecondAvatar],
+          photoPaths: photos,
           stampImagePath: stampSlug == 'founder'
               ? AssetPaths.stamp16
               : AssetPaths.stamp1,
@@ -667,6 +710,14 @@ final class MapFriend extends Equatable {
   final double y;
 
   bool get hasCheckIn => checkIn != null;
+
+  /// Map / story-row label — username, falling back to display name.
+  String get mapLabel {
+    if (name == 'Anonim') return name;
+    final handle = username.trim();
+    if (handle.isEmpty) return name;
+    return handle.startsWith('@') ? handle.substring(1) : handle;
+  }
 
   String get profileHandle {
     if (username.isEmpty) return name;
@@ -878,6 +929,7 @@ final class PulseItem extends Equatable {
     this.friendAvatars = const [],
     this.friendsLabel = '',
     this.sourceType = '',
+    this.mediaType = 'image',
     this.createdAt,
   });
 
@@ -894,6 +946,9 @@ final class PulseItem extends Equatable {
       placeName: place,
       subtitle: caption,
       sourceType: (json['sourceType'] as String?)?.trim() ?? '',
+      mediaType: (json['mediaType'] as String?)?.trim().isNotEmpty == true
+          ? (json['mediaType'] as String).trim()
+          : 'image',
       createdAt: createdAt,
     );
   }
@@ -906,7 +961,10 @@ final class PulseItem extends Equatable {
   final List<String> friendAvatars;
   final String friendsLabel;
   final String sourceType;
+  final String mediaType;
   final DateTime? createdAt;
+
+  bool get isVideo => mediaType.toLowerCase() == 'video';
 
   bool get isNetwork =>
       imagePath.startsWith('http://') || imagePath.startsWith('https://');
@@ -924,6 +982,7 @@ final class PulseItem extends Equatable {
     friendAvatars,
     friendsLabel,
     sourceType,
+    mediaType,
     createdAt,
   ];
 }
@@ -979,8 +1038,7 @@ final class ActiveMapCheckIn extends Equatable {
 
   bool get hasTitle => titleLabel != null && titleLabel!.trim().isNotEmpty;
 
-  String get photoPath =>
-      photoPaths.isNotEmpty ? photoPaths.first : AssetPaths.mapSecondAvatar;
+  String get photoPath => photoPaths.isNotEmpty ? photoPaths.first : '';
 
   static bool isFilePath(String path) =>
       path.isNotEmpty && !path.startsWith('assets/');
@@ -1021,6 +1079,9 @@ final class PlanItem extends Equatable {
   final String note;
   final bool showToFriends;
   final bool showToNearby;
+
+  bool get hasJoiningFriends =>
+      friendAvatars.isNotEmpty || (int.tryParse(friendsLabel.trim()) ?? 0) > 0;
 
   @override
   List<Object?> get props => [
@@ -1074,6 +1135,25 @@ final class NearbyAddPlanPlace extends Equatable {
   final double lat;
   final double lng;
 
+  bool get hasJoiningFriends =>
+      friendAvatars.isNotEmpty || (int.tryParse(friendsLabel.trim()) ?? 0) > 0;
+
+  NearbyAddPlanPlace withJoiningFriends({
+    required List<String> friendAvatars,
+    required String friendsLabel,
+  }) {
+    return NearbyAddPlanPlace(
+      categoryKey: categoryKey,
+      placeName: placeName,
+      subtitle: subtitle,
+      distanceLabel: distanceLabel,
+      friendAvatars: friendAvatars,
+      friendsLabel: friendsLabel,
+      lat: lat,
+      lng: lng,
+    );
+  }
+
   @override
   List<Object?> get props => [
     categoryKey,
@@ -1100,6 +1180,8 @@ class UserRepository {
   Position? _nearbyAddPlanPlacesCachePosition;
   DateTime? _nearbyAddPlanPlacesCachedAt;
   Future<List<NearbyAddPlanPlace>>? _nearbyAddPlanPlacesInFlight;
+  Map<String, FriendJoiningPlace> _friendJoiningByPlace = const {};
+  Future<Map<String, FriendJoiningPlace>>? _friendJoiningInFlight;
   final Map<String, ({DateTime at, List<MapVenue> items})> _mapVenuesCache = {};
   final Map<String, Future<List<MapVenue>>> _mapVenuesInFlight = {};
 
@@ -1112,6 +1194,7 @@ class UserRepository {
     checkIns: 0,
     followers: 0,
     friends: 0,
+    coins: 0,
     accountPrivacy: 'public',
     links: [],
   );
@@ -1190,6 +1273,7 @@ class UserRepository {
       checkIns: 0,
       followers: 0,
       friends: 0,
+      coins: 0,
       accountPrivacy: 'public',
       links: [],
     );
@@ -1227,6 +1311,8 @@ class UserRepository {
   final _publicProfileCache = <String, PublicUserProfile>{};
   List<StoryPreview> _lastFriendPreviews = const [];
   List<StoryMediaItem> _cachedExploreItems = const [];
+  DateTime? _storyFeedFetchedAt;
+  static const _storyFeedTtl = Duration(seconds: 90);
   String? _sessionUserId;
 
   List<PulseItem> _cachedMyPulses = const [];
@@ -1304,6 +1390,7 @@ class UserRepository {
     _lastFriendPreviews = const [];
     _viewedStoryIds.clear();
     _viewedStoryAvatarPaths.clear();
+    _storyFeedFetchedAt = null;
   }
 
   /// Drop a blocked user from local story/map caches immediately.
@@ -1362,10 +1449,12 @@ class UserRepository {
             (story.expiresAt == null || story.expiresAt!.isAfter(now)))
           StoryMediaItem(
             imagePath: story.mediaUrl,
+            thumbnailPath: story.thumbnailUrl,
             label: label,
             avatarPath: avatar,
             caption: '',
-            isReel: false,
+            isReel: story.isVideo,
+            isVideo: story.isVideo,
             isVerified: false,
             storyId: story.id,
             userId: story.userId,
@@ -1391,6 +1480,7 @@ class UserRepository {
     _cachedMyStoryItems = List<StoryMediaItem>.unmodifiable(items);
     for (final item in items) {
       final path = item.imagePath;
+      if (item.isVideo) continue;
       if (path.startsWith('http://') || path.startsWith('https://')) {
         NetworkImage(path).resolve(ImageConfiguration.empty);
       }
@@ -1452,6 +1542,7 @@ class UserRepository {
     List<String> taggedUserIds = const [],
     List<String> photoUrls = const [],
     String? category,
+    String? locale,
   }) async {
     final result = await _authRepository.submitCheckIn(
       placeName: placeName,
@@ -1462,14 +1553,29 @@ class UserRepository {
       taggedUserIds: taggedUserIds,
       photoUrls: photoUrls,
       category: category,
+      locale: locale,
     );
     invalidateFriendshipStreaks();
     recordCheckInCompleted(checkInsCount: _currentUser.checkIns + 1);
+    _applyCoinsBalance(result['coinsBalance']);
     return result;
   }
 
   Future<Map<String, dynamic>> acceptFounderReward(String checkInId) {
     return _authRepository.acceptFounderReward(checkInId);
+  }
+
+  Future<Map<String, dynamic>> acceptStampOffer(String checkInId) async {
+    final result = await _authRepository.acceptStampOffer(checkInId);
+    _applyCoinsBalance(result['coinsBalance']);
+    return result;
+  }
+
+  void _applyCoinsBalance(Object? raw) {
+    final coins = (raw as num?)?.toInt();
+    if (coins == null || coins == _currentUser.coins) return;
+    _currentUser = _currentUser.copyWith(coins: coins);
+    currentUserListenable.value = _currentUser;
   }
 
   Future<List<Map<String, dynamic>>> fetchFriendshipStreaks({
@@ -1510,6 +1616,7 @@ class UserRepository {
       ];
       final place = (raw['placeName'] as String?)?.trim() ?? '';
       final stampSlug = (raw['stampSlug'] as String?)?.trim();
+      final stampImageUrl = (raw['stampImageUrl'] as String?)?.trim();
       final title = (raw['titleLabel'] as String?)?.trim();
       final checkedAt = DateTime.tryParse(
         '${raw['checkedAt'] ?? ''}',
@@ -1523,14 +1630,12 @@ class UserRepository {
       }
       final avatar = _currentUser.hasPhoto ? _currentUser.avatarPath : '';
       final restored = ActiveMapCheckIn(
-        stampImagePath: stampSlug == 'founder'
+        stampImagePath: (stampImageUrl != null && stampImageUrl.isNotEmpty)
+            ? stampImageUrl
+            : stampSlug == 'founder'
             ? AssetPaths.stamp16
             : AssetPaths.stamp1,
-        photoPaths: photos.isNotEmpty
-            ? photos
-            : (avatar.isNotEmpty
-                  ? [avatar]
-                  : const [AssetPaths.mapSecondAvatar]),
+        photoPaths: photos,
         placeName: place.isNotEmpty ? place : 'check_in_venue_empty',
         checkedAt: checkedAt ?? DateTime.now(),
         titleLabel: (title != null && title.isNotEmpty) ? title : null,
@@ -1830,7 +1935,9 @@ class UserRepository {
   List<NearbyAddPlanPlace> peekNearbyAddPlanPlaces({int limit = 40}) {
     if (_nearbyAddPlanPlacesCache.isEmpty) return const [];
     final safeLimit = limit.clamp(1, _nearbyPlacesDisplayLimit);
-    return _nearbyAddPlanPlacesCache.take(safeLimit).toList(growable: false);
+    return _applyFriendJoiningSync(
+      _nearbyAddPlanPlacesCache.take(safeLimit).toList(growable: false),
+    );
   }
 
   bool _isNearbyCacheFresh({Position? position}) {
@@ -1858,14 +1965,16 @@ class UserRepository {
 
     // Fast path: valid cache, no GPS / Places call.
     if (!forceRefresh && _isNearbyCacheFresh()) {
-      return _nearbyAddPlanPlacesCache.take(safeLimit).toList();
+      return _withFriendJoining(
+        _nearbyAddPlanPlacesCache.take(safeLimit).toList(),
+      );
     }
 
     // Dedupe parallel callers (Plan Ekle firstBatch + remaining, check-in…).
     final inFlight = _nearbyAddPlanPlacesInFlight;
     if (inFlight != null) {
       final shared = await inFlight;
-      return shared.take(safeLimit).toList();
+      return _withFriendJoining(shared.take(safeLimit).toList());
     }
 
     final future = _fetchNearbyAddPlanPlaces(
@@ -1874,7 +1983,8 @@ class UserRepository {
     );
     _nearbyAddPlanPlacesInFlight = future;
     try {
-      return await future;
+      final places = await future;
+      return _withFriendJoining(places);
     } finally {
       if (identical(_nearbyAddPlanPlacesInFlight, future)) {
         _nearbyAddPlanPlacesInFlight = null;
@@ -2095,6 +2205,7 @@ class UserRepository {
       previews.add(
         StoryPreview(
           name: friend.displayName,
+          username: friend.username,
           avatarPath: friend.avatarUrl,
           isViewed: friend.isViewed,
           userId: friend.userId,
@@ -2254,6 +2365,27 @@ class UserRepository {
     }
   }
 
+  Future<PulseLikeSnapshot?> togglePulseLike({
+    required String pulseId,
+    required bool like,
+  }) async {
+    final id = pulseId.trim();
+    if (id.isEmpty) return null;
+    try {
+      final updated = like
+          ? await _authRepository.likePulseRemote(id)
+          : await _authRepository.unlikePulseRemote(id);
+      _patchCachedStoryLike(
+        storyId: updated.id,
+        likedByMe: updated.likedByMe,
+        likeCount: updated.likeCount,
+      );
+      return updated;
+    } catch (_) {
+      return null;
+    }
+  }
+
   void _patchCachedStoryLike({
     required String storyId,
     required bool likedByMe,
@@ -2313,6 +2445,7 @@ class UserRepository {
     String? musicTrackId,
     int? musicClipStartMs,
     int? musicClipDurationMs,
+    bool isVideo = false,
   }) async {
     final created = await _authRepository.publishStory(
       imagePath: imagePath,
@@ -2320,6 +2453,7 @@ class UserRepository {
       musicTrackId: musicTrackId,
       musicClipStartMs: musicClipStartMs,
       musicClipDurationMs: musicClipDurationMs,
+      isVideo: isVideo,
     );
     final label = _currentUser.name.trim().isEmpty ? 'You' : _currentUser.name;
     final avatar = _currentUser.hasPhoto ? _currentUser.avatarPath : '';
@@ -2336,6 +2470,9 @@ class UserRepository {
         if (item.storyId != created.id) item,
     ];
     _cacheMyStoryItems(merged);
+    if (audience == 'public' && mapped.isNotEmpty) {
+      _prependExploreItem(mapped.first);
+    }
     return created;
   }
 
@@ -2352,39 +2489,111 @@ class UserRepository {
     ];
   }
 
+  bool get isStoryFeedFresh {
+    final at = _storyFeedFetchedAt;
+    if (at == null || _cachedExploreItems.isEmpty) return false;
+    return DateTime.now().difference(at) < _storyFeedTtl;
+  }
+
   Future<List<StoryMediaItem>> getStoryFeed({bool forceRefresh = false}) async {
+    if (!forceRefresh && isStoryFeedFresh) {
+      return peekStoryFeed();
+    }
     try {
+      final now = DateTime.now();
+      final epoch = DateTime.fromMillisecondsSinceEpoch(0);
+      final storiesById = <String, ({DateTime createdAt, StoryMediaItem item})>{};
+      final pulsesByKey = <String, ({DateTime createdAt, StoryMediaItem item})>{};
+
+      void addStory(PublishedStory story) {
+        if (story.mediaUrl.isEmpty) return;
+        if (story.audience == 'friends_only') return;
+        if (story.expiresAt != null && !story.expiresAt!.isAfter(now)) return;
+        final id = story.id.trim();
+        if (id.isEmpty) return;
+        storiesById[id] = (
+          createdAt: story.createdAt ?? epoch,
+          item: StoryMediaItem(
+            imagePath: story.mediaUrl,
+            thumbnailPath: story.thumbnailUrl,
+            label: story.displayAuthorName,
+            avatarPath: story.authorAvatarUrl ?? '',
+            caption: '',
+            isReel: story.isVideo,
+            isVideo: story.isVideo,
+            isVerified: false,
+            storyId: story.id,
+            userId: story.userId,
+            username: story.authorUsername,
+            musicAudioUrl: story.musicAudioUrl,
+            musicTrackId: story.musicTrackId,
+            musicTitle: story.musicTitle,
+            musicArtist: story.musicArtist,
+            musicCoverUrl: story.musicCoverUrl,
+            musicClipStartMs: story.musicClipStartMs,
+            musicClipDurationMs: story.musicClipDurationMs,
+            expiresAt: story.expiresAt,
+            likeCount: story.likeCount,
+            likedByMe: story.likedByMe,
+            isViewed: story.isViewed,
+          ),
+        );
+      }
+
+      void addPulse(Map<String, dynamic> raw, {bool mine = false}) {
+        final audience = (raw['audience'] as String?)?.trim() ?? 'public';
+        if (audience == 'friends_only') return;
+        final mediaUrl = (raw['mediaUrl'] as String?)?.trim() ?? '';
+        if (mediaUrl.isEmpty) return;
+        final expiresAt = DateTime.tryParse(
+          '${raw['expiresAt'] ?? ''}',
+        )?.toLocal();
+        if (expiresAt != null && !expiresAt.isAfter(now)) return;
+        final id = (raw['id'] as String?)?.trim() ?? '';
+        final key = id.isNotEmpty ? 'pulse:$id' : 'pulse:$mediaUrl';
+        final createdAt = DateTime.tryParse(
+          '${raw['createdAt'] ?? ''}',
+        )?.toLocal();
+        pulsesByKey[key] = (
+          createdAt: createdAt ?? epoch,
+          item: _storyItemFromPulseRaw(raw, mine: mine),
+        );
+      }
+
       final stories = await _authRepository.fetchExploreStories(
         forceRefresh: forceRefresh,
       );
-      final now = DateTime.now();
-      final items = [
-        for (final story in stories)
-          if (story.mediaUrl.isNotEmpty &&
-              (story.expiresAt == null || story.expiresAt!.isAfter(now)))
-            StoryMediaItem(
-              imagePath: story.mediaUrl,
-              label: story.displayAuthorName,
-              avatarPath: story.authorAvatarUrl ?? '',
-              caption: '',
-              isReel: false,
-              isVerified: false,
-              storyId: story.id,
-              userId: story.userId,
-              username: story.authorUsername,
-              musicAudioUrl: story.musicAudioUrl,
-              musicTrackId: story.musicTrackId,
-              musicTitle: story.musicTitle,
-              musicArtist: story.musicArtist,
-              musicCoverUrl: story.musicCoverUrl,
-              musicClipStartMs: story.musicClipStartMs,
-              musicClipDurationMs: story.musicClipDurationMs,
-              expiresAt: story.expiresAt,
-              likeCount: story.likeCount,
-              likedByMe: story.likedByMe,
-              isViewed: story.isViewed,
-            ),
-      ];
+      for (final story in stories) {
+        addStory(story);
+      }
+
+      var pulses = _authRepository.peekExplorePulses();
+      try {
+        final extra = await _authRepository.fetchExplorePulses(
+          forceRefresh: forceRefresh,
+        );
+        pulses = _mergePulseMaps(pulses, extra);
+      } catch (_) {}
+      for (final raw in pulses) {
+        addPulse(raw);
+      }
+      try {
+        final mine = await _authRepository.fetchMyPulses();
+        for (final raw in mine) {
+          addPulse(raw, mine: true);
+        }
+      } catch (_) {}
+
+      try {
+        final mineStories = await _authRepository.fetchMyActiveStories();
+        for (final story in mineStories) {
+          addStory(story);
+        }
+      } catch (_) {}
+
+      final entries = [...storiesById.values, ...pulsesByKey.values]
+        ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+      final items = [for (final entry in entries) entry.item];
       _cacheExploreItems(items);
       return items;
     } catch (_) {
@@ -2392,12 +2601,88 @@ class UserRepository {
     }
   }
 
+  List<Map<String, dynamic>> _mergePulseMaps(
+    List<Map<String, dynamic>> a,
+    List<Map<String, dynamic>> b,
+  ) {
+    final seen = <String>{};
+    final out = <Map<String, dynamic>>[];
+    for (final raw in [...a, ...b]) {
+      final id = (raw['id'] as String?)?.trim() ?? '';
+      final media = (raw['mediaUrl'] as String?)?.trim() ?? '';
+      final key = id.isNotEmpty ? id : media;
+      if (key.isEmpty || !seen.add(key)) continue;
+      out.add(raw);
+    }
+    return out;
+  }
+
+  StoryMediaItem _storyItemFromPulseRaw(
+    Map<String, dynamic> raw, {
+    bool mine = false,
+  }) {
+    final mediaUrl = (raw['mediaUrl'] as String?)?.trim() ?? '';
+    final expiresAt = DateTime.tryParse(
+      '${raw['expiresAt'] ?? ''}',
+    )?.toLocal();
+    var authorName = (raw['authorName'] as String?)?.trim() ?? '';
+    var authorUsername = (raw['authorUsername'] as String?)?.trim() ?? '';
+    var authorAvatar = (raw['authorAvatarUrl'] as String?)?.trim() ?? '';
+    var userId = (raw['userId'] as String?)?.trim() ?? '';
+    if (mine) {
+      if (authorName.isEmpty) {
+        authorName = _currentUser.name.trim().isEmpty
+            ? 'You'
+            : _currentUser.name.trim();
+      }
+      if (authorUsername.isEmpty) {
+        authorUsername = _currentUser.usernameHandle;
+      }
+      if (authorAvatar.isEmpty && _currentUser.hasPhoto) {
+        authorAvatar = _currentUser.avatarPath;
+      }
+      if (userId.isEmpty) userId = _sessionUserId ?? '';
+    }
+    final caption = (raw['caption'] as String?)?.trim() ?? '';
+    final isVideo = (raw['mediaType'] as String?)?.trim().toLowerCase() ==
+        'video';
+    final pulseId = (raw['id'] as String?)?.trim() ?? '';
+    final thumbnailUrl = (raw['thumbnailUrl'] as String?)?.trim();
+    return StoryMediaItem(
+      imagePath: mediaUrl,
+      thumbnailPath: thumbnailUrl?.isNotEmpty == true ? thumbnailUrl : null,
+      label: authorName.isNotEmpty
+          ? authorName
+          : (authorUsername.isNotEmpty ? authorUsername : 'User'),
+      avatarPath: authorAvatar,
+      caption: caption,
+      isReel: isVideo,
+      isVideo: isVideo,
+      isVerified: false,
+      storyId: pulseId.isEmpty ? null : pulseId,
+      userId: userId.isEmpty ? null : userId,
+      username: authorUsername.isEmpty ? null : authorUsername,
+      expiresAt: expiresAt,
+      likeCount: (raw['likeCount'] as num?)?.toInt() ?? 0,
+      likedByMe: raw['likedByMe'] == true,
+      isPulse: true,
+    );
+  }
+
+  void _prependExploreItem(StoryMediaItem item) {
+    if (item.imagePath.isEmpty) return;
+    _cachedExploreItems = List<StoryMediaItem>.unmodifiable([
+      item,
+      for (final existing in _cachedExploreItems)
+        if (existing.imagePath != item.imagePath ||
+            existing.isPulse != item.isPulse)
+          existing,
+    ]);
+  }
+
   void _cacheExploreItems(List<StoryMediaItem> items) {
     _cachedExploreItems = List<StoryMediaItem>.unmodifiable(items);
-    for (final item in items) {
-      if (!item.isNetworkImage) continue;
-      NetworkImage(item.imagePath).resolve(ImageConfiguration.empty);
-    }
+    _storyFeedFetchedAt = DateTime.now();
   }
 
   Future<List<MapFriend>> getMapFriends({double? lat, double? lng}) async {
@@ -2644,6 +2929,7 @@ class UserRepository {
     double? lat,
     double? lng,
     String? caption,
+    bool isVideo = false,
   }) async {
     try {
       final raw = await _authRepository.createPulse(
@@ -2654,9 +2940,13 @@ class UserRepository {
         lat: lat,
         lng: lng,
         caption: caption,
+        isVideo: isVideo,
       );
       final pulse = PulseItem.fromJson(raw);
       prependMyPulse(pulse);
+      if (audience != 'friends_only') {
+        _prependExploreItem(_storyItemFromPulseRaw(raw, mine: true));
+      }
       return pulse;
     } catch (e) {
       if (kDebugMode) {
@@ -2686,14 +2976,21 @@ class UserRepository {
 
   Future<List<PlanItem>> getTodayPlans({String? forUsername}) async {
     try {
+      final joiningFuture = _fetchFriendJoiningByPlace();
+      final List<UserPlanItem> remote;
       if (_isCurrentProfileRequest(forUsername)) {
-        final remote = await _authRepository.fetchTodayPlans();
-        return remote.map(_planItemFromRemote).toList();
+        remote = await _authRepository.fetchTodayPlans();
+      } else {
+        remote = await _authRepository.fetchUserPlansByUsername(forUsername!);
       }
-      final remote = await _authRepository.fetchUserPlansByUsername(
-        forUsername!,
-      );
-      return remote.map(_planItemFromRemote).toList();
+      await joiningFuture;
+      final excludeUsername = _isCurrentProfileRequest(forUsername)
+          ? null
+          : forUsername;
+      return [
+        for (final item in remote)
+          _planItemFromRemote(item, excludeUsername: excludeUsername),
+      ];
     } catch (e) {
       if (kDebugMode) {
         debugPrint('getTodayPlans failed: $e');
@@ -2723,20 +3020,111 @@ class UserRepository {
     return _planItemFromRemote(created);
   }
 
-  PlanItem _planItemFromRemote(UserPlanItem item) {
+  PlanItem _planItemFromRemote(
+    UserPlanItem item, {
+    String? excludeUsername,
+  }) {
     final hour = item.scheduledAt.hour.toString().padLeft(2, '0');
     final minute = item.scheduledAt.minute.toString().padLeft(2, '0');
+    final joining = _joiningForPlace(
+      item.placeName,
+      excludeUsername: excludeUsername,
+    );
     return PlanItem(
       id: item.id,
       time: '$hour:$minute',
       placeName: item.placeName,
       subtitle: item.subtitle,
-      friendAvatars: const [],
-      friendsLabel: '0',
+      friendAvatars: joining?.friendAvatars ?? const [],
+      friendsLabel: '${joining?.friendsCount ?? 0}',
       note: item.note,
       showToFriends: item.showToFriends,
       showToNearby: item.showToNearby,
     );
+  }
+
+  static String _normalizePlaceKey(String name) =>
+      name.trim().toLowerCase().replaceAll(RegExp(r'\s+'), ' ');
+
+  Future<Map<String, FriendJoiningPlace>> _fetchFriendJoiningByPlace() async {
+    final inFlight = _friendJoiningInFlight;
+    if (inFlight != null) return inFlight;
+
+    final future = () async {
+      try {
+        final items = await _authRepository.fetchFriendJoiningPlaces();
+        final map = <String, FriendJoiningPlace>{};
+        for (final item in items) {
+          final key = _normalizePlaceKey(item.placeName);
+          if (key.isEmpty) continue;
+          map[key] = item;
+        }
+        _friendJoiningByPlace = map;
+        return map;
+      } catch (e) {
+        if (kDebugMode) {
+          debugPrint('fetchFriendJoiningPlaces failed: $e');
+        }
+        return _friendJoiningByPlace;
+      }
+    }();
+
+    _friendJoiningInFlight = future;
+    try {
+      return await future;
+    } finally {
+      if (identical(_friendJoiningInFlight, future)) {
+        _friendJoiningInFlight = null;
+      }
+    }
+  }
+
+  FriendJoiningPlace? _joiningForPlace(
+    String placeName, {
+    String? excludeUsername,
+  }) {
+    final info = _friendJoiningByPlace[_normalizePlaceKey(placeName)];
+    if (info == null || info.friendsCount <= 0) return null;
+
+    final exclude = _profileKey(excludeUsername);
+    if (exclude.isEmpty) return info;
+
+    final avatars = <String>[];
+    final usernames = <String>[];
+    for (var i = 0; i < info.friendUsernames.length; i++) {
+      final username = _profileKey(info.friendUsernames[i]);
+      if (username.isNotEmpty && username == exclude) continue;
+      usernames.add(info.friendUsernames[i]);
+      avatars.add(i < info.friendAvatars.length ? info.friendAvatars[i] : '');
+    }
+    if (usernames.isEmpty && avatars.isEmpty) return null;
+    return FriendJoiningPlace(
+      placeName: info.placeName,
+      friendsCount: usernames.isNotEmpty ? usernames.length : avatars.length,
+      friendAvatars: avatars,
+      friendUsernames: usernames,
+    );
+  }
+
+  Future<List<NearbyAddPlanPlace>> _withFriendJoining(
+    List<NearbyAddPlanPlace> places,
+  ) async {
+    if (places.isEmpty) return places;
+    await _fetchFriendJoiningByPlace();
+    return _applyFriendJoiningSync(places);
+  }
+
+  List<NearbyAddPlanPlace> _applyFriendJoiningSync(
+    List<NearbyAddPlanPlace> places,
+  ) {
+    if (places.isEmpty || _friendJoiningByPlace.isEmpty) return places;
+    return places.map((place) {
+      final joining = _joiningForPlace(place.placeName);
+      return place.withJoiningFriends(
+        friendAvatars: joining?.friendAvatars ?? const [],
+        friendsLabel: '${joining?.friendsCount ?? 0}',
+      );
+    }).toList(growable: false);
   }
 
   String _profileKey(String? forUsername) {

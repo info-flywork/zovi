@@ -1,17 +1,26 @@
 import 'dart:async';
+import 'dart:io';
 import 'dart:ui' as ui;
 
 import 'package:audioplayers/audioplayers.dart';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
+import 'package:video_player/video_player.dart';
 import 'package:zovi/core/cache/music_audio_cache.dart';
 import 'package:zovi/core/di/injection.dart';
+import 'package:zovi/core/in_app_notification/app_in_app_notification.dart';
+import 'package:zovi/core/in_app_notification/in_app_notification_data.dart';
+import 'package:zovi/core/snackbar/app_snackbar.dart';
 import 'package:zovi/core/theme/app_colors.dart';
 import 'package:zovi/core/utils/constants/asset_paths.dart';
 import 'package:zovi/core/utils/navigation/open_user_profile.dart';
 import 'package:zovi/core/widgets/app_icon.dart';
+import 'package:zovi/core/widgets/app_loading.dart';
 import 'package:zovi/core/widgets/profile_avatar.dart';
+import 'package:zovi/domain/auth/auth_repository.dart';
+import 'package:zovi/domain/chat/chat_repository.dart';
 import 'package:zovi/domain/user/user_repository.dart';
 import 'package:zovi/presentation/stories/model/story_detail_route_args.dart';
 
@@ -34,11 +43,19 @@ class _StoryDetailViewState extends State<StoryDetailView>
   late List<StoryMediaItem> _items;
   var _paused = false;
   var _likeInFlight = false;
+  var _dragDy = 0.0;
+  var _dragging = false;
+  var _pausedForDismiss = false;
+  var _replySending = false;
+  final _replyController = TextEditingController();
+  final _replyFocus = FocusNode();
 
   final _musicPlayer = AudioPlayer();
   StreamSubscription<Duration>? _musicPosSub;
   StreamSubscription<void>? _musicCompleteSub;
   var _musicSeeking = false;
+  VideoPlayerController? _videoController;
+  var _videoToken = 0;
 
   StoryMediaItem get _current => _items[_index];
 
@@ -99,13 +116,14 @@ class _StoryDetailViewState extends State<StoryDetailView>
       vsync: this,
       duration: _storyDuration,
     )..addStatusListener(_onProgressStatus);
+    _replyFocus.addListener(_onReplyFocusChange);
     unawaited(_markCurrentViewed());
-    unawaited(_syncMusic());
-    _startProgress();
+    unawaited(_bootstrapPlayback());
   }
 
   Future<void> _markCurrentViewed() async {
     final item = _current;
+    if (item.isPulse) return;
     getIt<UserRepository>().markStoryViewed(item.avatarPath);
     final storyId = item.storyId;
     if (storyId != null && storyId.isNotEmpty) {
@@ -127,7 +145,7 @@ class _StoryDetailViewState extends State<StoryDetailView>
   Future<void> _syncMusic() async {
     await _stopMusic();
     final item = _current;
-    if (!item.hasMusic) return;
+    if (item.isVideo || !item.hasMusic) return;
 
     final url = item.musicAudioUrl!.trim();
     final startMs = item.musicClipStartMs ?? 0;
@@ -170,10 +188,67 @@ class _StoryDetailViewState extends State<StoryDetailView>
     }
   }
 
+  Future<void> _bootstrapPlayback() async {
+    await _syncVideo();
+    await _syncMusic();
+    if (mounted) _startProgress();
+  }
+
+  Future<void> _disposeVideo() async {
+    _videoToken++;
+    final controller = _videoController;
+    _videoController = null;
+    if (controller == null) return;
+    try {
+      await controller.pause();
+    } catch (_) {}
+    await controller.dispose();
+  }
+
+  Future<void> _syncVideo() async {
+    await _disposeVideo();
+    final item = _current;
+    if (!item.isVideo) {
+      _progressController.duration = _storyDuration;
+      return;
+    }
+
+    final token = ++_videoToken;
+    final path = item.imagePath.trim();
+    final controller = item.isNetworkImage
+        ? VideoPlayerController.networkUrl(Uri.parse(path))
+        : VideoPlayerController.file(File(path.replaceFirst('file://', '')));
+    _videoController = controller;
+    try {
+      await controller.initialize();
+      if (!mounted || token != _videoToken) {
+        await controller.dispose();
+        return;
+      }
+      await controller.setLooping(false);
+      final duration = controller.value.duration;
+      _progressController.duration = duration > const Duration(milliseconds: 400)
+          ? duration
+          : _storyDuration;
+      if (!_paused) await controller.play();
+      if (mounted) setState(() {});
+    } catch (_) {
+      if (identical(_videoController, controller)) _videoController = null;
+      try {
+        await controller.dispose();
+      } catch (_) {}
+      _progressController.duration = _storyDuration;
+    }
+  }
+
   @override
   void dispose() {
+    _replyFocus.removeListener(_onReplyFocusChange);
+    _replyFocus.dispose();
+    _replyController.dispose();
     unawaited(_stopMusic());
     unawaited(_musicPlayer.dispose());
+    unawaited(_disposeVideo());
     _progressController
       ..removeStatusListener(_onProgressStatus)
       ..dispose();
@@ -181,6 +256,101 @@ class _StoryDetailViewState extends State<StoryDetailView>
       ..removeListener(_onPageScroll)
       ..dispose();
     super.dispose();
+  }
+
+  void _onReplyFocusChange() {
+    if (_replyFocus.hasFocus) {
+      _pause();
+      return;
+    }
+    if (!_pausedForDismiss && !_dragging && !_replySending) {
+      _resume();
+    }
+  }
+
+  bool get _isOwnCurrentStory {
+    final myId = getIt<AuthRepository>().backendUserId?.trim() ?? '';
+    final ownerId = _current.userId?.trim() ?? '';
+    if (myId.isNotEmpty && ownerId.isNotEmpty && myId == ownerId) return true;
+    var myHandle =
+        getIt<UserRepository>().cachedCurrentUser?.usernameHandle
+            .trim()
+            .toLowerCase() ??
+        '';
+    var storyHandle = (_current.username ?? '').trim().toLowerCase();
+    if (myHandle.startsWith('@')) myHandle = myHandle.substring(1);
+    if (storyHandle.startsWith('@')) storyHandle = storyHandle.substring(1);
+    return myHandle.isNotEmpty && myHandle == storyHandle;
+  }
+
+  bool get _canReplyToCurrent {
+    if (_isOwnCurrentStory) return false;
+    final ownerId = _current.userId?.trim() ?? '';
+    final handle = _current.username?.trim() ?? '';
+    return ownerId.isNotEmpty || handle.isNotEmpty;
+  }
+
+  Future<String?> _peerUserIdForReply() async {
+    final ownerId = _current.userId?.trim() ?? '';
+    if (ownerId.isNotEmpty) return ownerId;
+    final handle = _current.username?.trim() ?? '';
+    if (handle.isEmpty) return null;
+    try {
+      final profile = await getIt<UserRepository>().getPublicUserProfile(handle);
+      final id = profile.userId.trim();
+      return id.isEmpty ? null : id;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<void> _sendStoryReply() async {
+    final text = _replyController.text.trim();
+    if (text.isEmpty || _replySending || !_canReplyToCurrent) return;
+    setState(() => _replySending = true);
+    _pause();
+    try {
+      final peerId = await _peerUserIdForReply();
+      if (peerId == null || peerId.isEmpty) {
+        throw StateError('Missing peer');
+      }
+      final chat = getIt<ChatRepository>();
+      final conversation = await chat.openDm(peerId);
+      final mediaUrl = _current.isNetworkImage ? _current.imagePath.trim() : '';
+      await chat.sendMessage(
+        conversationId: conversation.id,
+        type: 'text',
+        body: text,
+        mediaUrl: mediaUrl.isEmpty ? null : mediaUrl,
+        replyPreview: storyReplyPreviewFor(
+          storyId: _current.storyId,
+          isPulse: _current.isPulse,
+        ),
+      );
+      if (!mounted) return;
+      _replyController.clear();
+      _replyFocus.unfocus();
+      AppInAppNotification.instance.show(
+        InAppNotificationData(
+          username: _current.storyLabel,
+          displayName: _current.label,
+          avatarPath: _current.avatarPath,
+          messageKey: 'map_friend_message_sent',
+          showGradientRing: true,
+          action: InAppNotificationAction.openChat,
+          conversationId: conversation.id,
+          userId: peerId,
+        ),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      AppSnackbar.instance.show(context, 'chat_send_failed'.tr(), isError: true);
+    } finally {
+      if (mounted) setState(() => _replySending = false);
+      if (mounted && !_replyFocus.hasFocus && !_pausedForDismiss) {
+        _resume();
+      }
+    }
   }
 
   void _onProgressStatus(AnimationStatus status) {
@@ -217,6 +387,7 @@ class _StoryDetailViewState extends State<StoryDetailView>
     _paused = true;
     _progressController.stop();
     unawaited(_musicPlayer.pause());
+    unawaited(_videoController?.pause());
   }
 
   void _resume() {
@@ -224,6 +395,7 @@ class _StoryDetailViewState extends State<StoryDetailView>
     _paused = false;
     _progressController.forward();
     unawaited(_musicPlayer.resume());
+    unawaited(_videoController?.play());
   }
 
   Future<void> _goTo(int index) async {
@@ -232,12 +404,17 @@ class _StoryDetailViewState extends State<StoryDetailView>
       return;
     }
     if (index == _index) {
+      try {
+        await _videoController?.seekTo(Duration.zero);
+        if (!_paused) await _videoController?.play();
+      } catch (_) {}
       _startProgress();
       return;
     }
     _resetProgress();
     setState(() => _index = index);
     unawaited(_markCurrentViewed());
+    await _syncVideo();
     unawaited(_syncMusic());
     await _pageController.animateToPage(
       index,
@@ -252,7 +429,7 @@ class _StoryDetailViewState extends State<StoryDetailView>
   void _goPrevious() {
     // Nothing before the first story — replay it instead of closing.
     if (_index == 0) {
-      _startProgress();
+      unawaited(_goTo(0));
       return;
     }
     _goTo(_index - 1);
@@ -260,10 +437,15 @@ class _StoryDetailViewState extends State<StoryDetailView>
 
   void _onPageChanged(int index) {
     if (index == _index) return;
+    _replyController.clear();
+    if (_replyFocus.hasFocus) _replyFocus.unfocus();
     setState(() => _index = index);
     unawaited(_markCurrentViewed());
-    unawaited(_syncMusic());
-    _startProgress();
+    unawaited(() async {
+      await _syncVideo();
+      await _syncMusic();
+      if (mounted) _startProgress();
+    }());
   }
 
   Future<void> _toggleLike() async {
@@ -287,22 +469,36 @@ class _StoryDetailViewState extends State<StoryDetailView>
     if (storyId.isEmpty) return;
 
     _likeInFlight = true;
-    final updated = await getIt<UserRepository>().toggleStoryLike(
-      storyId: storyId,
-      like: willLike,
-    );
+    final repo = getIt<UserRepository>();
+    final bool? likedByMe;
+    final int? likeCount;
+    if (item.isPulse) {
+      final updated = await repo.togglePulseLike(
+        pulseId: storyId,
+        like: willLike,
+      );
+      likedByMe = updated?.likedByMe;
+      likeCount = updated?.likeCount;
+    } else {
+      final updated = await repo.toggleStoryLike(
+        storyId: storyId,
+        like: willLike,
+      );
+      likedByMe = updated?.likedByMe;
+      likeCount = updated?.likeCount;
+    }
     _likeInFlight = false;
     if (!mounted) return;
 
-    if (updated == null) {
+    if (likedByMe == null || likeCount == null) {
       setState(() => _items[_index] = previous);
       return;
     }
 
     setState(() {
       _items[_index] = _items[_index].copyWith(
-        likedByMe: updated.likedByMe,
-        likeCount: updated.likeCount,
+        likedByMe: likedByMe,
+        likeCount: likeCount,
       );
     });
   }
@@ -310,6 +506,12 @@ class _StoryDetailViewState extends State<StoryDetailView>
   Future<void> _openProfile() async {
     final handle = _current.username?.trim() ?? '';
     if (handle.isEmpty) return;
+    final myHandle =
+        getIt<UserRepository>().cachedCurrentUser?.usernameHandle.trim().toLowerCase() ??
+            '';
+    final storyHandle =
+        (handle.startsWith('@') ? handle.substring(1) : handle).toLowerCase();
+    if (myHandle.isNotEmpty && myHandle == storyHandle) return;
     _pause();
     await openUserProfile(
       context,
@@ -326,6 +528,28 @@ class _StoryDetailViewState extends State<StoryDetailView>
   }
 
   Widget _buildMedia(StoryMediaItem item) {
+    if (item.isVideo) {
+      final controller = _videoController;
+      if (controller != null && controller.value.isInitialized) {
+        return ColoredBox(
+          color: AppColors.black,
+          child: SizedBox.expand(
+            child: FittedBox(
+              fit: BoxFit.cover,
+              child: SizedBox(
+                width: controller.value.size.width,
+                height: controller.value.size.height,
+                child: VideoPlayer(controller),
+              ),
+            ),
+          ),
+        );
+      }
+      return const ColoredBox(
+        color: AppColors.black,
+        child: AppLoading(),
+      );
+    }
     if (item.isNetworkImage) {
       return Image.network(
         item.imagePath,
@@ -345,27 +569,54 @@ class _StoryDetailViewState extends State<StoryDetailView>
 
   @override
   Widget build(BuildContext context) {
+    final height = MediaQuery.sizeOf(context).height;
+
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle.dark,
       child: Scaffold(
         backgroundColor: AppColors.black,
-        body: Stack(
-          fit: StackFit.expand,
-          children: [
-            GestureDetector(
-              onTapUp: _onTapUp,
-              onLongPressStart: (_) => _pause(),
-              onLongPressEnd: (_) => _resume(),
-              child: PageView.builder(
-                controller: _pageController,
-                scrollDirection: Axis.horizontal,
-                itemCount: _items.length,
-                onPageChanged: _onPageChanged,
-                itemBuilder: (context, index) {
-                  return _buildMedia(_items[index]);
-                },
-              ),
-            ),
+        resizeToAvoidBottomInset: true,
+        body: GestureDetector(
+          onVerticalDragStart: _onDismissDragStart,
+          onVerticalDragUpdate: _onDismissDragUpdate,
+          onVerticalDragEnd: _onDismissDragEnd,
+          onVerticalDragCancel: _onDismissDragCancel,
+          child: TweenAnimationBuilder<double>(
+            tween: Tween<double>(end: _dragDy),
+            duration: _dragging
+                ? Duration.zero
+                : const Duration(milliseconds: 240),
+            curve: Curves.easeOutCubic,
+            builder: (context, dy, child) {
+              final t = height <= 0 ? 0.0 : (dy / height).clamp(0.0, 1.0);
+              return Transform.translate(
+                offset: Offset(0, dy),
+                child: Transform.scale(
+                  scale: 1 - t * 0.12,
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(t * 24),
+                    child: child,
+                  ),
+                ),
+              );
+            },
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                GestureDetector(
+                  onTapUp: _onTapUp,
+                  onLongPressStart: (_) => _pause(),
+                  onLongPressEnd: (_) => _resume(),
+                  child: PageView.builder(
+                    controller: _pageController,
+                    scrollDirection: Axis.horizontal,
+                    itemCount: _items.length,
+                    onPageChanged: _onPageChanged,
+                    itemBuilder: (context, index) {
+                      return _buildMedia(_items[index]);
+                    },
+                  ),
+                ),
             Positioned(
               top: 0,
               left: 0,
@@ -427,17 +678,66 @@ class _StoryDetailViewState extends State<StoryDetailView>
                 showLikeCount:
                     _current.storyId != null &&
                     _current.storyId!.trim().isNotEmpty,
+                canReply: _canReplyToCurrent,
+                replyController: _replyController,
+                replyFocus: _replyFocus,
+                replySending: _replySending,
                 onLike: _toggleLike,
                 onProfileTap: _openProfile,
+                onReplySubmit: _sendStoryReply,
               ),
             ),
-          ],
+              ],
+            ),
+          ),
         ),
       ),
     );
   }
 
+  static const _dismissDistance = 120.0;
+  static const _dismissVelocity = 800.0;
+
+  void _onDismissDragStart(DragStartDetails details) {
+    _dragging = true;
+  }
+
+  void _onDismissDragUpdate(DragUpdateDetails details) {
+    final next = _dragDy + details.delta.dy;
+    final dy = next < 0 ? 0.0 : next;
+    if (dy > 8 && !_pausedForDismiss) {
+      _pausedForDismiss = true;
+      _pause();
+    }
+    setState(() => _dragDy = dy);
+  }
+
+  void _snapDismissDragBack() {
+    setState(() {
+      _dragging = false;
+      _dragDy = 0;
+    });
+    if (!_pausedForDismiss) return;
+    _pausedForDismiss = false;
+    _resume();
+  }
+
+  void _onDismissDragEnd(DragEndDetails details) {
+    final velocity = details.primaryVelocity ?? 0;
+    if (_dragDy > _dismissDistance || velocity > _dismissVelocity) {
+      context.pop();
+      return;
+    }
+    _snapDismissDragBack();
+  }
+
+  void _onDismissDragCancel() => _snapDismissDragBack();
+
   void _onTapUp(TapUpDetails details) {
+    if (_replyFocus.hasFocus) {
+      _replyFocus.unfocus();
+      return;
+    }
     final width = MediaQuery.sizeOf(context).width;
     if (details.localPosition.dx < width * 0.35) {
       _goPrevious();
@@ -620,16 +920,26 @@ class _BottomOverlay extends StatelessWidget {
     required this.liked,
     required this.likeCount,
     required this.showLikeCount,
+    required this.canReply,
+    required this.replyController,
+    required this.replyFocus,
+    required this.replySending,
     required this.onLike,
     required this.onProfileTap,
+    required this.onReplySubmit,
   });
 
   final StoryMediaItem item;
   final bool liked;
   final int likeCount;
   final bool showLikeCount;
+  final bool canReply;
+  final TextEditingController replyController;
+  final FocusNode replyFocus;
+  final bool replySending;
   final VoidCallback onLike;
   final VoidCallback onProfileTap;
+  final VoidCallback onReplySubmit;
 
   @override
   Widget build(BuildContext context) {
@@ -645,68 +955,190 @@ class _BottomOverlay extends StatelessWidget {
       ),
       child: Padding(
         padding: EdgeInsets.fromLTRB(16, 40, 16, 16 + bottomPad),
-        child: Row(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Expanded(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      GestureDetector(
+                        onTap: onProfileTap,
+                        behavior: HitTestBehavior.opaque,
+                        child: Row(
+                          children: [
+                            ProfileAvatar(path: item.avatarPath, size: 34),
+                            const SizedBox(width: 10),
+                            Flexible(
+                              child: Text(
+                                item.storyLabel,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w500,
+                                  height: 1,
+                                  letterSpacing: -0.32,
+                                  color: AppColors.white,
+                                ),
+                              ),
+                            ),
+                            if (item.isVerified) ...[
+                              const SizedBox(width: 6),
+                              const AppIcon(AssetPaths.iconVerify, size: 18),
+                            ],
+                          ],
+                        ),
+                      ),
+                      if (item.caption.trim().isNotEmpty) ...[
+                        const SizedBox(height: 10),
+                        Text(
+                          item.caption,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                            height: 1,
+                            letterSpacing: -0.28,
+                            color: AppColors.white.withValues(alpha: 0.65),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+                if (!canReply) ...[
+                  const SizedBox(width: 12),
+                  _LikeButton(
+                    liked: liked,
+                    likeCount: likeCount,
+                    showCount: showLikeCount,
+                    onLike: onLike,
+                  ),
+                ],
+              ],
+            ),
+            if (canReply) ...[
+              const SizedBox(height: 12),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  GestureDetector(
-                    onTap: onProfileTap,
-                    behavior: HitTestBehavior.opaque,
-                    child: Row(
-                      children: [
-                        ProfileAvatar(path: item.avatarPath, size: 34),
-                        const SizedBox(width: 10),
-                        Flexible(
-                          child: Text(
-                            item.label,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w500,
-                              height: 1,
-                              letterSpacing: -0.32,
-                              color: AppColors.white,
+                  Expanded(
+                    child: _StoryReplyField(
+                      controller: replyController,
+                      focusNode: replyFocus,
+                      enabled: !replySending,
+                      onSubmit: onReplySubmit,
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  _LikeButton(
+                    liked: liked,
+                    likeCount: likeCount,
+                    showCount: showLikeCount,
+                    onLike: onLike,
+                  ),
+                  ListenableBuilder(
+                    listenable: replyController,
+                    builder: (context, _) {
+                      if (replyController.text.trim().isEmpty) {
+                        return const SizedBox.shrink();
+                      }
+                      return Padding(
+                        padding: const EdgeInsets.only(left: 10),
+                        child: GestureDetector(
+                          onTap: replySending ? null : onReplySubmit,
+                          behavior: HitTestBehavior.opaque,
+                          child: Opacity(
+                            opacity: replySending ? 0.45 : 1,
+                            child: Container(
+                              width: 44,
+                              height: 44,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: AppColors.black.withValues(alpha: 0.35),
+                              ),
+                              alignment: Alignment.center,
+                              child: const AppIcon(
+                                AssetPaths.iconChatSend,
+                                size: 20,
+                                color: AppColors.white,
+                              ),
                             ),
                           ),
                         ),
-                        if (item.isVerified) ...[
-                          const SizedBox(width: 6),
-                          const AppIcon(AssetPaths.iconVerify, size: 18),
-                        ],
-                      ],
-                    ),
+                      );
+                    },
                   ),
-                  if (item.caption.trim().isNotEmpty) ...[
-                    const SizedBox(height: 10),
-                    Text(
-                      item.caption,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w500,
-                        height: 1,
-                        letterSpacing: -0.28,
-                        color: AppColors.white.withValues(alpha: 0.65),
-                      ),
-                    ),
-                  ],
                 ],
               ),
-            ),
-            const SizedBox(width: 12),
-            _LikeButton(
-              liked: liked,
-              likeCount: likeCount,
-              showCount: showLikeCount,
-              onLike: onLike,
-            ),
+            ],
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _StoryReplyField extends StatelessWidget {
+  const _StoryReplyField({
+    required this.controller,
+    required this.focusNode,
+    required this.enabled,
+    required this.onSubmit,
+  });
+
+  final TextEditingController controller;
+  final FocusNode focusNode;
+  final bool enabled;
+  final VoidCallback onSubmit;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 50,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: AppColors.black.withValues(alpha: 0.40),
+          borderRadius: BorderRadius.circular(999),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          child: TextField(
+            controller: controller,
+            focusNode: focusNode,
+            enabled: enabled,
+            maxLines: 1,
+            textInputAction: TextInputAction.send,
+            cursorColor: AppColors.white,
+            style: const TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w400,
+              height: 20 / 14,
+              letterSpacing: -0.28,
+              color: AppColors.white,
+            ),
+            decoration: InputDecoration(
+              isDense: true,
+              border: InputBorder.none,
+              hintText: 'story_send_message'.tr(),
+              hintStyle: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w400,
+                height: 20 / 14,
+                letterSpacing: -0.28,
+                color: AppColors.white,
+              ),
+              contentPadding: EdgeInsets.zero,
+            ),
+            onSubmitted: (_) => onSubmit(),
+          ),
         ),
       ),
     );

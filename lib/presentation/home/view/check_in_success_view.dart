@@ -211,6 +211,29 @@ class CheckInSuccessView extends StatelessWidget {
       }
     }
 
+    final stampOffer = args.stampOffer;
+    if (stampOffer != null && context.mounted) {
+      final stampResult = await showCheckInUnlockStampSheet(
+        context,
+        stamp: StampItem(
+          id: stampOffer.stampId,
+          title: stampOffer.name,
+          imagePath: stampOffer.imageUrl,
+        ),
+      );
+      final checkInId = args.checkInId?.trim();
+      if (stampResult != null &&
+          checkInId != null &&
+          checkInId.isNotEmpty) {
+        try {
+          await getIt<UserRepository>().acceptStampOffer(checkInId);
+          reward ??= stampResult;
+        } catch (_) {
+          // Keep coins locally if the spend call fails.
+        }
+      }
+    }
+
     if (!context.mounted) return;
     if (reward != null) {
       getIt<UserRepository>().setActiveMapCheckIn(
@@ -219,9 +242,7 @@ class CheckInSuccessView extends StatelessWidget {
               reward.stamp?.imagePath ??
               reward.titleImagePath ??
               AssetPaths.stamp16,
-          photoPaths: args.photoPaths.isNotEmpty
-              ? args.photoPaths
-              : const [AssetPaths.mapSecondAvatar],
+          photoPaths: args.photoPaths,
           placeName: args.placeName,
           checkedAt: DateTime.now(),
           titleLabel: reward.titleLabel,
@@ -242,9 +263,7 @@ class CheckInSuccessView extends StatelessWidget {
       getIt<UserRepository>().setActiveMapCheckIn(
         ActiveMapCheckIn(
           stampImagePath: AssetPaths.stamp16,
-          photoPaths: args.photoPaths.isNotEmpty
-              ? args.photoPaths
-              : const [AssetPaths.mapSecondAvatar],
+          photoPaths: args.photoPaths,
           placeName: args.placeName,
           checkedAt: DateTime.now(),
           avatarPath: getIt<UserRepository>()

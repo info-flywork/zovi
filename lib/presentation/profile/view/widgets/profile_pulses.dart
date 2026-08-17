@@ -51,11 +51,15 @@ class ProfilePulses extends StatelessWidget {
                       imagePath: pulse.imagePath,
                       heroTag:
                           'pulse_${pulse.id.isNotEmpty ? pulse.id : pulse.imagePath}',
+                      isVideo: pulse.isVideo,
                     ),
                     child: Hero(
                       tag:
                           'pulse_${pulse.id.isNotEmpty ? pulse.id : pulse.imagePath}',
-                      child: _PulseCard(imagePath: pulse.imagePath),
+                      child: _PulseCard(
+                        imagePath: pulse.imagePath,
+                        isVideo: pulse.isVideo,
+                      ),
                     ),
                   ),
                 ),
@@ -139,9 +143,10 @@ class _EmptyTabState extends StatelessWidget {
 }
 
 class _PulseCard extends StatelessWidget {
-  const _PulseCard({required this.imagePath});
+  const _PulseCard({required this.imagePath, this.isVideo = false});
 
   final String imagePath;
+  final bool isVideo;
 
   bool get _isNetwork =>
       imagePath.startsWith('http://') || imagePath.startsWith('https://');
@@ -182,7 +187,23 @@ class _PulseCard extends StatelessWidget {
 
     return ClipRRect(
       borderRadius: BorderRadius.circular(12),
-      child: image,
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          if (isVideo)
+            const ColoredBox(color: AppColors.black)
+          else
+            image,
+          if (isVideo)
+            const Align(
+              alignment: Alignment.topRight,
+              child: Padding(
+                padding: EdgeInsets.all(8),
+                child: AppIcon(AssetPaths.iconReelsSquare, size: 20),
+              ),
+            ),
+        ],
+      ),
     );
   }
 }

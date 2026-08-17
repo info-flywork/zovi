@@ -67,8 +67,9 @@ class _UserProfileViewState extends State<UserProfileView>
 
     // İlk frame'de cache varsa shimmer hiç görünmesin.
     if (_user.canSeeFriendContent) {
-      final cached =
-          getIt<UserRepository>().peekFriendSections(_user.usernameHandle);
+      final cached = getIt<UserRepository>().peekFriendSections(
+        _user.usernameHandle,
+      );
       if (cached != null) {
         _plans = cached.plans;
         _pulses = cached.pulses;
@@ -464,9 +465,9 @@ class _UserProfileViewState extends State<UserProfileView>
       return true;
     } catch (_) {
       if (!mounted) return false;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('error_profile_save_failed'.tr())),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('error_profile_save_failed'.tr())));
       return false;
     }
   }
@@ -1324,14 +1325,6 @@ class _UserPlans extends StatelessWidget {
 
   final List<PlanItem> plans;
 
-  static String _localizedFriendsLabel(String friendsLabel) {
-    final match = RegExp(r'^(\d+)').firstMatch(friendsLabel.trim());
-    if (match != null) {
-      return 'friends_are_joining'.tr(namedArgs: {'count': match.group(1)!});
-    }
-    return friendsLabel;
-  }
-
   @override
   Widget build(BuildContext context) {
     return Padding(
@@ -1376,6 +1369,11 @@ class _UserPlanCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final hasFriends = plan.hasJoiningFriends;
+    final friendsText = hasFriends
+        ? 'friends_are_joining'.tr(namedArgs: {'count': plan.friendsLabel})
+        : 'no_friends_joining'.tr();
+
     return Container(
       padding: const EdgeInsets.fromLTRB(8, 16, 8, 16),
       decoration: BoxDecoration(
@@ -1430,10 +1428,12 @@ class _UserPlanCard extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 10),
-          _UserPlanOverlappingAvatars(avatars: plan.friendAvatars),
-          const SizedBox(width: 6),
+          if (hasFriends) ...[
+            OverlappingProfileAvatars(avatars: plan.friendAvatars, overlap: 12),
+            const SizedBox(width: 6),
+          ],
           Text(
-            _UserPlans._localizedFriendsLabel(plan.friendsLabel),
+            friendsText,
             textAlign: TextAlign.center,
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
@@ -1445,44 +1445,6 @@ class _UserPlanCard extends StatelessWidget {
               color: AppColors.deepRoast.withValues(alpha: 0.65),
             ),
           ),
-        ],
-      ),
-    );
-  }
-}
-
-class _UserPlanOverlappingAvatars extends StatelessWidget {
-  const _UserPlanOverlappingAvatars({required this.avatars});
-
-  final List<String> avatars;
-
-  @override
-  Widget build(BuildContext context) {
-    const size = 34.0;
-    const overlap = 12.0;
-    final shown = avatars.take(3).toList();
-    final width = size + (shown.length - 1) * (size - overlap);
-
-    return SizedBox(
-      width: width,
-      height: size,
-      child: Stack(
-        children: [
-          for (var i = 0; i < shown.length; i++)
-            Positioned(
-              left: i * (size - overlap),
-              child: Container(
-                width: size,
-                height: size,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  border: Border.all(color: AppColors.white, width: 3),
-                ),
-                child: ClipOval(
-                  child: Image.asset(shown[i], fit: BoxFit.cover),
-                ),
-              ),
-            ),
         ],
       ),
     );
@@ -1627,13 +1589,17 @@ class _PulseStrip extends StatelessWidget {
                       imagePath: pulse.imagePath,
                       heroTag:
                           'user_pulse_${pulse.id.isNotEmpty ? pulse.id : pulse.imagePath}',
+                      isVideo: pulse.isVideo,
                     ),
                     child: Hero(
                       tag:
                           'user_pulse_${pulse.id.isNotEmpty ? pulse.id : pulse.imagePath}',
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(12),
-                        child: _PulseNetworkImage(path: pulse.imagePath),
+                        child: _PulseNetworkImage(
+                          path: pulse.imagePath,
+                          isVideo: pulse.isVideo,
+                        ),
                       ),
                     ),
                   ),
@@ -1647,36 +1613,54 @@ class _PulseStrip extends StatelessWidget {
 }
 
 class _PulseNetworkImage extends StatelessWidget {
-  const _PulseNetworkImage({required this.path});
+  const _PulseNetworkImage({required this.path, this.isVideo = false});
 
   final String path;
+  final bool isVideo;
 
   @override
   Widget build(BuildContext context) {
-    if (path.startsWith('http://') || path.startsWith('https://')) {
-      return Image.network(
+    final Widget image;
+    if (isVideo) {
+      image = const ColoredBox(color: AppColors.black);
+    } else if (path.startsWith('http://') || path.startsWith('https://')) {
+      image = Image.network(
         path,
         fit: BoxFit.cover,
-        errorBuilder: (_, __, ___) =>
+        errorBuilder: (_, _, _) =>
             const ColoredBox(color: AppColors.surfaceGray),
       );
-    }
-    if (path.startsWith('/') || path.startsWith('file:')) {
-      return Image.file(
+    } else if (path.startsWith('/') || path.startsWith('file:')) {
+      image = Image.file(
         File(path.replaceFirst('file://', '')),
         fit: BoxFit.cover,
-        errorBuilder: (_, __, ___) =>
+        errorBuilder: (_, _, _) =>
+            const ColoredBox(color: AppColors.surfaceGray),
+      );
+    } else if (path.isEmpty) {
+      image = const ColoredBox(color: AppColors.surfaceGray);
+    } else {
+      image = Image.asset(
+        path,
+        fit: BoxFit.cover,
+        errorBuilder: (_, _, _) =>
             const ColoredBox(color: AppColors.surfaceGray),
       );
     }
-    if (path.isEmpty) {
-      return const ColoredBox(color: AppColors.surfaceGray);
-    }
-    return Image.asset(
-      path,
-      fit: BoxFit.cover,
-      errorBuilder: (_, __, ___) =>
-          const ColoredBox(color: AppColors.surfaceGray),
+
+    if (!isVideo) return image;
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        image,
+        const Align(
+          alignment: Alignment.topRight,
+          child: Padding(
+            padding: EdgeInsets.all(8),
+            child: AppIcon(AssetPaths.iconReelsSquare, size: 20),
+          ),
+        ),
+      ],
     );
   }
 }

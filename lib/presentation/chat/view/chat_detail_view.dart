@@ -18,6 +18,7 @@ import 'package:zovi/core/snackbar/app_snackbar.dart';
 import 'package:zovi/core/theme/app_colors.dart';
 import 'package:zovi/core/utils/constants/asset_paths.dart';
 import 'package:zovi/core/utils/enum/route_paths.dart';
+import 'package:zovi/core/utils/navigation/open_story_by_id.dart';
 import 'package:zovi/core/utils/navigation/open_user_profile.dart';
 import 'package:zovi/core/widgets/app_confirm_dialog.dart';
 import 'package:zovi/core/widgets/app_icon.dart';
@@ -26,6 +27,7 @@ import 'package:zovi/core/widgets/stamp_image.dart';
 import 'package:zovi/domain/auth/auth_repository.dart';
 import 'package:zovi/domain/chat/chat_repository.dart';
 import 'package:zovi/domain/tribe/tribe_repository.dart';
+import 'package:zovi/domain/user/user_repository.dart';
 import 'package:zovi/presentation/chat/model/chat_detail_exit_store.dart';
 import 'package:zovi/presentation/chat/model/chat_detail_route_args.dart';
 import 'package:zovi/presentation/chat/model/group_info_route_args.dart';
@@ -53,7 +55,7 @@ class _ChatDetailViewState extends State<ChatDetailView> {
   final _messagesCache = getIt<ChatMessagesCache>();
   var _listKey = GlobalKey<AnimatedListState>();
 
-  late final List<_ChatMessage> _messages;
+  final List<_ChatMessage> _messages = [];
   var _hasText = false;
   var _isRecording = false;
   var _isRecordingPaused = false;
@@ -76,6 +78,7 @@ class _ChatDetailViewState extends State<ChatDetailView> {
   late int _memberCount;
   late String _avatarPath;
   late String _headerName;
+  List<TribeMember> _tribeMembers = const [];
 
   /// Only true on cold open (no memory cache) — never when reopening a thread.
   var _showShimmer = false;
@@ -109,10 +112,7 @@ class _ChatDetailViewState extends State<ChatDetailView> {
             cached.conversationId.isNotEmpty) {
           _conversationId = cached.conversationId;
         }
-        if (cached.memberCount > 0) {
-          _memberCount = cached.memberCount;
-        }
-        _applyGroupMetaFromTribe(cached);
+        _applyGroupMetaFromTribe(cached, notify: false);
       }
     }
 
@@ -127,12 +127,12 @@ class _ChatDetailViewState extends State<ChatDetailView> {
         }
       }
     }
-    _messages = [];
 
     // Paint cached bubbles immediately when reopening the same thread.
     final cachedId = _conversationId;
     if (cachedId != null && cachedId.isNotEmpty) {
       _hydrateFromCache(cachedId);
+      _fillMissingSenderMeta();
     }
     _showShimmer = _messages.isEmpty;
     if (_messages.isNotEmpty) {
@@ -158,7 +158,7 @@ class _ChatDetailViewState extends State<ChatDetailView> {
     );
   }
 
-  void _applyGroupMetaFromTribe(Tribe? tribe) {
+  void _applyGroupMetaFromTribe(Tribe? tribe, {bool notify = true}) {
     if (!widget.args.isGroup || tribe == null) return;
     var changed = false;
     if (tribe.avatars.isNotEmpty) {
@@ -173,7 +173,85 @@ class _ChatDetailViewState extends State<ChatDetailView> {
       _headerName = nextName;
       changed = true;
     }
-    if (changed && mounted) setState(() {});
+    if (tribe.memberCount > 0 && tribe.memberCount != _memberCount) {
+      _memberCount = tribe.memberCount;
+      changed = true;
+    }
+    if (tribe.members.isNotEmpty) {
+      _tribeMembers = tribe.members;
+      if (_fillMissingSenderMeta()) changed = true;
+    }
+    if (changed && notify && mounted) setState(() {});
+  }
+
+  TribeMember? _memberForSender(String senderId) {
+    final id = senderId.trim();
+    if (id.isEmpty) return null;
+    for (final member in _tribeMembers) {
+      if (member.userId == id) return member;
+    }
+    return null;
+  }
+
+  /// Backfill name/avatar/username from tribe members when cache/API omitted them.
+  bool _fillMissingSenderMeta() {
+    if (!widget.args.isGroup || _tribeMembers.isEmpty || _messages.isEmpty) {
+      return false;
+    }
+    var changed = false;
+    final next = <_ChatMessage>[];
+    for (final message in _messages) {
+      if (message.isMine) {
+        next.add(message);
+        continue;
+      }
+      final member = _memberForSender(message.senderId ?? '');
+      if (member == null) {
+        next.add(message);
+        continue;
+      }
+      final needsName = message.senderName?.trim().isEmpty ?? true;
+      final needsUser = message.senderUsername?.trim().isEmpty ?? true;
+      final needsAvatar = message.senderAvatarPath?.trim().isEmpty ?? true;
+      if (!needsName && !needsUser && !needsAvatar) {
+        next.add(message);
+        continue;
+      }
+      final memberName = member.name.trim().isNotEmpty
+          ? member.name.trim()
+          : member.username.trim();
+      changed = true;
+      next.add(
+        message.copyWith(
+          senderName: needsName && memberName.isNotEmpty
+              ? memberName
+              : message.senderName,
+          senderUsername: needsUser && member.username.trim().isNotEmpty
+              ? member.username.trim()
+              : message.senderUsername,
+          senderAvatarPath: needsAvatar && member.avatarUrl.trim().isNotEmpty
+              ? member.avatarUrl.trim()
+              : message.senderAvatarPath,
+        ),
+      );
+    }
+    if (!changed) return false;
+    _messages
+      ..clear()
+      ..addAll(next);
+    _persistMessagesToCache();
+    return true;
+  }
+
+  bool _groupCacheMissingSenders() {
+    if (!widget.args.isGroup) return false;
+    for (final message in _messages) {
+      if (message.isMine) continue;
+      final hasLabel = (message.senderName?.trim().isNotEmpty ?? false) ||
+          (message.senderUsername?.trim().isNotEmpty ?? false);
+      if (!hasLabel) return true;
+    }
+    return false;
   }
 
   @override
@@ -281,7 +359,6 @@ class _ChatDetailViewState extends State<ChatDetailView> {
           detail != null &&
           detail.conversationId.isNotEmpty) {
         conversationId = detail.conversationId;
-        if (mounted) setState(() => _memberCount = detail!.memberCount);
         _applyGroupMetaFromTribe(detail);
       }
 
@@ -292,14 +369,12 @@ class _ChatDetailViewState extends State<ChatDetailView> {
         final resolved = detail?.conversationId.trim() ?? '';
         if (resolved.isNotEmpty) conversationId = resolved;
         if (detail != null && mounted) {
-          setState(() => _memberCount = detail!.memberCount);
           _applyGroupMetaFromTribe(detail);
         }
       } else if (tribeId.isNotEmpty) {
         unawaited(
           tribes.refreshTribeDetail(tribeId).then((fresh) {
             if (!mounted || fresh == null) return;
-            setState(() => _memberCount = fresh.memberCount);
             _applyGroupMetaFromTribe(fresh);
           }),
         );
@@ -313,7 +388,8 @@ class _ChatDetailViewState extends State<ChatDetailView> {
       ActiveChatTracker.instance.enter(conversationId: conversationId);
 
       final hadCache = _hydrateFromCache(conversationId);
-      if (hadCache) {
+      final cacheOk = hadCache && !_groupCacheMissingSenders();
+      if (cacheOk) {
         if (mounted) {
           setState(() => _showShimmer = false);
           _scrollToBottom();
@@ -380,6 +456,18 @@ class _ChatDetailViewState extends State<ChatDetailView> {
         voiceDuration = Duration(milliseconds: ms);
       }
     }
+    final mine = myId.isNotEmpty && m.senderId == myId;
+    final storyReply = m.isStoryReply;
+    final member = mine ? null : _memberForSender(m.senderId);
+    final apiName = m.senderName.trim();
+    final apiUsername = m.senderUsername.trim();
+    final apiAvatar = m.senderAvatarUrl.trim();
+    final memberName = (member?.name.trim().isNotEmpty ?? false)
+        ? member!.name.trim()
+        : (member?.username.trim() ?? '');
+    final memberUsername = member?.username.trim() ?? '';
+    final memberAvatar = member?.avatarUrl.trim() ?? '';
+
     return _ChatMessage(
       id: m.id,
       text: m.type == 'text' ? m.body : null,
@@ -389,28 +477,39 @@ class _ChatDetailViewState extends State<ChatDetailView> {
       imagePath: m.type == 'image' ? m.mediaUrl : null,
       voicePath: m.type == 'voice' ? m.mediaUrl : null,
       voiceDuration: voiceDuration,
-      isMine: myId.isNotEmpty && m.senderId == myId,
-      senderName: myId.isNotEmpty && m.senderId == myId
+      isMine: mine,
+      senderId: m.senderId.trim().isEmpty ? null : m.senderId.trim(),
+      senderName: mine
           ? null
-          : (m.senderName.trim().isNotEmpty
-                ? m.senderName.trim()
-                : (m.senderUsername.trim().isNotEmpty
-                      ? m.senderUsername.trim()
-                      : (widget.args.isGroup ? null : widget.args.name))),
-      senderUsername: myId.isNotEmpty && m.senderId == myId
+          : (apiName.isNotEmpty
+                ? apiName
+                : (apiUsername.isNotEmpty
+                      ? apiUsername
+                      : (memberName.isNotEmpty
+                            ? memberName
+                            : (widget.args.isGroup ? null : widget.args.name)))),
+      senderUsername: mine
           ? null
-          : (m.senderUsername.trim().isNotEmpty
-                ? m.senderUsername.trim()
-                : null),
-      senderAvatarPath: myId.isNotEmpty && m.senderId == myId
+          : (apiUsername.isNotEmpty
+                ? apiUsername
+                : (memberUsername.isNotEmpty ? memberUsername : null)),
+      senderAvatarPath: mine
           ? null
-          : (m.senderAvatarUrl.trim().isNotEmpty
-                ? m.senderAvatarUrl.trim()
-                : _avatarPath),
+          : (apiAvatar.isNotEmpty
+                ? apiAvatar
+                : (memberAvatar.isNotEmpty
+                      ? memberAvatar
+                      : (widget.args.isGroup ? null : _avatarPath))),
       createdAt: m.createdAt,
-      replyToId: m.replyToMessageId,
-      replyToText: m.replyPreview.trim().isEmpty ? null : m.replyPreview,
-      replyToIsMine: replyMine,
+      replyToId: storyReply ? null : m.replyToMessageId,
+      replyToText: storyReply || m.replyPreview.trim().isEmpty
+          ? null
+          : m.replyPreview,
+      replyToIsMine: storyReply ? null : replyMine,
+      storyReplyMediaUrl: storyReply && m.mediaUrl.trim().isNotEmpty
+          ? m.mediaUrl.trim()
+          : null,
+      storyReplyRef: storyReply ? m.replyPreview.trim() : null,
     );
   }
 
@@ -488,21 +587,7 @@ class _ChatDetailViewState extends State<ChatDetailView> {
               byId[m.replyToId] == null)
             m
           else
-            _ChatMessage(
-              id: m.id,
-              text: m.text,
-              stampPath: m.stampPath,
-              imagePath: m.imagePath,
-              voicePath: m.voicePath,
-              voiceDuration: m.voiceDuration,
-              senderName: m.senderName,
-              senderAvatarPath: m.senderAvatarPath,
-              createdAt: m.createdAt,
-              replyToId: m.replyToId,
-              replyToText: m.replyToText,
-              replyToIsMine: byId[m.replyToId]!.isMine,
-              isMine: m.isMine,
-            ),
+            m.copyWith(replyToIsMine: byId[m.replyToId]!.isMine),
       ];
 
       final pendingLocals = [
@@ -569,7 +654,11 @@ class _ChatDetailViewState extends State<ChatDetailView> {
           ChatMessage(
             id: m.id!,
             conversationId: conversationId,
-            senderId: m.isMine ? myId : (_peerUserId ?? ''),
+            senderId: m.isMine
+                ? myId
+                : ((m.senderId ?? '').trim().isNotEmpty
+                      ? m.senderId!.trim()
+                      : (_peerUserId ?? '')),
             type: m.isStamp
                 ? 'stamp'
                 : m.isImage
@@ -580,10 +669,19 @@ class _ChatDetailViewState extends State<ChatDetailView> {
             body: m.isVoice
                 ? '${m.voiceDuration?.inMilliseconds ?? 0}'
                 : (m.text ?? ''),
-            mediaUrl: m.stampPath ?? m.imagePath ?? m.voicePath ?? '',
+            mediaUrl: m.storyReplyMediaUrl ??
+                m.stampPath ??
+                m.imagePath ??
+                m.voicePath ??
+                '',
             createdAt: m.createdAt,
             replyToMessageId: m.replyToId,
-            replyPreview: m.replyToText ?? '',
+            replyPreview: m.isStoryReply
+                ? (m.storyReplyRef ?? 'story')
+                : (m.replyToText ?? ''),
+            senderName: m.senderName ?? '',
+            senderUsername: m.senderUsername ?? '',
+            senderAvatarUrl: m.senderAvatarPath ?? '',
           ),
     ];
     if (remote.isEmpty) return;
@@ -626,6 +724,10 @@ class _ChatDetailViewState extends State<ChatDetailView> {
               username: widget.args.username,
               isGroup: widget.args.isGroup,
               peerName: widget.args.name,
+              peerUserId: _peerUserId ?? widget.args.userId,
+              myUserId: _myUserId ??
+                  getIt<AuthRepository>().backendUserId ??
+                  '',
             ),
           ),
         ),
@@ -1026,37 +1128,16 @@ class _ChatDetailViewState extends State<ChatDetailView> {
         (_myUserId ?? getIt<AuthRepository>().backendUserId ?? '').trim(),
       );
       // Keep local duration if server body didn't carry it.
-      final resolved = mapped.voiceDuration == null && voiceDuration != null
-          ? _ChatMessage(
-              id: mapped.id,
-              text: mapped.text,
-              stampPath: mapped.stampPath,
-              imagePath: mapped.imagePath,
-              voicePath: mapped.voicePath,
-              voiceDuration: voiceDuration,
-              senderName: mapped.senderName,
-              senderAvatarPath: mapped.senderAvatarPath,
-              createdAt: mapped.createdAt,
-              replyToId: mapped.replyToId ?? optimistic.replyToId,
-              replyToText: mapped.replyToText ?? optimistic.replyToText,
-              replyToIsMine: mapped.replyToIsMine ?? optimistic.replyToIsMine,
-              isMine: true,
-            )
-          : _ChatMessage(
-              id: mapped.id,
-              text: mapped.text,
-              stampPath: mapped.stampPath ?? optimistic.stampPath,
-              imagePath: mapped.imagePath ?? optimistic.imagePath,
-              voicePath: mapped.voicePath ?? optimistic.voicePath,
-              voiceDuration: mapped.voiceDuration ?? voiceDuration,
-              senderName: mapped.senderName,
-              senderAvatarPath: mapped.senderAvatarPath,
-              createdAt: mapped.createdAt,
-              replyToId: mapped.replyToId ?? optimistic.replyToId,
-              replyToText: mapped.replyToText ?? optimistic.replyToText,
-              replyToIsMine: mapped.replyToIsMine ?? optimistic.replyToIsMine,
-              isMine: true,
-            );
+      final resolved = mapped.copyWith(
+        stampPath: mapped.stampPath ?? optimistic.stampPath,
+        imagePath: mapped.imagePath ?? optimistic.imagePath,
+        voicePath: mapped.voicePath ?? optimistic.voicePath,
+        voiceDuration: mapped.voiceDuration ?? voiceDuration,
+        replyToId: mapped.replyToId ?? optimistic.replyToId,
+        replyToText: mapped.replyToText ?? optimistic.replyToText,
+        replyToIsMine: mapped.replyToIsMine ?? optimistic.replyToIsMine,
+        isMine: true,
+      );
 
       final idx = _messages.indexWhere((m) => m.id == optimistic.id);
       final already = _messages.any((m) => m.id == saved.id);
@@ -1334,6 +1415,10 @@ class _ChatDetailViewState extends State<ChatDetailView> {
                                 username: widget.args.username,
                                 isGroup: widget.args.isGroup,
                                 peerName: widget.args.name,
+                                peerUserId: _peerUserId ?? widget.args.userId,
+                                myUserId: _myUserId ??
+                                    getIt<AuthRepository>().backendUserId ??
+                                    '',
                               ),
                             ),
                           ),
@@ -1391,6 +1476,7 @@ class _ChatMessage {
     this.imagePath,
     this.voicePath,
     this.voiceDuration,
+    this.senderId,
     this.senderName,
     this.senderUsername,
     this.senderAvatarPath,
@@ -1398,6 +1484,8 @@ class _ChatMessage {
     this.replyToId,
     this.replyToText,
     this.replyToIsMine,
+    this.storyReplyMediaUrl,
+    this.storyReplyRef,
     required this.isMine,
   });
 
@@ -1407,6 +1495,7 @@ class _ChatMessage {
   final String? imagePath;
   final String? voicePath;
   final Duration? voiceDuration;
+  final String? senderId;
   final String? senderName;
   final String? senderUsername;
   final String? senderAvatarPath;
@@ -1414,14 +1503,60 @@ class _ChatMessage {
   final String? replyToId;
   final String? replyToText;
   final bool? replyToIsMine;
+  final String? storyReplyMediaUrl;
+  final String? storyReplyRef;
   final bool isMine;
 
   bool get isStamp => stampPath != null;
   bool get isImage => imagePath != null;
   bool get isVoice => voicePath != null;
+  bool get isStoryReply =>
+      (storyReplyRef?.trim().isNotEmpty ?? false) ||
+      (storyReplyMediaUrl?.trim().isNotEmpty ?? false);
   bool get hasReply =>
-      (replyToText?.trim().isNotEmpty ?? false) ||
-      (replyToId?.trim().isNotEmpty ?? false);
+      !isStoryReply &&
+      ((replyToText?.trim().isNotEmpty ?? false) ||
+          (replyToId?.trim().isNotEmpty ?? false));
+
+  _ChatMessage copyWith({
+    String? id,
+    String? text,
+    String? stampPath,
+    String? imagePath,
+    String? voicePath,
+    Duration? voiceDuration,
+    String? senderId,
+    String? senderName,
+    String? senderUsername,
+    String? senderAvatarPath,
+    DateTime? createdAt,
+    String? replyToId,
+    String? replyToText,
+    bool? replyToIsMine,
+    String? storyReplyMediaUrl,
+    String? storyReplyRef,
+    bool? isMine,
+  }) {
+    return _ChatMessage(
+      id: id ?? this.id,
+      text: text ?? this.text,
+      stampPath: stampPath ?? this.stampPath,
+      imagePath: imagePath ?? this.imagePath,
+      voicePath: voicePath ?? this.voicePath,
+      voiceDuration: voiceDuration ?? this.voiceDuration,
+      senderId: senderId ?? this.senderId,
+      senderName: senderName ?? this.senderName,
+      senderUsername: senderUsername ?? this.senderUsername,
+      senderAvatarPath: senderAvatarPath ?? this.senderAvatarPath,
+      createdAt: createdAt ?? this.createdAt,
+      replyToId: replyToId ?? this.replyToId,
+      replyToText: replyToText ?? this.replyToText,
+      replyToIsMine: replyToIsMine ?? this.replyToIsMine,
+      storyReplyMediaUrl: storyReplyMediaUrl ?? this.storyReplyMediaUrl,
+      storyReplyRef: storyReplyRef ?? this.storyReplyRef,
+      isMine: isMine ?? this.isMine,
+    );
+  }
 }
 
 class _ChatMessagesShimmer extends StatelessWidget {
@@ -1659,6 +1794,89 @@ class _ReplyComposerBar extends StatelessWidget {
   }
 }
 
+class _StoryReplyQuote extends StatelessWidget {
+  const _StoryReplyQuote({
+    required this.mediaUrl,
+    required this.isMineBubble,
+    this.onTap,
+  });
+
+  final String mediaUrl;
+  final bool isMineBubble;
+  final ValueChanged<BuildContext>? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final labelColor = isMineBubble
+        ? AppColors.white.withValues(alpha: 0.95)
+        : AppColors.zoviOrange;
+    final barColor = isMineBubble
+        ? AppColors.white.withValues(alpha: 0.85)
+        : AppColors.zoviOrange;
+
+    return GestureDetector(
+      onTap: onTap == null ? null : () => onTap!(context),
+      behavior: HitTestBehavior.opaque,
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(8, 8, 10, 8),
+        decoration: BoxDecoration(
+          color: isMineBubble
+              ? AppColors.black.withValues(alpha: 0.12)
+              : AppColors.white.withValues(alpha: 0.7),
+          borderRadius: BorderRadius.circular(10),
+          border: Border(left: BorderSide(color: barColor, width: 3)),
+        ),
+        child: Row(
+          children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(6),
+              child: SizedBox(
+                width: 36,
+                height: 48,
+                child: mediaUrl.startsWith('http')
+                    ? Image.network(
+                        mediaUrl,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, _, _) => ColoredBox(
+                          color: AppColors.black.withValues(alpha: 0.25),
+                          child: const Icon(
+                            Icons.auto_stories_outlined,
+                            size: 18,
+                            color: AppColors.white,
+                          ),
+                        ),
+                      )
+                    : ColoredBox(
+                        color: AppColors.black.withValues(alpha: 0.25),
+                        child: const Icon(
+                          Icons.auto_stories_outlined,
+                          size: 18,
+                          color: AppColors.white,
+                        ),
+                      ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                'chat_replied_to_story'.tr(),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  height: 1.2,
+                  color: labelColor,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _QuotedReplyBlock extends StatelessWidget {
   const _QuotedReplyBlock({
     required this.preview,
@@ -1884,7 +2102,9 @@ class _ChatDetailHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final subtitle = args.isGroup
-        ? 'chat_member_count'.tr(namedArgs: {'count': '$memberCount'})
+        ? (memberCount > 0
+              ? 'chat_member_count'.tr(namedArgs: {'count': '$memberCount'})
+              : '')
         : (args.lastActive.trim().isEmpty
               ? ''
               : 'chat_active_ago'.tr(namedArgs: {'time': args.lastActive}));
@@ -1985,6 +2205,8 @@ class _MessageBubble extends StatelessWidget {
     required this.username,
     required this.isGroup,
     this.peerName = '',
+    this.peerUserId = '',
+    this.myUserId = '',
   });
 
   final _ChatMessage message;
@@ -1992,6 +2214,8 @@ class _MessageBubble extends StatelessWidget {
   final String username;
   final bool isGroup;
   final String peerName;
+  final String peerUserId;
+  final String myUserId;
 
   void _openMedia(
     BuildContext context, {
@@ -2009,17 +2233,45 @@ class _MessageBubble extends StatelessWidget {
     );
   }
 
+  void _openStoryReply(BuildContext context) {
+    final storyId = storyIdFromReplyPreview(message.storyReplyRef);
+    if (storyId == null || storyId.isEmpty) return;
+    final ownerId = message.isMine ? peerUserId.trim() : myUserId.trim();
+    if (ownerId.isEmpty) return;
+    unawaited(
+      openStoryById(context, storyId: storyId, ownerUserId: ownerId),
+    );
+  }
+
   Widget _wrapIncoming({required BuildContext context, required Widget child}) {
-    final senderAvatar = message.senderAvatarPath ?? avatarPath;
+    final senderAvatar = isGroup
+        ? (message.senderAvatarPath ?? '')
+        : (message.senderAvatarPath ?? avatarPath);
     final senderName = message.senderName;
-    final profileKey = isGroup
-        ? ((message.senderUsername?.trim().isNotEmpty ?? false)
-              ? message.senderUsername!.trim()
-              : (senderName ?? username))
-        : username;
+
+    void openSenderProfile() {
+      if (isGroup) {
+        final handle = message.senderUsername?.trim() ?? '';
+        if (handle.isEmpty) return;
+        unawaited(
+          openUserProfile(
+            context,
+            handle,
+            seed: PublicUserProfile.skeleton(
+              username: handle,
+              name: senderName ?? '',
+              avatarPath: senderAvatar,
+              userId: message.senderId ?? '',
+            ),
+          ),
+        );
+        return;
+      }
+      unawaited(openUserProfile(context, username));
+    }
 
     final avatar = GestureDetector(
-      onTap: () => openUserProfile(context, profileKey),
+      onTap: openSenderProfile,
       behavior: HitTestBehavior.opaque,
       child: ProfileAvatar(path: senderAvatar, size: 32),
     );
@@ -2051,7 +2303,7 @@ class _MessageBubble extends StatelessWidget {
               children: [
                 if (senderName != null && senderName.isNotEmpty) ...[
                   GestureDetector(
-                    onTap: () => openUserProfile(context, profileKey),
+                    onTap: openSenderProfile,
                     behavior: HitTestBehavior.opaque,
                     child: Text(
                       senderName,
@@ -2172,7 +2424,14 @@ class _MessageBubble extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                if (message.hasReply) ...[
+                if (message.isStoryReply) ...[
+                  _StoryReplyQuote(
+                    mediaUrl: message.storyReplyMediaUrl ?? '',
+                    isMineBubble: true,
+                    onTap: _openStoryReply,
+                  ),
+                  const SizedBox(height: 8),
+                ] else if (message.hasReply) ...[
                   _QuotedReplyBlock(
                     preview: message.replyToText ?? '',
                     label: message.replyToIsMine == true
@@ -2222,7 +2481,14 @@ class _MessageBubble extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                if (message.hasReply) ...[
+                if (message.isStoryReply) ...[
+                  _StoryReplyQuote(
+                    mediaUrl: message.storyReplyMediaUrl ?? '',
+                    isMineBubble: false,
+                    onTap: _openStoryReply,
+                  ),
+                  const SizedBox(height: 8),
+                ] else if (message.hasReply) ...[
                   _QuotedReplyBlock(
                     preview: message.replyToText ?? '',
                     label: message.replyToIsMine == true
@@ -2619,39 +2885,42 @@ class _ChatInputBarState extends State<_ChatInputBar>
                       ignoring: t > 0.5,
                       child: Opacity(
                         opacity: (1 - t).clamp(0.0, 1.0),
-                        child: Align(
-                          alignment: Alignment.centerRight,
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              GestureDetector(
-                                onTap: widget.onStickerTap,
-                                behavior: HitTestBehavior.opaque,
-                                child: const AppIcon(
-                                  AssetPaths.iconChatSticker,
-                                  size: 28,
+                        child: ClipRect(
+                          child: OverflowBox(
+                            maxWidth: _accessoriesWidth,
+                            alignment: Alignment.centerRight,
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                GestureDetector(
+                                  onTap: widget.onStickerTap,
+                                  behavior: HitTestBehavior.opaque,
+                                  child: const AppIcon(
+                                    AssetPaths.iconChatSticker,
+                                    size: 28,
+                                  ),
                                 ),
-                              ),
-                              const SizedBox(width: 10),
-                              GestureDetector(
-                                onTap: widget.onGalleryTap,
-                                behavior: HitTestBehavior.opaque,
-                                child: const AppIcon(
-                                  AssetPaths.iconChatGallery,
-                                  size: 24,
+                                const SizedBox(width: 10),
+                                GestureDetector(
+                                  onTap: widget.onGalleryTap,
+                                  behavior: HitTestBehavior.opaque,
+                                  child: const AppIcon(
+                                    AssetPaths.iconChatGallery,
+                                    size: 24,
+                                  ),
                                 ),
-                              ),
-                              const SizedBox(width: 10),
-                              GestureDetector(
-                                onTap: widget.onMicTap,
-                                behavior: HitTestBehavior.opaque,
-                                child: const AppIcon(
-                                  AssetPaths.iconChatMicrophone,
-                                  size: 24,
+                                const SizedBox(width: 10),
+                                GestureDetector(
+                                  onTap: widget.onMicTap,
+                                  behavior: HitTestBehavior.opaque,
+                                  child: const AppIcon(
+                                    AssetPaths.iconChatMicrophone,
+                                    size: 24,
+                                  ),
                                 ),
-                              ),
-                              const SizedBox(width: 4),
-                            ],
+                                const SizedBox(width: 4),
+                              ],
+                            ),
                           ),
                         ),
                       ),

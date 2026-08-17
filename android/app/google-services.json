@@ -14,6 +14,22 @@
       },
       "oauth_client": [
         {
+          "client_id": "226127781305-86v2d5lqdst396supl7i9hd741421cja.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.flywork.zovi",
+            "certificate_hash": "2624e2ca16c44d44b593e99bbbd2c8a990972834"
+          }
+        },
+        {
+          "client_id": "226127781305-gjtnai02hkitv1o7om7r7940qpgr1b7o.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.flywork.zovi",
+            "certificate_hash": "a7749f57b6d06b7a4a40a3f54651ee84374b9718"
+          }
+        },
+        {
           "client_id": "226127781305-5e4gb2jlk2ou56tu1lpve7043ri97e77.apps.googleusercontent.com",
           "client_type": 3
         }

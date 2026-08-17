@@ -47,36 +47,47 @@ class HomeMapCheckInMarker extends StatelessWidget {
   static const border = 3.0;
   static const stampSize = 36.0;
 
-  /// Foto solda, avatar sağda örtüşür.
+  /// Foto solda, avatar sağda örtüşür — yalnızca gerçek check-in fotoğrafı varken.
   static const photoLeft = 0.0;
   static const avatarLeft = 30.0;
   static const stampOffsetX = 34.0;
   static const stampOffsetY = 28.0;
 
-  static double get width => avatarLeft + avatarSize + 8;
+  static bool hasPhotos(List<String> paths) =>
+      paths.any((path) => path.trim().isNotEmpty);
+
+  static double widthFor({required bool hasPhoto}) =>
+      hasPhoto ? avatarLeft + avatarSize + 8 : avatarSize + 8;
+
+  static double get width => widthFor(hasPhoto: true);
   static double get height => avatarSize + 12;
+
+  bool get _hasPhoto => hasPhotos(photoPaths);
 
   @override
   Widget build(BuildContext context) {
+    final stacked = _hasPhoto;
+    final avatarX = stacked ? avatarLeft : 0.0;
     return SizedBox(
-      width: width,
+      width: widthFor(hasPhoto: stacked),
       height: height,
       child: Stack(
         clipBehavior: Clip.none,
         children: [
-          Positioned(
-            left: photoLeft + 7,
-            top: (avatarSize - photoSize) / 2,
-            child: CheckInCyclingPhoto(
-              paths: photoPaths,
-              size: photoSize,
-              shape: BoxShape.circle,
-              border: Border.all(color: AppColors.zoviOrange, width: border),
-              indexListenable: photoIndexListenable,
+          if (stacked)
+            Positioned(
+              left: photoLeft + 7,
+              top: (avatarSize - photoSize) / 2,
+              child: CheckInCyclingPhoto(
+                paths: photoPaths,
+                size: photoSize,
+                shape: BoxShape.circle,
+                border: Border.all(color: AppColors.zoviOrange, width: border),
+                indexListenable: photoIndexListenable,
+              ),
             ),
-          ),
           Positioned(
-            left: avatarLeft,
+            left: avatarX,
             top: 0,
             child: _CircleImage(
               path: avatarPath,
@@ -85,13 +96,12 @@ class HomeMapCheckInMarker extends StatelessWidget {
             ),
           ),
           Positioned(
-            left: avatarLeft + stampOffsetX,
+            left: avatarX + stampOffsetX,
             top: stampOffsetY,
-            child: Image.asset(
-              stampImagePath,
+            child: StampImage(
+              path: stampImagePath,
               width: stampSize,
               height: stampSize,
-              fit: BoxFit.contain,
             ),
           ),
         ],
@@ -130,31 +140,39 @@ class HomeMapTitleMarker extends StatelessWidget {
   static const pillHeight = 30.0;
   static const pillOverlap = 14.0;
 
-  static double get width =>
-      HomeMapCheckInMarker.width < 130 ? 130 : HomeMapCheckInMarker.width;
+  static double widthFor({required bool hasPhoto}) {
+    final stacked = HomeMapCheckInMarker.widthFor(hasPhoto: hasPhoto);
+    return stacked < 130 ? 130 : stacked;
+  }
+
+  static double get width => widthFor(hasPhoto: true);
   static double get height => avatarSize + pillHeight - pillOverlap;
+
+  bool get _hasPhoto => HomeMapCheckInMarker.hasPhotos(photoPaths);
 
   @override
   Widget build(BuildContext context) {
+    final stacked = _hasPhoto;
     return SizedBox(
-      width: width,
+      width: widthFor(hasPhoto: stacked),
       height: height,
       child: Stack(
         clipBehavior: Clip.none,
         children: [
-          Positioned(
-            left: photoLeft + 7,
-            top: (avatarSize - photoSize) / 2,
-            child: CheckInCyclingPhoto(
-              paths: photoPaths,
-              size: photoSize,
-              shape: BoxShape.circle,
-              border: Border.all(color: AppColors.zoviOrange, width: border),
-              indexListenable: photoIndexListenable,
+          if (stacked)
+            Positioned(
+              left: photoLeft + 7,
+              top: (avatarSize - photoSize) / 2,
+              child: CheckInCyclingPhoto(
+                paths: photoPaths,
+                size: photoSize,
+                shape: BoxShape.circle,
+                border: Border.all(color: AppColors.zoviOrange, width: border),
+                indexListenable: photoIndexListenable,
+              ),
             ),
-          ),
           Positioned(
-            left: avatarLeft,
+            left: stacked ? avatarLeft : (widthFor(hasPhoto: false) - avatarSize) / 2,
             top: 0,
             child: _CircleImage(
               path: avatarPath,
@@ -275,8 +293,10 @@ class _CheckInCyclingPhotoState extends State<CheckInCyclingPhoto> {
   var _localIndex = 0;
   Timer? _timer;
 
-  List<String> get _paths =>
-      widget.paths.isEmpty ? const [AssetPaths.mapSecondAvatar] : widget.paths;
+  List<String> get _paths => [
+        for (final path in widget.paths)
+          if (path.trim().isNotEmpty) path,
+      ];
 
   bool get _usesSharedIndex => widget.indexListenable != null;
 
@@ -325,6 +345,9 @@ class _CheckInCyclingPhotoState extends State<CheckInCyclingPhoto> {
 
   @override
   Widget build(BuildContext context) {
+    if (_paths.isEmpty) {
+      return SizedBox(width: widget.size, height: widget.size);
+    }
     final shared = widget.indexListenable?.value ?? 0;
     final index = (_usesSharedIndex ? shared : _localIndex) % _paths.length;
     final path = _paths[index];

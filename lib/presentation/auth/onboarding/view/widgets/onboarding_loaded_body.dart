@@ -33,81 +33,90 @@ class OnboardingLoadedBody extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const AuthProgressBar(activeIndex: 0, stepCount: 4),
-          const SizedBox(height: 20),
-          Text(
-            'onboarding_title'.tr(),
-            style: const TextStyle(
-              fontSize: 35,
-              fontWeight: FontWeight.w500,
-              height: 1.33,
-              letterSpacing: -0.72,
-              color: AppColors.deepRoast,
-            ),
-          ),
-          const SizedBox(height: 10),
-          Text(
-            'onboarding_subtitle'.tr(),
-            style: const TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w500,
-              color: AppColors.textSecondary,
-              letterSpacing: -0.32,
-            ),
-          ),
-          const SizedBox(height: 20),
-          OnboardingPhoneField(
-            phone: phone,
-            selectedCountry: selectedCountry,
-            onChanged: onPhoneChanged,
-            onCountryTap: () => onCountryTap(selectedCountry),
-          ),
-          const SizedBox(height: 16),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Container(
-                width: 65,
-                height: 1,
-                color: AppColors.textSecondary,
-              ),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 10),
-                child: Text(
-                  'or'.tr(),
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w500,
-                    height: 20 / 16,
-                    letterSpacing: -0.32,
-                    color: AppColors.textSecondary,
+          Expanded(
+            child: SingleChildScrollView(
+              keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const AuthProgressBar(activeIndex: 0, stepCount: 4),
+                  const SizedBox(height: 20),
+                  Text(
+                    'onboarding_title'.tr(),
+                    style: const TextStyle(
+                      fontSize: 35,
+                      fontWeight: FontWeight.w500,
+                      height: 1.33,
+                      letterSpacing: -0.72,
+                      color: AppColors.deepRoast,
+                    ),
                   ),
-                ),
+                  const SizedBox(height: 10),
+                  Text(
+                    'onboarding_subtitle'.tr(),
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
+                      color: AppColors.textSecondary,
+                      letterSpacing: -0.32,
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  OnboardingPhoneField(
+                    phone: phone,
+                    selectedCountry: selectedCountry,
+                    onChanged: onPhoneChanged,
+                    onCountryTap: () => onCountryTap(selectedCountry),
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Container(
+                        width: 65,
+                        height: 1,
+                        color: AppColors.textSecondary,
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 10),
+                        child: Text(
+                          'or'.tr(),
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w500,
+                            height: 20 / 16,
+                            letterSpacing: -0.32,
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                      ),
+                      Container(
+                        width: 65,
+                        height: 1,
+                        color: AppColors.textSecondary,
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  SocialLoginButton(
+                    label: 'continue_with_google'.tr(),
+                    iconPath: AssetPaths.iconGoogle,
+                    onTap: () {
+                      onGoogle();
+                    },
+                  ),
+                  const SizedBox(height: 10),
+                  SocialLoginButton(
+                    label: 'continue_with_apple'.tr(),
+                    iconPath: AssetPaths.iconApple,
+                    onTap: () {
+                      onApple();
+                    },
+                  ),
+                ],
               ),
-              Container(
-                width: 65,
-                height: 1,
-                color: AppColors.textSecondary,
-              ),
-            ],
+            ),
           ),
-          const SizedBox(height: 16),
-          SocialLoginButton(
-            label: 'continue_with_google'.tr(),
-            iconPath: AssetPaths.iconGoogle,
-            onTap: () {
-              onGoogle();
-            },
-          ),
-          const SizedBox(height: 10),
-          SocialLoginButton(
-            label: 'continue_with_apple'.tr(),
-            iconPath: AssetPaths.iconApple,
-            onTap: () {
-              onApple();
-            },
-          ),
-          const Spacer(),
           Text.rich(
             TextSpan(
               style: const TextStyle(

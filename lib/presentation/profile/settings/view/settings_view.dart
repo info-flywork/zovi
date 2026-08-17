@@ -366,7 +366,7 @@ class _SettingsViewState extends State<SettingsView>
 }
 
 class _SettingsHeader extends StatelessWidget {
-  _SettingsHeader();
+  const _SettingsHeader();
 
   @override
   Widget build(BuildContext context) {

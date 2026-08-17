@@ -20,7 +20,7 @@ mixin StoriesViewMixin on State<StoriesView> {
   }
 
   void onSendTap() {
-    context.push(RoutePaths.chat.path);
+    context.go(RoutePaths.chat.path);
   }
 
   Future<void> onOpenStory(List<StoryMediaItem> items, int index) async {
@@ -31,7 +31,5 @@ mixin StoriesViewMixin on State<StoriesView> {
         initialIndex: index,
       ),
     );
-    if (!mounted) return;
-    context.read<StoriesBloc>().add(const StoriesRefreshRequested());
   }
 }

@@ -22,4 +22,7 @@ final class AddPlanPlace {
   final double lng;
 
   bool get hasCoordinates => lat != 0 || lng != 0;
+
+  bool get hasJoiningFriends =>
+      friendAvatars.isNotEmpty || (int.tryParse(friendsLabel.trim()) ?? 0) > 0;
 }

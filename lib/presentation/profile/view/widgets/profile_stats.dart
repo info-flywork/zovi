@@ -1,11 +1,19 @@
 part of '../profile_view.dart';
 
 class ProfileStats extends StatelessWidget {
-  const ProfileStats({required this.user, super.key});
+  const ProfileStats({
+    required this.user,
+    this.onCheckInTap,
+    this.onBeforeNavigation,
+    super.key,
+  });
 
   final UserProfile user;
+  final VoidCallback? onCheckInTap;
+  final VoidCallback? onBeforeNavigation;
 
   void _openConnections(BuildContext context, ProfileConnectionsTab tab) {
+    onBeforeNavigation?.call();
     final userId = getIt<AuthRepository>().backendUserId?.trim() ?? '';
     final bloc = context.read<ProfileBloc>();
     context
@@ -77,7 +85,11 @@ class ProfileStats extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       child: Row(
         children: [
-          card(value: '${user.checkIns}', label: 'stat_check_in'.tr()),
+          card(
+            value: '${user.checkIns}',
+            label: 'stat_check_in'.tr(),
+            onTap: onCheckInTap,
+          ),
           const SizedBox(width: 10),
           card(
             value: '${user.followers}',

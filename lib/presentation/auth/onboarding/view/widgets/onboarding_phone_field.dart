@@ -143,6 +143,8 @@ class _OnboardingPhoneFieldState extends State<OnboardingPhoneField> {
                   controller: _controller,
                   keyboardType: TextInputType.number,
                   inputFormatters: [_formatter],
+                  onTapOutside: (_) =>
+                      FocusManager.instance.primaryFocus?.unfocus(),
                   onChanged: _handleChanged,
                   decoration: InputDecoration(
                     hintText: _format.example,

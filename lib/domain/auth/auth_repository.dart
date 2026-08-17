@@ -62,7 +62,9 @@ class AuthRepository {
   List<StampCatalogItem>? _cachedMyStamps;
   List<UserStickerItem>? _cachedMyStickers;
   List<StampCatalogItem>? _cachedOwnedPickerStamps;
-  final _followingCache = <String, ({List<ConnectionUser> users, DateTime at})>{};
+  List<Map<String, dynamic>>? _explorePulsesCache;
+  final _followingCache =
+      <String, ({List<ConnectionUser> users, DateTime at})>{};
   static const _followingCacheTtl = Duration(minutes: 5);
 
   /// Splash /auth/me sonrası doldurulur; PersonalInfo loading göstermesin.
@@ -78,6 +80,7 @@ class AuthRepository {
     _cachedPersonalInfo = null;
     _storyCatalogCache.clear();
     _storyDraftCache.clear();
+    _explorePulsesCache = null;
     _cachedMyStamps = null;
     _cachedMyStickers = null;
     _cachedOwnedPickerStamps = null;
@@ -225,9 +228,7 @@ class AuthRepository {
     await _ensureAccessToken(forceRefresh: false);
 
     if (await isOnboardingDone()) {
-      unawaited(
-        _syncBackendUser().then<void>((_) {}, onError: (_) {}),
-      );
+      unawaited(_syncBackendUser().then<void>((_) {}, onError: (_) {}));
       return AuthSession(
         nextStep: 'home',
         isProfileComplete: true,
@@ -367,10 +368,12 @@ class AuthRepository {
 
   String? get backendUserId =>
       (_backendUserId != null && _backendUserId!.isNotEmpty)
-          ? _backendUserId
-          : null;
+      ? _backendUserId
+      : null;
 
-  Future<UsernameAvailability> checkUsernameAvailability(String username) async {
+  Future<UsernameAvailability> checkUsernameAvailability(
+    String username,
+  ) async {
     final result = await _network.send<UsernameAvailability>(
       path: '/users/username/availability',
       method: RequestType.get,
@@ -405,8 +408,7 @@ class AuthRepository {
     final from = DateTime(now.year, now.month, now.day);
     final to = from.add(const Duration(days: 1));
     final result = await _network.send<Map<String, dynamic>>(
-      path:
-          '/users/by-username/${Uri.encodeComponent(handle.trim())}/plans',
+      path: '/users/by-username/${Uri.encodeComponent(handle.trim())}/plans',
       method: RequestType.get,
       queryParameters: {
         'from': from.toUtc().toIso8601String(),
@@ -431,12 +433,9 @@ class AuthRepository {
     final handle = username.startsWith('@') ? username.substring(1) : username;
     final localeKey = (locale ?? 'en').trim();
     final result = await _network.send<Map<String, dynamic>>(
-      path:
-          '/users/by-username/${Uri.encodeComponent(handle.trim())}/stamps',
+      path: '/users/by-username/${Uri.encodeComponent(handle.trim())}/stamps',
       method: RequestType.get,
-      queryParameters: {
-        if (localeKey.isNotEmpty) 'locale': localeKey,
-      },
+      queryParameters: {if (localeKey.isNotEmpty) 'locale': localeKey},
       parserModel: (json) => json,
     );
     final raw = result?['stamps'];
@@ -452,13 +451,16 @@ class AuthRepository {
     return items;
   }
 
-  Future<({
-    String userId,
-    String name,
-    String username,
-    String avatarUrl,
-    List<PublishedStory> stories,
-  })> fetchStoriesByUserId(String userId) async {
+  Future<
+    ({
+      String userId,
+      String name,
+      String username,
+      String avatarUrl,
+      List<PublishedStory> stories,
+    })
+  >
+  fetchStoriesByUserId(String userId) async {
     final id = userId.trim();
     if (id.isEmpty) {
       return (
@@ -523,10 +525,8 @@ class AuthRepository {
         parserModel: (json) => json,
       );
       if (birthDate != null) {
-        _cachedPersonalInfo =
-            (_cachedPersonalInfo ?? CachedPersonalInfo.empty).copyWith(
-              birthDate: birthDate,
-            );
+        _cachedPersonalInfo = (_cachedPersonalInfo ?? CachedPersonalInfo.empty)
+            .copyWith(birthDate: birthDate);
       }
       final profile = result?['profile'];
       if (profile is Map) {
@@ -546,7 +546,8 @@ class AuthRepository {
       final body = e.response?.data;
       if (body is Map<String, dynamic>) {
         final error = body['error'];
-        if (error is Map<String, dynamic> && error['code'] == 'USERNAME_TAKEN') {
+        if (error is Map<String, dynamic> &&
+            error['code'] == 'USERNAME_TAKEN') {
           final raw = error['suggestions'];
           final suggestions = raw is List
               ? raw.map((e) => e.toString()).toList()
@@ -583,9 +584,7 @@ class AuthRepository {
       path: '/users/me/links',
       method: RequestType.put,
       data: {
-        'links': links
-            .map((l) => {'title': l.title, 'url': l.url})
-            .toList(),
+        'links': links.map((l) => {'title': l.title, 'url': l.url}).toList(),
       },
       parserModel: (json) => json,
     );
@@ -621,9 +620,7 @@ class AuthRepository {
     final result = await _network.send<Map<String, dynamic>>(
       path: '/stamps',
       method: RequestType.get,
-      queryParameters: {
-        if (localeKey.isNotEmpty) 'locale': localeKey,
-      },
+      queryParameters: {if (localeKey.isNotEmpty) 'locale': localeKey},
       parserModel: (json) => json,
     );
     final raw = result?['stamps'];
@@ -651,9 +648,7 @@ class AuthRepository {
     final result = await _network.send<Map<String, dynamic>>(
       path: '/users/me/stamps',
       method: RequestType.get,
-      queryParameters: {
-        if (localeKey.isNotEmpty) 'locale': localeKey,
-      },
+      queryParameters: {if (localeKey.isNotEmpty) 'locale': localeKey},
       parserModel: (json) => json,
     );
     final raw = result?['stamps'];
@@ -914,17 +909,25 @@ class AuthRepository {
     String? musicTrackId,
     int? musicClipStartMs,
     int? musicClipDurationMs,
+    bool isVideo = false,
   }) async {
     final result = await _network.uploadFile<Map<String, dynamic>>(
       path: '/stories',
       filePath: imagePath,
       fieldName: 'image',
+      filename: imagePath.split('/').last,
+      sendTimeout: isVideo
+          ? const Duration(seconds: 120)
+          : const Duration(seconds: 60),
+      receiveTimeout: isVideo
+          ? const Duration(seconds: 120)
+          : const Duration(seconds: 60),
       data: {
         'audience': audience,
+        if (isVideo) 'mediaType': 'video',
         if (musicTrackId != null && musicTrackId.isNotEmpty)
           'musicTrackId': musicTrackId,
-        if (musicClipStartMs != null)
-          'musicClipStartMs': '$musicClipStartMs',
+        if (musicClipStartMs != null) 'musicClipStartMs': '$musicClipStartMs',
         if (musicClipDurationMs != null)
           'musicClipDurationMs': '$musicClipDurationMs',
       },
@@ -945,14 +948,23 @@ class AuthRepository {
     double? lat,
     double? lng,
     String? caption,
+    bool isVideo = false,
   }) async {
     final result = await _network.uploadFile<Map<String, dynamic>>(
       path: '/pulses',
       filePath: imagePath,
       fieldName: 'image',
+      filename: imagePath.split('/').last,
+      sendTimeout: isVideo
+          ? const Duration(seconds: 120)
+          : const Duration(seconds: 60),
+      receiveTimeout: isVideo
+          ? const Duration(seconds: 120)
+          : const Duration(seconds: 60),
       data: {
         'audience': audience,
         'sourceType': sourceType,
+        if (isVideo) 'mediaType': 'video',
         if (placeName != null && placeName.trim().isNotEmpty)
           'placeName': placeName.trim(),
         if (lat != null) 'lat': '$lat',
@@ -966,6 +978,7 @@ class AuthRepository {
     if (raw is! Map) {
       throw StateError('Pulse create failed.');
     }
+    _explorePulsesCache = null;
     return Map<String, dynamic>.from(raw);
   }
 
@@ -1017,7 +1030,7 @@ class AuthRepository {
       data: {
         'lat': lat,
         'lng': lng,
-        if (accuracyM != null) 'accuracyM': accuracyM,
+        'accuracyM': ?accuracyM,
         if (locationLabel != null && locationLabel.trim().isNotEmpty)
           'locationLabel': locationLabel.trim(),
         'isAnonymous': isAnonymous,
@@ -1087,6 +1100,7 @@ class AuthRepository {
     List<String> taggedUserIds = const [],
     List<String> photoUrls = const [],
     String? category,
+    String? locale,
   }) async {
     final result = await _network.send<Map<String, dynamic>>(
       path: '/check-ins',
@@ -1102,6 +1116,7 @@ class AuthRepository {
         if (photoUrls.isNotEmpty) 'photoUrls': photoUrls,
         if (category != null && category.trim().isNotEmpty)
           'category': category.trim(),
+        if (locale != null && locale.trim().isNotEmpty) 'locale': locale.trim(),
       },
       parserModel: (json) => json,
     );
@@ -1125,6 +1140,24 @@ class AuthRepository {
     if (result == null) {
       throw StateError('Accept founder failed.');
     }
+    return result;
+  }
+
+  /// Assign the offered stamp and spend this check-in's coins.
+  Future<Map<String, dynamic>> acceptStampOffer(String checkInId) async {
+    final id = checkInId.trim();
+    if (id.isEmpty) {
+      throw StateError('Missing check-in id.');
+    }
+    final result = await _network.send<Map<String, dynamic>>(
+      path: '/check-ins/$id/accept-stamp',
+      method: RequestType.post,
+      parserModel: (json) => json,
+    );
+    if (result == null) {
+      throw StateError('Accept stamp failed.');
+    }
+    invalidateOwnedStickersCache();
     return result;
   }
 
@@ -1165,10 +1198,7 @@ class AuthRepository {
     final result = await _network.send<Map<String, dynamic>>(
       path: '/check-ins/me',
       method: RequestType.get,
-      queryParameters: {
-        'limit': '$limit',
-        'offset': '$offset',
-      },
+      queryParameters: {'limit': '$limit', 'offset': '$offset'},
       parserModel: (json) => json,
     );
     final raw = result?['checkIns'];
@@ -1189,10 +1219,7 @@ class AuthRepository {
     final result = await _network.send<Map<String, dynamic>>(
       path: '/users/by-username/${Uri.encodeComponent(u)}/check-ins',
       method: RequestType.get,
-      queryParameters: {
-        'limit': '$limit',
-        'offset': '$offset',
-      },
+      queryParameters: {'limit': '$limit', 'offset': '$offset'},
       parserModel: (json) => json,
     );
     final raw = result?['checkIns'];
@@ -1211,9 +1238,7 @@ class AuthRepository {
   Future<List<StoryDraftItem>> fetchStoryDrafts({
     bool forceRefresh = false,
   }) async {
-    if (!forceRefresh &&
-        !_storyDraftCache.dirty &&
-        _storyDraftCache.hasCache) {
+    if (!forceRefresh && !_storyDraftCache.dirty && _storyDraftCache.hasCache) {
       return _storyDraftCache.peek() ?? const [];
     }
 
@@ -1297,9 +1322,7 @@ class AuthRepository {
     if (rawFriends is List) {
       for (final item in rawFriends) {
         if (item is! Map) continue;
-        final parsed = StoryFeedUser.fromJson(
-          Map<String, dynamic>.from(item),
-        );
+        final parsed = StoryFeedUser.fromJson(Map<String, dynamic>.from(item));
         if (parsed.userId.isEmpty || parsed.stories.isEmpty) continue;
         friends.add(parsed);
       }
@@ -1346,6 +1369,43 @@ class AuthRepository {
           PublishedStory.fromJson(Map<String, dynamic>.from(item)),
     ];
     _storyCatalogCache.put(items);
+    final rawPulses = result?['pulses'];
+    if (rawPulses is List) {
+      _explorePulsesCache = [
+        for (final item in rawPulses)
+          if (item is Map) Map<String, dynamic>.from(item),
+      ];
+    }
+    return items;
+  }
+
+  List<Map<String, dynamic>> peekExplorePulses() =>
+      List<Map<String, dynamic>>.from(_explorePulsesCache ?? const []);
+
+  Future<List<Map<String, dynamic>>> fetchExplorePulses({
+    int limit = 120,
+    bool forceRefresh = false,
+  }) async {
+    if (!forceRefresh) {
+      final cached = _explorePulsesCache;
+      if (cached != null) return cached;
+    }
+
+    final result = await _network.send<Map<String, dynamic>>(
+      path: '/pulses/explore',
+      method: RequestType.get,
+      queryParameters: {'limit': '$limit'},
+      parserModel: (json) => json,
+    );
+    final raw = result?['pulses'];
+    if (raw is! List) {
+      return peekExplorePulses();
+    }
+    final items = [
+      for (final item in raw)
+        if (item is Map) Map<String, dynamic>.from(item),
+    ];
+    _explorePulsesCache = items;
     return items;
   }
 
@@ -1372,6 +1432,68 @@ class AuthRepository {
       method: RequestType.post,
       parserModel: (json) => json,
     );
+  }
+
+  Future<PulseLikeSnapshot> likePulseRemote(String pulseId) async {
+    final id = pulseId.trim();
+    if (id.isEmpty) {
+      throw ArgumentError('pulseId is empty');
+    }
+    final result = await _network.send<Map<String, dynamic>>(
+      path: '/pulses/$id/like',
+      method: RequestType.post,
+      parserModel: (json) => json,
+    );
+    final raw = result?['pulse'];
+    if (raw is! Map) {
+      throw StateError('Pulse like failed.');
+    }
+    final snapshot = PulseLikeSnapshot.fromJson(Map<String, dynamic>.from(raw));
+    _patchExplorePulseLike(
+      snapshot.id,
+      likedByMe: snapshot.likedByMe,
+      likeCount: snapshot.likeCount,
+    );
+    return snapshot;
+  }
+
+  Future<PulseLikeSnapshot> unlikePulseRemote(String pulseId) async {
+    final id = pulseId.trim();
+    if (id.isEmpty) {
+      throw ArgumentError('pulseId is empty');
+    }
+    final result = await _network.send<Map<String, dynamic>>(
+      path: '/pulses/$id/like',
+      method: RequestType.delete,
+      parserModel: (json) => json,
+    );
+    final raw = result?['pulse'];
+    if (raw is! Map) {
+      throw StateError('Pulse unlike failed.');
+    }
+    final snapshot = PulseLikeSnapshot.fromJson(Map<String, dynamic>.from(raw));
+    _patchExplorePulseLike(
+      snapshot.id,
+      likedByMe: snapshot.likedByMe,
+      likeCount: snapshot.likeCount,
+    );
+    return snapshot;
+  }
+
+  void _patchExplorePulseLike(
+    String pulseId, {
+    required bool likedByMe,
+    required int likeCount,
+  }) {
+    final cache = _explorePulsesCache;
+    if (cache == null || pulseId.trim().isEmpty) return;
+    _explorePulsesCache = [
+      for (final row in cache)
+        if ((row['id'] as String?)?.trim() == pulseId)
+          {...row, 'likedByMe': likedByMe, 'likeCount': likeCount}
+        else
+          row,
+    ];
   }
 
   Future<PublishedStory> likeStoryRemote(String storyId) async {
@@ -1529,6 +1651,34 @@ class AuthRepository {
     return items;
   }
 
+  /// Friends the viewer follows who have a visible plan today, grouped by place.
+  Future<List<FriendJoiningPlace>> fetchFriendJoiningPlaces() async {
+    final now = DateTime.now();
+    final from = DateTime(now.year, now.month, now.day);
+    final to = from.add(const Duration(days: 1));
+    final result = await _network.send<Map<String, dynamic>>(
+      path: '/users/me/plans/friends',
+      method: RequestType.get,
+      queryParameters: {
+        'from': from.toUtc().toIso8601String(),
+        'to': to.toUtc().toIso8601String(),
+      },
+      parserModel: (json) => json,
+    );
+    final raw = result?['places'];
+    if (raw is! List) return const [];
+    final items = <FriendJoiningPlace>[];
+    for (final item in raw) {
+      if (item is! Map) continue;
+      final parsed = FriendJoiningPlace.fromJson(
+        Map<String, dynamic>.from(item),
+      );
+      if (parsed.placeName.isEmpty || parsed.friendsCount <= 0) continue;
+      items.add(parsed);
+    }
+    return items;
+  }
+
   Future<FollowActionResult> followUser(String userId) async {
     final id = userId.trim();
     final result = await _network.send<Map<String, dynamic>>(
@@ -1650,10 +1800,7 @@ class AuthRepository {
     final result = await _network.send<Map<String, dynamic>>(
       path: '/social/notifications',
       method: RequestType.get,
-      queryParameters: {
-        'limit': '$limit',
-        'offset': '$offset',
-      },
+      queryParameters: {'limit': '$limit', 'offset': '$offset'},
       parserModel: (json) => json,
     );
     final raw = result?['notifications'];
@@ -1718,8 +1865,9 @@ class CachedPersonalInfo {
     final user = json['user'];
     final profile = json['profile'];
     final userMap = user is Map ? Map<String, dynamic>.from(user) : const {};
-    final profileMap =
-        profile is Map ? Map<String, dynamic>.from(profile) : const {};
+    final profileMap = profile is Map
+        ? Map<String, dynamic>.from(profile)
+        : const {};
     final birthRaw = profileMap['birthDate']?.toString();
     return CachedPersonalInfo(
       email: (userMap['email'] as String?)?.trim() ?? '',
@@ -1822,6 +1970,26 @@ class MusicTracksPage {
   final bool expanding;
 }
 
+class PulseLikeSnapshot {
+  const PulseLikeSnapshot({
+    required this.id,
+    required this.likeCount,
+    required this.likedByMe,
+  });
+
+  factory PulseLikeSnapshot.fromJson(Map<String, dynamic> json) {
+    return PulseLikeSnapshot(
+      id: (json['id'] as String?)?.trim() ?? '',
+      likeCount: (json['likeCount'] as num?)?.toInt() ?? 0,
+      likedByMe: json['likedByMe'] == true,
+    );
+  }
+
+  final String id;
+  final int likeCount;
+  final bool likedByMe;
+}
+
 class UserStickerItem {
   const UserStickerItem({
     required this.id,
@@ -1842,6 +2010,50 @@ class UserStickerItem {
   final String imageUrl;
 }
 
+class FriendJoiningPlace {
+  const FriendJoiningPlace({
+    required this.placeName,
+    required this.friendsCount,
+    required this.friendAvatars,
+    required this.friendUsernames,
+  });
+
+  factory FriendJoiningPlace.fromJson(Map<String, dynamic> json) {
+    final friends = json['friends'];
+    final avatars = <String>[];
+    final usernames = <String>[];
+    if (friends is List) {
+      for (final friend in friends) {
+        if (friend is! Map) continue;
+        usernames.add((friend['username'] as String?)?.trim() ?? '');
+        avatars.add((friend['avatarUrl'] as String?)?.trim() ?? '');
+      }
+    }
+    if (avatars.isEmpty) {
+      final rawAvatars = json['friendAvatars'];
+      if (rawAvatars is List) {
+        for (final avatar in rawAvatars) {
+          avatars.add('$avatar'.trim());
+        }
+      }
+    }
+    final count =
+        (json['friendsCount'] as num?)?.toInt() ??
+        (avatars.isNotEmpty ? avatars.length : usernames.length);
+    return FriendJoiningPlace(
+      placeName: (json['placeName'] as String?)?.trim() ?? '',
+      friendsCount: count,
+      friendAvatars: avatars,
+      friendUsernames: usernames,
+    );
+  }
+
+  final String placeName;
+  final int friendsCount;
+  final List<String> friendAvatars;
+  final List<String> friendUsernames;
+}
+
 class UserPlanItem {
   const UserPlanItem({
     required this.id,
@@ -1858,7 +2070,8 @@ class UserPlanItem {
     final scheduledRaw = json['scheduledAt'];
     DateTime scheduledAt;
     if (scheduledRaw is String && scheduledRaw.trim().isNotEmpty) {
-      scheduledAt = DateTime.tryParse(scheduledRaw)?.toLocal() ?? DateTime.now();
+      scheduledAt =
+          DateTime.tryParse(scheduledRaw)?.toLocal() ?? DateTime.now();
     } else {
       scheduledAt = DateTime.now();
     }
@@ -1927,9 +2140,7 @@ class StoryFeedUser {
     if (rawStories is List) {
       for (final item in rawStories) {
         if (item is Map) {
-          stories.add(
-            PublishedStory.fromJson(Map<String, dynamic>.from(item)),
-          );
+          stories.add(PublishedStory.fromJson(Map<String, dynamic>.from(item)));
         }
       }
     }
@@ -1973,9 +2184,7 @@ class StoryFeedMe {
     if (rawStories is List) {
       for (final item in rawStories) {
         if (item is Map) {
-          stories.add(
-            PublishedStory.fromJson(Map<String, dynamic>.from(item)),
-          );
+          stories.add(PublishedStory.fromJson(Map<String, dynamic>.from(item)));
         }
       }
     }
@@ -2003,6 +2212,7 @@ class PublishedStory {
     required this.userId,
     required this.mediaUrl,
     required this.audience,
+    this.thumbnailUrl,
     this.musicTrackId,
     this.musicClipStartMs,
     this.musicClipDurationMs,
@@ -2018,6 +2228,7 @@ class PublishedStory {
     this.authorName,
     this.authorUsername,
     this.authorAvatarUrl,
+    this.mediaType = 'image',
   });
 
   factory PublishedStory.fromJson(Map<String, dynamic> json) {
@@ -2032,6 +2243,7 @@ class PublishedStory {
       id: (json['id'] as String?)?.trim() ?? '',
       userId: (json['userId'] as String?)?.trim() ?? '',
       mediaUrl: (json['mediaUrl'] as String?)?.trim() ?? '',
+      thumbnailUrl: (json['thumbnailUrl'] as String?)?.trim(),
       audience: (json['audience'] as String?)?.trim() ?? 'friends_only',
       musicTrackId: (json['musicTrackId'] as String?)?.trim(),
       musicClipStartMs: (json['musicClipStartMs'] as num?)?.toInt(),
@@ -2048,12 +2260,16 @@ class PublishedStory {
       authorName: (json['authorName'] as String?)?.trim(),
       authorUsername: (json['authorUsername'] as String?)?.trim(),
       authorAvatarUrl: (json['authorAvatarUrl'] as String?)?.trim(),
+      mediaType: (json['mediaType'] as String?)?.trim().isNotEmpty == true
+          ? (json['mediaType'] as String).trim()
+          : 'image',
     );
   }
 
   final String id;
   final String userId;
   final String mediaUrl;
+  final String? thumbnailUrl;
   final String audience;
   final String? musicTrackId;
   final int? musicClipStartMs;
@@ -2070,6 +2286,9 @@ class PublishedStory {
   final String? authorName;
   final String? authorUsername;
   final String? authorAvatarUrl;
+  final String mediaType;
+
+  bool get isVideo => mediaType.toLowerCase() == 'video';
 
   String get displayAuthorName {
     final name = authorName?.trim() ?? '';
@@ -2215,7 +2434,8 @@ class AppNotificationItem {
       type: (json['type'] as String?)?.trim() ?? '',
       action: (json['action'] as String?)?.trim() ?? 'none',
       createdAt: _parseApiDate(json['createdAt']),
-      actorId: (json['actorId'] as String?)?.trim() ??
+      actorId:
+          (json['actorId'] as String?)?.trim() ??
           (actorMap?['userId'] as String?)?.trim(),
       actorName: (actorMap?['name'] as String?)?.trim(),
       actorUsername: (actorMap?['username'] as String?)?.trim(),
@@ -2236,7 +2456,8 @@ class AppNotificationItem {
     final s = '$raw'.trim();
     if (s.isEmpty) return null;
     var normalized = s.contains('T') ? s : s.replaceFirst(' ', 'T');
-    final hasZone = normalized.endsWith('Z') ||
+    final hasZone =
+        normalized.endsWith('Z') ||
         RegExp(r'[+-]\d{2}:?\d{2}$').hasMatch(normalized);
     if (!hasZone) normalized = '${normalized}Z';
     return DateTime.tryParse(normalized)?.toLocal();
@@ -2258,4 +2479,3 @@ class AppNotificationItem {
   final int? aggCount;
   final Map<String, dynamic>? payload;
 }
-

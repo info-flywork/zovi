@@ -1,6 +1,6 @@
+import 'package:flutter/foundation.dart';
 import 'package:zovi/core/network/network_manager.dart';
 import 'package:zovi/core/utils/enum/request_type.dart';
-import 'package:flutter/foundation.dart';
 
 @immutable
 final class ChatPeer {
@@ -11,6 +11,7 @@ final class ChatPeer {
     required this.avatarUrl,
     this.isGroup = false,
     this.tribeId = '',
+    this.memberCount = 0,
   });
 
   factory ChatPeer.fromJson(Map<String, dynamic> json) {
@@ -21,6 +22,7 @@ final class ChatPeer {
       avatarUrl: (json['avatarUrl'] as String?)?.trim() ?? '',
       isGroup: json['isGroup'] == true,
       tribeId: (json['tribeId'] as String?)?.trim() ?? '',
+      memberCount: (json['memberCount'] as num?)?.toInt() ?? 0,
     );
   }
 
@@ -30,6 +32,7 @@ final class ChatPeer {
   final String avatarUrl;
   final bool isGroup;
   final String tribeId;
+  final int memberCount;
 }
 
 @immutable
@@ -51,7 +54,9 @@ final class ChatConversation {
       folder: (json['folder'] as String?)?.trim() ?? 'inbox',
       unreadCount: (json['unreadCount'] as num?)?.toInt() ?? 0,
       lastMessagePreview: (json['lastMessagePreview'] as String?)?.trim() ?? '',
-      lastMessageAt: DateTime.tryParse('${json['lastMessageAt'] ?? ''}')?.toLocal(),
+      lastMessageAt: DateTime.tryParse(
+        '${json['lastMessageAt'] ?? ''}',
+      )?.toLocal(),
       lastMessageSenderId: (json['lastMessageSenderId'] as String?)?.trim(),
       peer: peerRaw is Map
           ? ChatPeer.fromJson(Map<String, dynamic>.from(peerRaw))
@@ -60,6 +65,7 @@ final class ChatConversation {
               name: '',
               username: '',
               avatarUrl: '',
+              memberCount: 0,
             ),
     );
   }
@@ -122,6 +128,32 @@ final class ChatMessage {
   final String senderName;
   final String senderUsername;
   final String senderAvatarUrl;
+
+  bool get isStoryReply => isStoryReplyPreview(replyPreview);
+}
+
+bool isStoryReplyPreview(String? preview) {
+  final value = (preview ?? '').trim();
+  if (value.isEmpty) return false;
+  return value == 'story' ||
+      value.startsWith('story:') ||
+      value == 'pulse' ||
+      value.startsWith('pulse:');
+}
+
+String storyReplyPreviewFor({String? storyId, bool isPulse = false}) {
+  final id = (storyId ?? '').trim();
+  if (isPulse) return id.isEmpty ? 'pulse' : 'pulse:$id';
+  return id.isEmpty ? 'story' : 'story:$id';
+}
+
+String? storyIdFromReplyPreview(String? preview) {
+  final value = (preview ?? '').trim();
+  if (value.startsWith('story:')) {
+    final id = value.substring(6).trim();
+    return id.isEmpty ? null : id;
+  }
+  return null;
 }
 
 class ChatRepository {
@@ -165,10 +197,7 @@ class ChatRepository {
     final result = await _network.send<Map<String, dynamic>>(
       path: '/chat/conversations',
       method: RequestType.get,
-      queryParameters: {
-        'folder': folder,
-        'limit': '$limit',
-      },
+      queryParameters: {'folder': folder, 'limit': '$limit'},
       parserModel: (json) => json,
     );
     final raw = result?['conversations'];
@@ -248,8 +277,7 @@ class ChatRepository {
 
   Future<ChatConversation> acceptConversation(String conversationId) async {
     final result = await _network.send<Map<String, dynamic>>(
-      path:
-          '/chat/conversations/${Uri.encodeComponent(conversationId)}/accept',
+      path: '/chat/conversations/${Uri.encodeComponent(conversationId)}/accept',
       method: RequestType.post,
       parserModel: (json) => json,
     );
@@ -262,8 +290,7 @@ class ChatRepository {
 
   Future<void> blockConversation(String conversationId) async {
     await _network.send<Map<String, dynamic>>(
-      path:
-          '/chat/conversations/${Uri.encodeComponent(conversationId)}/block',
+      path: '/chat/conversations/${Uri.encodeComponent(conversationId)}/block',
       method: RequestType.post,
       parserModel: (json) => json,
     );
@@ -283,8 +310,8 @@ class ChatRepository {
       method: RequestType.post,
       data: {
         'type': type,
-        if (body != null) 'body': body,
-        if (mediaUrl != null) 'mediaUrl': mediaUrl,
+        'body': ?body,
+        'mediaUrl': ?mediaUrl,
         if (replyToMessageId != null && replyToMessageId.isNotEmpty)
           'replyToMessageId': replyToMessageId,
         if (replyPreview != null && replyPreview.isNotEmpty)

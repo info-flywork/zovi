@@ -56,7 +56,9 @@ ChatDetailRouteArgs chatDetailArgsFromNotification({
         : (avatar.isNotEmpty ? avatar : AssetPaths.avatarYou),
     conversationId: cid,
     isGroup: true,
-    memberCount: tribe?.memberCount,
+    memberCount: (tribe != null && tribe.memberCount > 0)
+        ? tribe.memberCount
+        : null,
     tribeId: (tribe?.id.trim().isNotEmpty ?? false) ? tribe!.id.trim() : tid,
   );
 }

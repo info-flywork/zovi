@@ -1,5 +1,6 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -10,7 +11,8 @@ import 'package:zovi/core/utils/enum/route_paths.dart';
 import 'package:zovi/core/widgets/app_icon.dart';
 import 'package:zovi/core/widgets/app_search_field.dart';
 import 'package:zovi/core/widgets/bottom_navigation_bar/main_wrapper.dart';
-import 'package:zovi/core/widgets/stamp_image.dart';
+import 'package:zovi/core/widgets/grid_thumbnail_image.dart';
+import 'package:zovi/core/widgets/profile_avatar.dart';
 import 'package:zovi/domain/user/user_repository.dart';
 import 'package:zovi/presentation/stories/bloc/stories_bloc.dart';
 import 'package:zovi/presentation/stories/bloc/stories_event.dart';

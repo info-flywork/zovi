@@ -16,6 +16,7 @@ abstract final class AssetPaths {
   static const String iconCamera = 'assets/icons/camera.svg';
   static const String iconFlashSlash = 'assets/icons/flash-slash.svg';
   static const String iconFlashOpen = 'assets/icons/flash_open.svg';
+  static const String iconTakePhoto = 'assets/icons/take_photo_v2.svg';
   static const String iconRepeatArrow = 'assets/icons/repeat-arrow.svg';
   static const String iconStories = 'assets/icons/stories.svg';
   static const String iconChat = 'assets/icons/chat.svg';

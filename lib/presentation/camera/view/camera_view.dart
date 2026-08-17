@@ -13,15 +13,19 @@ import 'package:photo_manager/photo_manager.dart';
 import 'package:zovi/core/theme/app_colors.dart';
 import 'package:zovi/core/utils/constants/asset_paths.dart';
 import 'package:zovi/core/utils/enum/route_paths.dart';
+import 'package:zovi/core/utils/media_kind.dart';
+import 'package:zovi/core/utils/photo_library_access.dart';
 import 'package:zovi/core/widgets/app_icon.dart';
 import 'package:zovi/core/widgets/app_loading.dart';
 import 'package:zovi/presentation/camera/model/camera_compose_route_args.dart';
 import 'package:zovi/presentation/camera/view/widgets/camera_drafts_sheet.dart';
 
-enum _CameraMode { draft, story }
+enum _CameraMode { draft, story, pulse }
 
 class CameraView extends StatefulWidget {
-  const CameraView({super.key});
+  const CameraView({this.intent = CameraPublishIntent.story, super.key});
+
+  final CameraPublishIntent intent;
 
   @override
   State<CameraView> createState() => _CameraViewState();
@@ -35,25 +39,40 @@ class _CameraViewState extends State<CameraView> with WidgetsBindingObserver {
   var _initializing = true;
   String? _error;
   var _flashOn = false;
-  var _mode = _CameraMode.story;
+  late _CameraMode _mode;
+  _CameraMode _modeBeforeDraft = _CameraMode.story;
   String? _lastPhotoPath;
   Uint8List? _thumbBytes;
   var _capturing = false;
+  var _recording = false;
+  Timer? _recordLimitTimer;
   var _lens = CameraLensDirection.back;
   var _initToken = 0;
 
   @override
   void initState() {
     super.initState();
+    _mode = widget.intent == CameraPublishIntent.pulse
+        ? _CameraMode.pulse
+        : _CameraMode.story;
+    _modeBeforeDraft = _mode;
     WidgetsBinding.instance.addObserver(this);
     _restoreCachedThumb();
     _initCamera();
   }
 
+  bool get _isPulseMode => _mode == _CameraMode.pulse;
+
+  CameraPublishIntent get _publishIntent => switch (_mode) {
+    _CameraMode.pulse => CameraPublishIntent.pulse,
+    _ => CameraPublishIntent.story,
+  };
+
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _initToken++;
+    _recordLimitTimer?.cancel();
     final controller = _controller;
     _controller = null;
     controller?.dispose();
@@ -116,12 +135,8 @@ class _CameraViewState extends State<CameraView> with WidgetsBindingObserver {
   /// Galerideki en son fotoğrafı thumbnail olarak yükler.
   Future<void> _loadLatestGalleryPhoto() async {
     try {
-      final permission = await PhotoManager.requestPermissionExtend(
-        requestOption: const PermissionRequestOption(
-          iosAccessLevel: IosAccessLevel.readWrite,
-        ),
-      );
-      if (!permission.hasAccess) return;
+      final allowed = await ensurePhotoLibraryReadAccess();
+      if (!allowed) return;
 
       final paths = await PhotoManager.getAssetPathList(
         type: RequestType.image,
@@ -205,7 +220,7 @@ class _CameraViewState extends State<CameraView> with WidgetsBindingObserver {
       final controller = CameraController(
         camera,
         ResolutionPreset.high,
-        enableAudio: false,
+        enableAudio: true,
         imageFormatGroup: ImageFormatGroup.jpeg,
       );
 
@@ -270,9 +285,10 @@ class _CameraViewState extends State<CameraView> with WidgetsBindingObserver {
     String imagePath, {
     bool fromDraft = false,
     String? draftId,
+    bool isVideo = false,
   }) async {
     if (!mounted) return;
-    await _setLastPhoto(imagePath);
+    if (!isVideo) await _setLastPhoto(imagePath);
     if (!mounted) return;
     await context.push(
       RoutePaths.cameraCompose.path,
@@ -280,6 +296,8 @@ class _CameraViewState extends State<CameraView> with WidgetsBindingObserver {
         imagePath: imagePath,
         fromDraft: fromDraft,
         draftId: draftId,
+        intent: fromDraft ? CameraPublishIntent.story : _publishIntent,
+        isVideo: isVideo,
       ),
     );
     if (!mounted) return;
@@ -295,6 +313,7 @@ class _CameraViewState extends State<CameraView> with WidgetsBindingObserver {
     if (controller == null ||
         !controller.value.isInitialized ||
         _capturing ||
+        _recording ||
         controller.value.isTakingPicture) {
       return;
     }
@@ -315,19 +334,80 @@ class _CameraViewState extends State<CameraView> with WidgetsBindingObserver {
     }
   }
 
+  Future<void> _startRecording() async {
+    if (_isPulseMode) return;
+    final controller = _controller;
+    if (controller == null ||
+        !controller.value.isInitialized ||
+        _capturing ||
+        _recording ||
+        controller.value.isRecordingVideo) {
+      return;
+    }
+
+    final mic = await Permission.microphone.request();
+    if (!mic.isGranted || !mounted) return;
+
+    try {
+      await controller.startVideoRecording();
+      if (!mounted) return;
+      HapticFeedback.mediumImpact();
+      _recordLimitTimer?.cancel();
+      _recordLimitTimer = Timer(const Duration(seconds: 15), () {
+        unawaited(_stopRecording());
+      });
+      setState(() => _recording = true);
+    } catch (_) {}
+  }
+
+  Future<void> _stopRecording() async {
+    _recordLimitTimer?.cancel();
+    final controller = _controller;
+    if (!_recording) return;
+    if (controller == null || !controller.value.isRecordingVideo) {
+      if (mounted) setState(() => _recording = false);
+      return;
+    }
+
+    try {
+      final file = await controller.stopVideoRecording();
+      if (!mounted) return;
+      HapticFeedback.mediumImpact();
+      setState(() => _recording = false);
+      try {
+        await PhotoManager.editor.saveVideo(
+          File(file.path),
+          title: 'zovi_${DateTime.now().millisecondsSinceEpoch}',
+        );
+      } catch (_) {}
+      await _openCompose(file.path, isVideo: true);
+    } catch (_) {
+      if (mounted) setState(() => _recording = false);
+    }
+  }
+
   Future<void> _openGallery() async {
-    final file = await ImagePicker().pickImage(source: ImageSource.gallery);
+    final XFile? file;
+    if (_isPulseMode) {
+      file = await ImagePicker().pickImage(source: ImageSource.gallery);
+    } else {
+      file = await ImagePicker().pickMedia();
+    }
     if (file == null || !mounted) return;
-    await _setLastPhoto(file.path);
-    await _openCompose(file.path);
+    final isVideo =
+        !_isPulseMode &&
+        (isVideoMimeType(file.mimeType) || isVideoMediaPath(file.path));
+    if (!isVideo) await _setLastPhoto(file.path);
+    await _openCompose(file.path, isVideo: isVideo);
   }
 
   Future<void> _openDraft() async {
+    _modeBeforeDraft = _mode == _CameraMode.draft ? _modeBeforeDraft : _mode;
     setState(() => _mode = _CameraMode.draft);
     final pick = await showCameraDraftsSheet(context);
     if (!mounted) return;
     if (pick == null) {
-      setState(() => _mode = _CameraMode.story);
+      setState(() => _mode = _modeBeforeDraft);
       return;
     }
     await _setLastPhoto(pick.imagePath);
@@ -395,25 +475,37 @@ class _CameraViewState extends State<CameraView> with WidgetsBindingObserver {
                   ),
                   const Spacer(),
                   GestureDetector(
-                    onTap: _capture,
-                    child: Container(
-                      width: 64,
-                      height: 64,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: const Color(0xFFD9D9D9),
-                        border: Border.all(color: AppColors.white, width: 2),
-                      ),
-                      alignment: Alignment.center,
-                      child: Container(
-                        width: 54,
-                        height: 54,
-                        decoration: const BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: Color(0xFFD9D9D9),
-                        ),
-                      ),
-                    ),
+                    onTap: _recording ? null : _capture,
+                    onLongPressStart: _isPulseMode
+                        ? null
+                        : (_) => _startRecording(),
+                    onLongPressEnd: _isPulseMode
+                        ? null
+                        : (_) => _stopRecording(),
+                    onLongPressCancel: _isPulseMode ? null : _stopRecording,
+                    child: _recording
+                        ? Container(
+                            width: 66,
+                            height: 66,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: AppColors.zoviOrange,
+                              border: Border.all(
+                                color: AppColors.white,
+                                width: 4,
+                              ),
+                            ),
+                            alignment: Alignment.center,
+                            child: Container(
+                              width: 28,
+                              height: 28,
+                              decoration: BoxDecoration(
+                                color: AppColors.white,
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                            ),
+                          )
+                        : const AppIcon(AssetPaths.iconTakePhoto, size: 66),
                   ),
                   const SizedBox(height: 16),
                   Container(
@@ -442,12 +534,19 @@ class _CameraViewState extends State<CameraView> with WidgetsBindingObserver {
                               selected: _mode == _CameraMode.draft,
                               onTap: _openDraft,
                             ),
-                            const SizedBox(width: 16),
+                            const SizedBox(width: 10),
                             _ModeLabel(
                               label: 'camera_mode_story'.tr(),
                               selected: _mode == _CameraMode.story,
                               onTap: () =>
                                   setState(() => _mode = _CameraMode.story),
+                            ),
+                            const SizedBox(width: 10),
+                            _ModeLabel(
+                              label: 'camera_mode_pulse'.tr(),
+                              selected: _mode == _CameraMode.pulse,
+                              onTap: () =>
+                                  setState(() => _mode = _CameraMode.pulse),
                             ),
                           ],
                         ),
@@ -513,10 +612,7 @@ class _CameraViewState extends State<CameraView> with WidgetsBindingObserver {
     }
 
     if (!ready) {
-      return const ColoredBox(
-        color: AppColors.black,
-        child: AppLoading(),
-      );
+      return const ColoredBox(color: AppColors.black, child: AppLoading());
     }
 
     final previewSize = controller.value.previewSize!;

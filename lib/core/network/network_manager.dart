@@ -41,6 +41,8 @@ class NetworkManager {
     required T Function(Map<String, dynamic> json) parserModel,
     String? filename,
     Map<String, dynamic>? data,
+    Duration sendTimeout = const Duration(seconds: 60),
+    Duration receiveTimeout = const Duration(seconds: 60),
   }) async {
     final fields = <String, dynamic>{...?data};
     fields[fieldName] = await MultipartFile.fromFile(
@@ -54,8 +56,8 @@ class NetworkManager {
       data: formData,
       options: Options(
         contentType: 'multipart/form-data',
-        sendTimeout: const Duration(seconds: 60),
-        receiveTimeout: const Duration(seconds: 60),
+        sendTimeout: sendTimeout,
+        receiveTimeout: receiveTimeout,
       ),
     );
 

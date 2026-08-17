@@ -224,7 +224,17 @@ class _CameraTextEditorSheetState extends State<CameraTextEditorSheet> {
     super.dispose();
   }
 
-  void _update(CameraTextDraft draft) => setState(() => _draft = draft);
+  void _update(CameraTextDraft draft) {
+    setState(() {
+      _draft = draft.copyWith(text: _controller.text);
+    });
+  }
+
+  String get _previewLabel {
+    final raw = _controller.text;
+    if (raw.trim().isEmpty) return 'camera_text_placeholder'.tr();
+    return _draft.uppercase ? raw.toUpperCase() : raw;
+  }
 
   void _selectTab(CameraTextEditorTab tab) {
     setState(() => _tab = tab);
@@ -260,26 +270,35 @@ class _CameraTextEditorSheetState extends State<CameraTextEditorSheet> {
             alignment: const Alignment(0, -0.35),
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24),
-              child: TextField(
-                controller: _controller,
-                focusNode: _focusNode,
-                textAlign: _draft.align,
-                minLines: 1,
-                maxLines: 6,
-                textInputAction: TextInputAction.done,
-                keyboardType: TextInputType.text,
-                cursorColor: AppColors.white,
-                style: _draft.textStyle,
-                decoration: InputDecoration(
-                  border: InputBorder.none,
-                  hintText: 'camera_text_placeholder'.tr(),
-                  hintStyle: _draft.textStyle.copyWith(
-                    color: AppColors.white.withValues(alpha: 0.55),
-                  ),
-                ),
-                onChanged: (value) => _update(_draft.copyWith(text: value)),
-                onSubmitted: (_) => _done(),
-              ),
+              child: isKeyboardTab
+                  ? TextField(
+                      controller: _controller,
+                      focusNode: _focusNode,
+                      textAlign: _draft.align,
+                      minLines: 1,
+                      maxLines: 6,
+                      textInputAction: TextInputAction.done,
+                      keyboardType: TextInputType.text,
+                      cursorColor: AppColors.white,
+                      style: _draft.textStyle,
+                      decoration: InputDecoration(
+                        border: InputBorder.none,
+                        hintText: 'camera_text_placeholder'.tr(),
+                        hintStyle: _draft.textStyle.copyWith(
+                          color: AppColors.white.withValues(alpha: 0.55),
+                        ),
+                      ),
+                      onSubmitted: (_) => _done(),
+                    )
+                  : Text(
+                      _previewLabel,
+                      textAlign: _draft.align,
+                      style: _draft.textStyle.copyWith(
+                        color: _controller.text.trim().isEmpty
+                            ? AppColors.white.withValues(alpha: 0.55)
+                            : _draft.color,
+                      ),
+                    ),
             ),
           ),
           Align(

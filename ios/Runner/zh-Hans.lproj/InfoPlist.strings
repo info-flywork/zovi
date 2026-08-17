@@ -1,0 +1,9 @@
+/* Native iOS permission descriptions. */
+
+"NSCameraUsageDescription" = "我们需要相机权限，方便你拍摄并分享照片和视频。";
+"NSLocationAlwaysAndWhenInUseUsageDescription" = "我们使用你的位置来打卡、查看附近好友并生成你的个性化地图。";
+"NSLocationAlwaysUsageDescription" = "我们使用你的位置来打卡、查看附近好友并生成你的个性化地图。";
+"NSLocationWhenInUseUsageDescription" = "我们使用你的位置来打卡、查看附近好友并生成你的个性化地图。";
+"NSMicrophoneUsageDescription" = "我们需要麦克风权限，方便你录制视频和发送语音消息。";
+"NSPhotoLibraryAddUsageDescription" = "我们需要权限以保存你在相机中拍摄的照片和视频。";
+"NSPhotoLibraryUsageDescription" = "我们需要访问相册，方便你分享照片视频并更新资料。";

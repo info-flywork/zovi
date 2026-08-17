@@ -29,6 +29,10 @@ class ProfileLoadedBody extends StatefulWidget {
 class _ProfileLoadedBodyState extends State<ProfileLoadedBody> {
   static const _fallbackCenter = LatLng(34.0522, -118.2437);
 
+  final _scrollController = ScrollController();
+  final _tabsSectionKey = GlobalKey();
+  var _scrollGeneration = 0;
+
   String? _liveLocation;
   LatLng _mapPoint = _fallbackCenter;
   var _hasRealLocation = false;
@@ -39,6 +43,94 @@ class _ProfileLoadedBodyState extends State<ProfileLoadedBody> {
   void initState() {
     super.initState();
     _resolveLiveLocation();
+  }
+
+  @override
+  void dispose() {
+    _cancelPendingScroll();
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _cancelPendingScroll() {
+    _scrollGeneration++;
+    if (!_scrollController.hasClients) return;
+    final position = _scrollController.position;
+    if (position.isScrollingNotifier.value) {
+      position.jumpTo(position.pixels);
+    }
+  }
+
+  void _scrollToCheckInTab() {
+    widget.onTabSelected(ProfileContentTab.checkIn);
+    final generation = ++_scrollGeneration;
+    _attemptScrollToTabs(generation);
+  }
+
+  bool _isTabsSectionVisible() {
+    final targetContext = _tabsSectionKey.currentContext;
+    if (targetContext == null) return false;
+
+    final box = targetContext.findRenderObject() as RenderBox?;
+    if (box == null || !box.hasSize) return false;
+
+    final topLeft = box.localToGlobal(Offset.zero);
+    final bottom = topLeft.dy + box.size.height;
+    final screenHeight = MediaQuery.sizeOf(context).height;
+    final topInset = MediaQuery.paddingOf(context).top;
+    final bottomInset =
+        MainWrapper.navBarHeight + MediaQuery.paddingOf(context).bottom;
+
+    return bottom > topInset && topLeft.dy < screenHeight - bottomInset;
+  }
+
+  void _attemptScrollToTabs(int generation, [int attempt = 0]) {
+    if (!mounted || generation != _scrollGeneration) return;
+    if (attempt > 12) return;
+
+    final scrolled = _runScrollToTabs(generation: generation);
+    if (scrolled || _isTabsSectionVisible()) return;
+
+    WidgetsBinding.instance.addPostFrameCallback(
+      (_) => _attemptScrollToTabs(generation, attempt + 1),
+    );
+  }
+
+  bool _runScrollToTabs({required int generation}) {
+    if (!mounted || generation != _scrollGeneration) return false;
+    if (!_scrollController.hasClients) return false;
+    if (_isTabsSectionVisible()) return true;
+
+    final targetContext = _tabsSectionKey.currentContext;
+    if (targetContext == null) return false;
+
+    final renderObject = targetContext.findRenderObject();
+    if (renderObject == null || !renderObject.attached) return false;
+
+    final maxExtent = _scrollController.position.maxScrollExtent;
+    final viewport = RenderAbstractViewport.of(renderObject);
+    var target = viewport
+        .getOffsetToReveal(renderObject, 0)
+        .offset
+        .clamp(0.0, maxExtent);
+
+    if ((_scrollController.offset - target).abs() < 1) {
+      final box = renderObject as RenderBox;
+      final topLeft = box.localToGlobal(Offset.zero);
+      final topInset = MediaQuery.paddingOf(context).top;
+      final delta = topLeft.dy - topInset;
+      if (delta.abs() < 4) return false;
+      target = (_scrollController.offset + delta).clamp(0.0, maxExtent);
+    }
+
+    if ((_scrollController.offset - target).abs() < 1) return false;
+
+    _scrollController.animateTo(
+      target,
+      duration: const Duration(milliseconds: 420),
+      curve: Curves.easeInOut,
+    );
+    return true;
   }
 
   Future<Position?> _readPosition() async {
@@ -152,6 +244,7 @@ class _ProfileLoadedBodyState extends State<ProfileLoadedBody> {
     final locationLabel = _liveLocation ?? user.location;
 
     return ListView(
+      controller: _scrollController,
       physics: const ClampingScrollPhysics(),
       padding: EdgeInsets.only(
         bottom:
@@ -165,7 +258,11 @@ class _ProfileLoadedBodyState extends State<ProfileLoadedBody> {
           onShareTap: () =>
               ProfileShareSheet.show(context, username: user.username),
         ),
-        ProfileStats(user: user),
+        ProfileStats(
+          user: user,
+          onCheckInTap: _scrollToCheckInTab,
+          onBeforeNavigation: _cancelPendingScroll,
+        ),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
           child: Column(
@@ -256,53 +353,65 @@ class _ProfileLoadedBodyState extends State<ProfileLoadedBody> {
         const SizedBox(height: 16),
         ProfilePlans(plans: widget.plans),
         const SizedBox(height: 16),
-        ProfileTabs(
-          controller: widget.tabController,
-          onTabSelected: widget.onTabSelected,
-        ),
-        AnimatedBuilder(
-          animation: widget.tabController.animation!,
-          builder: (context, child) {
-            final value = widget.tabController.animation!.value.clamp(0.0, 2.0);
-            final lower = value.floor().clamp(0, 2);
-            final upper = value.ceil().clamp(0, 2);
-            final t = value - lower;
-            final height = lerpDouble(
-              _tabHeight(
-                index: lower,
-                width: width,
-                pulseCount: widget.pulses.length,
-                stampCount: widget.stamps.length,
-                checkInCount: widget.checkIns.length,
-              ),
-              _tabHeight(
-                index: upper,
-                width: width,
-                pulseCount: widget.pulses.length,
-                stampCount: widget.stamps.length,
-                checkInCount: widget.checkIns.length,
-              ),
-              t,
-            )!;
-            return SizedBox(height: height, child: child);
-          },
-          child: TabBarView(
-            controller: widget.tabController,
+        KeyedSubtree(
+          key: _tabsSectionKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              Align(
-                alignment: Alignment.topLeft,
-                child: ProfilePulses(
-                  pulses: widget.pulses,
-                  isLoading: !widget.sectionsReady && widget.pulses.isEmpty,
+              ProfileTabs(
+                controller: widget.tabController,
+                onTabSelected: widget.onTabSelected,
+              ),
+              AnimatedBuilder(
+                animation: widget.tabController.animation!,
+                builder: (context, child) {
+                  final value = widget.tabController.animation!.value.clamp(
+                    0.0,
+                    2.0,
+                  );
+                  final lower = value.floor().clamp(0, 2);
+                  final upper = value.ceil().clamp(0, 2);
+                  final t = value - lower;
+                  final height = lerpDouble(
+                    _tabHeight(
+                      index: lower,
+                      width: width,
+                      pulseCount: widget.pulses.length,
+                      stampCount: widget.stamps.length,
+                      checkInCount: widget.checkIns.length,
+                    ),
+                    _tabHeight(
+                      index: upper,
+                      width: width,
+                      pulseCount: widget.pulses.length,
+                      stampCount: widget.stamps.length,
+                      checkInCount: widget.checkIns.length,
+                    ),
+                    t,
+                  )!;
+                  return SizedBox(height: height, child: child);
+                },
+                child: TabBarView(
+                  controller: widget.tabController,
+                  children: [
+                    Align(
+                      alignment: Alignment.topLeft,
+                      child: ProfilePulses(
+                        pulses: widget.pulses,
+                        isLoading:
+                            !widget.sectionsReady && widget.pulses.isEmpty,
+                      ),
+                    ),
+                    Align(
+                      alignment: Alignment.topLeft,
+                      child: ProfileStamps(stamps: widget.stamps),
+                    ),
+                    Align(
+                      alignment: Alignment.topLeft,
+                      child: ProfileCheckins(checkIns: widget.checkIns),
+                    ),
+                  ],
                 ),
-              ),
-              Align(
-                alignment: Alignment.topLeft,
-                child: ProfileStamps(stamps: widget.stamps),
-              ),
-              Align(
-                alignment: Alignment.topLeft,
-                child: ProfileCheckins(checkIns: widget.checkIns),
               ),
             ],
           ),

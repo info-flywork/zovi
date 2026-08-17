@@ -57,7 +57,7 @@ class _MainWrapperState extends State<MainWrapper> {
     final wasOnBranch = branch == widget.navigationShell.currentIndex;
     widget.navigationShell.goBranch(branch, initialLocation: wasOnBranch);
 
-    // Map tab stays mounted, so pull fresh data instead of rebuilding it.
+    // IndexedStack keeps tabs mounted — don't refetch Stories (CDN/grid).
     if (branch == 0 && !wasOnBranch) {
       getIt<HomeBloc>().add(const HomeStarted());
     }

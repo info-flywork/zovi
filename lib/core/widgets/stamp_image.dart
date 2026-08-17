@@ -11,7 +11,10 @@ class StampImage extends StatefulWidget {
     this.stampId = '',
     this.width,
     this.height,
+    this.cacheWidth,
+    this.cacheHeight,
     this.fit = BoxFit.contain,
+    this.filterQuality = FilterQuality.medium,
     this.errorBuilder,
     super.key,
   });
@@ -20,7 +23,10 @@ class StampImage extends StatefulWidget {
   final String stampId;
   final double? width;
   final double? height;
+  final int? cacheWidth;
+  final int? cacheHeight;
   final BoxFit fit;
+  final FilterQuality filterQuality;
   final ImageErrorWidgetBuilder? errorBuilder;
 
   static bool isNetworkPath(String path) =>
@@ -63,12 +69,12 @@ class _StampImageState extends State<StampImage> {
       _cachedFile = peeked;
       return;
     }
+    _loading = true;
     _resolve();
   }
 
   Future<void> _resolve() async {
     if (!StampImage.isNetworkPath(widget.path)) return;
-    _loading = true;
     try {
       final file = await getIt<StampImageCache>().resolveFile(
         stampId: widget.stampId,
@@ -108,6 +114,9 @@ class _StampImageState extends State<StampImage> {
         width: widget.width,
         height: widget.height,
         fit: widget.fit,
+        cacheWidth: widget.cacheWidth,
+        cacheHeight: widget.cacheHeight,
+        filterQuality: widget.filterQuality,
         gaplessPlayback: true,
         errorBuilder: widget.errorBuilder,
       );
@@ -119,11 +128,13 @@ class _StampImageState extends State<StampImage> {
         width: widget.width,
         height: widget.height,
         fit: widget.fit,
+        cacheWidth: widget.cacheWidth,
+        cacheHeight: widget.cacheHeight,
+        filterQuality: widget.filterQuality,
         errorBuilder: widget.errorBuilder,
       );
     }
 
-    // Prefer waiting on disk cache over hammering CDN for every cell.
     if (_loading) {
       return SizedBox(
         width: widget.width,
@@ -137,6 +148,9 @@ class _StampImageState extends State<StampImage> {
       width: widget.width,
       height: widget.height,
       fit: widget.fit,
+      cacheWidth: widget.cacheWidth,
+      cacheHeight: widget.cacheHeight,
+      filterQuality: widget.filterQuality,
       errorBuilder: widget.errorBuilder,
     );
   }

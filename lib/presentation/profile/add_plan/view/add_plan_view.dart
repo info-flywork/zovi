@@ -11,6 +11,7 @@ import 'package:zovi/core/utils/constants/asset_paths.dart';
 import 'package:zovi/core/utils/enum/route_paths.dart';
 import 'package:zovi/core/widgets/app_icon.dart';
 import 'package:zovi/core/widgets/app_search_field.dart';
+import 'package:zovi/core/widgets/profile_avatar.dart';
 import 'package:zovi/domain/user/user_repository.dart';
 import 'package:zovi/presentation/profile/add_plan/model/add_plan_details_route_args.dart';
 import 'package:zovi/presentation/profile/add_plan/model/add_plan_place.dart';
@@ -440,7 +441,7 @@ class _NearbyPlanCard extends StatelessWidget {
         ? AppColors.zoviOrange.withValues(alpha: 0.10)
         : AppColors.white;
 
-    final hasFriends = plan.friendAvatars.isNotEmpty;
+    final hasFriends = plan.hasJoiningFriends;
     final friendsText = hasFriends
         ? 'friends_are_joining'.tr(namedArgs: {'count': plan.friendsLabel})
         : 'no_friends_joining'.tr();
@@ -499,7 +500,7 @@ class _NearbyPlanCard extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 10),
-            _AvatarPile(avatars: plan.friendAvatars),
+            OverlappingProfileAvatars(avatars: plan.friendAvatars),
             const SizedBox(width: 8),
             Text(
               friendsText,
@@ -514,47 +515,6 @@ class _NearbyPlanCard extends StatelessWidget {
             ),
           ],
         ),
-      ),
-    );
-  }
-}
-
-class _AvatarPile extends StatelessWidget {
-  const _AvatarPile({required this.avatars});
-
-  final List<String> avatars;
-
-  @override
-  Widget build(BuildContext context) {
-    if (avatars.isEmpty) {
-      return const SizedBox.shrink();
-    }
-    const size = 34.0;
-    const overlap = 11.0;
-    final shown = avatars.take(3).toList();
-    final width = size + (shown.length - 1) * (size - overlap);
-
-    return SizedBox(
-      width: width,
-      height: size,
-      child: Stack(
-        children: [
-          for (var i = 0; i < shown.length; i++)
-            Positioned(
-              left: i * (size - overlap),
-              child: Container(
-                width: size,
-                height: size,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  border: Border.all(color: AppColors.white, width: 3),
-                ),
-                child: ClipOval(
-                  child: Image.asset(shown[i], fit: BoxFit.cover),
-                ),
-              ),
-            ),
-        ],
       ),
     );
   }

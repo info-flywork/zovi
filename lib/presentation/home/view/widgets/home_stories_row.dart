@@ -56,7 +56,7 @@ class HomeStoriesRow extends StatelessWidget {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    story.isYou ? 'your_story'.tr() : story.name,
+                    story.isYou ? 'your_story'.tr() : story.storyLabel,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(

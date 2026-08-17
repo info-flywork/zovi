@@ -9,10 +9,11 @@ import 'package:zovi/presentation/auth/create_profile/bloc/create_profile_event.
 import 'package:zovi/presentation/auth/create_profile/bloc/create_profile_state.dart';
 import 'package:zovi/presentation/auth/model/signup_flow.dart';
 
-final class CreateProfileBloc extends Bloc<CreateProfileEvent, CreateProfileState> {
+final class CreateProfileBloc
+    extends Bloc<CreateProfileEvent, CreateProfileState> {
   CreateProfileBloc({
     required SignupFlow signupFlow,
-    required AuthRepository this._authRepository,
+    required this._authRepository,
   }) : super(CreateProfileInitial(signupFlow: signupFlow)) {
     on<CreateProfileFullNameChanged>(_onFullNameChanged);
     on<CreateProfileUsernameChanged>(_onUsernameChanged);
@@ -110,8 +111,7 @@ final class CreateProfileBloc extends Bloc<CreateProfileEvent, CreateProfileStat
     );
 
     try {
-      final result =
-          await _authRepository.checkUsernameAvailability(username);
+      final result = await _authRepository.checkUsernameAvailability(username);
       if (username != state.username) return;
 
       if (!result.valid) {
@@ -199,8 +199,9 @@ final class CreateProfileBloc extends Bloc<CreateProfileEvent, CreateProfileStat
     );
 
     try {
-      final availability =
-          await _authRepository.checkUsernameAvailability(state.username);
+      final availability = await _authRepository.checkUsernameAvailability(
+        state.username,
+      );
       if (!availability.available) {
         emit(
           CreateProfileInitial(

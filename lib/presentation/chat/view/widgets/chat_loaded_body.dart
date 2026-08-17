@@ -11,6 +11,7 @@ class _ChatPreview {
     required this.isUnread,
     required this.isGroup,
     required this.tribeId,
+    this.memberCount = 0,
   });
 
   factory _ChatPreview.fromConversation(ChatConversation c) {
@@ -18,10 +19,19 @@ class _ChatPreview {
         ? c.peer.name.trim()
         : (c.peer.username.trim().isNotEmpty ? c.peer.username : 'user');
     var avatarPath = c.peer.avatarUrl.trim();
-    if (c.peer.isGroup && avatarPath.isEmpty && c.peer.tribeId.isNotEmpty) {
-      final tribe = getIt<TribeRepository>().peekTribeDetail(c.peer.tribeId);
-      if (tribe != null && tribe.avatars.isNotEmpty) {
-        avatarPath = tribe.avatars.first;
+    var memberCount = c.peer.memberCount;
+    if (c.peer.isGroup && c.peer.tribeId.isNotEmpty) {
+      final tribe = getIt<TribeRepository>().findCachedTribe(
+        tribeId: c.peer.tribeId,
+        conversationId: c.id,
+      );
+      if (tribe != null) {
+        if (avatarPath.isEmpty && tribe.avatars.isNotEmpty) {
+          avatarPath = tribe.avatars.first;
+        }
+        if (memberCount <= 0 && tribe.memberCount > 0) {
+          memberCount = tribe.memberCount;
+        }
       }
     }
     return _ChatPreview(
@@ -34,6 +44,7 @@ class _ChatPreview {
       isUnread: c.isUnread,
       isGroup: c.peer.isGroup,
       tribeId: c.peer.tribeId,
+      memberCount: memberCount,
     );
   }
 
@@ -46,6 +57,7 @@ class _ChatPreview {
   final bool isUnread;
   final bool isGroup;
   final String tribeId;
+  final int memberCount;
 
   _ChatPreview copyWith({bool? isUnread, String? preview}) {
     return _ChatPreview(
@@ -58,6 +70,7 @@ class _ChatPreview {
       isUnread: isUnread ?? this.isUnread,
       isGroup: isGroup,
       tribeId: tribeId,
+      memberCount: memberCount,
     );
   }
 }
@@ -181,6 +194,9 @@ class _ChatLoadedBodyState extends State<ChatLoadedBody>
         conversationId: chat.conversationId,
         isGroup: chat.isGroup,
         tribeId: chat.tribeId,
+        memberCount: chat.isGroup && chat.memberCount > 0
+            ? chat.memberCount
+            : null,
       ),
     );
     if (!mounted) return;

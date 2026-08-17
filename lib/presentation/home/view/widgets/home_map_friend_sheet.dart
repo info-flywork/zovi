@@ -143,19 +143,26 @@ class _HomeMapFriendSheetState extends State<HomeMapFriendSheet> {
                       child: Stack(
                         clipBehavior: Clip.none,
                         children: [
-                          CheckInCyclingPhoto(
-                            paths: checkIn.photoPaths,
-                            size: _thumbSize,
-                            borderRadius: BorderRadius.circular(16),
-                            padding: const EdgeInsets.all(3),
-                            gradient: AppColors.storyRingGradient,
-                            indexListenable: getIt<UserRepository>()
-                                .friendCheckInPhotoIndexListenable(
-                                  friend.userId.isNotEmpty
-                                      ? friend.userId
-                                      : friend.name,
+                          HomeMapCheckInMarker.hasPhotos(checkIn.photoPaths)
+                              ? CheckInCyclingPhoto(
+                                  paths: checkIn.photoPaths,
+                                  size: _thumbSize,
+                                  borderRadius: BorderRadius.circular(16),
+                                  padding: const EdgeInsets.all(3),
+                                  gradient: AppColors.storyRingGradient,
+                                  indexListenable: getIt<UserRepository>()
+                                      .friendCheckInPhotoIndexListenable(
+                                        friend.userId.isNotEmpty
+                                            ? friend.userId
+                                            : friend.name,
+                                      ),
+                                )
+                              : ProfileAvatar(
+                                  path: friend.avatarPath,
+                                  size: _thumbSize,
+                                  showGradientRing: true,
+                                  ringWidth: 3,
                                 ),
-                          ),
                           Positioned(
                             right: -2,
                             bottom: -2,

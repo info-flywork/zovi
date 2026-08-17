@@ -5,6 +5,7 @@ import 'package:zovi/core/di/injection.dart';
 import 'package:zovi/core/theme/app_colors.dart';
 import 'package:zovi/core/utils/constants/asset_paths.dart';
 import 'package:zovi/core/utils/enum/route_paths.dart';
+import 'package:zovi/core/widgets/profile_avatar.dart';
 import 'package:zovi/presentation/profile/bloc/profile_bloc.dart';
 
 class AddPlanSuccessView extends StatelessWidget {
@@ -94,7 +95,7 @@ class AddPlanSuccessView extends StatelessWidget {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    _AvatarPile(avatars: friendAvatars),
+                    OverlappingProfileAvatars(avatars: friendAvatars),
                     const SizedBox(width: 8),
                     Text(
                       'friends_are_joining'.tr(
@@ -152,44 +153,6 @@ class AddPlanSuccessView extends StatelessWidget {
             ],
           ),
         ),
-      ),
-    );
-  }
-}
-
-class _AvatarPile extends StatelessWidget {
-  const _AvatarPile({required this.avatars});
-
-  final List<String> avatars;
-
-  @override
-  Widget build(BuildContext context) {
-    const size = 34.0;
-    const overlap = 11.0;
-    final shown = avatars.take(3).toList();
-    final width = size + (shown.length - 1) * (size - overlap);
-
-    return SizedBox(
-      width: width,
-      height: size,
-      child: Stack(
-        children: [
-          for (var i = 0; i < shown.length; i++)
-            Positioned(
-              left: i * (size - overlap),
-              child: Container(
-                width: size,
-                height: size,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  border: Border.all(color: AppColors.white, width: 3),
-                ),
-                child: ClipOval(
-                  child: Image.asset(shown[i], fit: BoxFit.cover),
-                ),
-              ),
-            ),
-        ],
       ),
     );
   }

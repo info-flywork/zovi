@@ -26,13 +26,16 @@ import 'package:zovi/core/widgets/app_icon.dart';
 import 'package:zovi/core/widgets/app_loading.dart';
 import 'package:zovi/core/widgets/bottom_navigation_bar/main_wrapper.dart';
 import 'package:zovi/core/widgets/profile_avatar.dart';
+import 'package:zovi/core/widgets/stamp_image.dart';
 import 'package:zovi/domain/chat/chat_repository.dart';
 import 'package:zovi/domain/user/user_repository.dart';
 import 'package:zovi/presentation/home/bloc/home_bloc.dart';
 import 'package:zovi/presentation/home/bloc/home_event.dart';
 import 'package:zovi/presentation/home/bloc/home_state.dart';
+import 'package:zovi/presentation/camera/model/camera_compose_route_args.dart';
 import 'package:zovi/presentation/home/view/widgets/check_in_create_sheet.dart';
 import 'package:zovi/presentation/home/view/widgets/first_check_in_sheet.dart';
+import 'package:zovi/presentation/home/view/widgets/share_content_sheet.dart';
 import 'package:zovi/presentation/stories/model/story_detail_route_args.dart';
 
 part 'mixin/home_view_mixin.dart';

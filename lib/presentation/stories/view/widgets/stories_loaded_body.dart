@@ -10,53 +10,10 @@ class StoriesLoadedBody extends StatelessWidget {
   final List<StoryMediaItem> items;
   final void Function(List<StoryMediaItem> items, int index) onOpen;
 
-  String get _contentKey =>
-      items.isEmpty ? 'empty' : items.map((e) => e.imagePath).join('|');
-
   @override
   Widget build(BuildContext context) {
-    return AnimatedSwitcher(
-      duration: const Duration(milliseconds: 280),
-      switchInCurve: Curves.easeOutCubic,
-      switchOutCurve: Curves.easeInCubic,
-      layoutBuilder: (currentChild, previousChildren) {
-        return Stack(
-          alignment: Alignment.topCenter,
-          children: [
-            ...previousChildren,
-            ?currentChild,
-          ],
-        );
-      },
-      transitionBuilder: (child, animation) {
-        final curved = CurvedAnimation(
-          parent: animation,
-          curve: Curves.easeOutCubic,
-          reverseCurve: Curves.easeInCubic,
-        );
-        return FadeTransition(
-          opacity: curved,
-          child: SlideTransition(
-            position: Tween<Offset>(
-              begin: const Offset(0, 0.03),
-              end: Offset.zero,
-            ).animate(curved),
-            child: child,
-          ),
-        );
-      },
-      child: KeyedSubtree(
-        key: ValueKey(_contentKey),
-        child: items.isEmpty
-            ? const _StoriesEmptyState()
-            : SizedBox.expand(
-                child: _StoriesGrid(
-                  items: items,
-                  onOpen: onOpen,
-                ),
-              ),
-      ),
-    );
+    if (items.isEmpty) return const _StoriesEmptyState();
+    return _StoriesGrid(items: items, onOpen: onOpen);
   }
 }
 
@@ -122,7 +79,7 @@ class _StoriesEmptyState extends StatelessWidget {
   }
 }
 
-class _StoriesGrid extends StatelessWidget {
+class _StoriesGrid extends StatefulWidget {
   const _StoriesGrid({
     required this.items,
     required this.onOpen,
@@ -132,13 +89,24 @@ class _StoriesGrid extends StatelessWidget {
   final void Function(List<StoryMediaItem> items, int index) onOpen;
 
   @override
+  State<_StoriesGrid> createState() => _StoriesGridState();
+}
+
+class _StoriesGridState extends State<_StoriesGrid> {
+  var _peeking = false;
+
+  @override
   Widget build(BuildContext context) {
+    final cacheSide = GridThumbnailImage.cacheSideFor(context);
     return GridView.builder(
       padding: EdgeInsets.only(
         bottom: MainWrapper.navBarHeight + MediaQuery.paddingOf(context).bottom,
       ),
-      physics: const ClampingScrollPhysics(),
-      itemCount: items.length,
+      physics: _peeking
+          ? const NeverScrollableScrollPhysics()
+          : const ClampingScrollPhysics(),
+      itemCount: widget.items.length,
+      addAutomaticKeepAlives: true,
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 3,
         mainAxisSpacing: 1.5,
@@ -146,13 +114,19 @@ class _StoriesGrid extends StatelessWidget {
         childAspectRatio: 1,
       ),
       itemBuilder: (context, index) {
-        final item = items[index];
-        final delayMs = (index % 9) * 28;
+        final item = widget.items[index];
         return _StoryGridItem(
-          key: ValueKey(item.storyId ?? item.imagePath),
+          key: ValueKey(
+            item.storyId ??
+                '${item.isPulse ? 'p' : 's'}_${item.userId}_${item.imagePath}',
+          ),
           item: item,
-          delay: Duration(milliseconds: delayMs),
-          onTap: () => onOpen(items, index),
+          cacheSide: cacheSide,
+          onTap: () => widget.onOpen(widget.items, index),
+          onPeekChanged: (peeking) {
+            if (_peeking == peeking) return;
+            setState(() => _peeking = peeking);
+          },
         );
       },
     );
@@ -162,14 +136,16 @@ class _StoriesGrid extends StatelessWidget {
 class _StoryGridItem extends StatefulWidget {
   const _StoryGridItem({
     required this.item,
-    required this.delay,
+    required this.cacheSide,
     required this.onTap,
+    required this.onPeekChanged,
     super.key,
   });
 
   final StoryMediaItem item;
-  final Duration delay;
+  final int cacheSide;
   final VoidCallback onTap;
+  final ValueChanged<bool> onPeekChanged;
 
   @override
   State<_StoryGridItem> createState() => _StoryGridItemState();
@@ -177,8 +153,9 @@ class _StoryGridItem extends StatefulWidget {
 
 class _StoryGridItemState extends State<_StoryGridItem>
     with SingleTickerProviderStateMixin {
+  OverlayEntry? _entry;
   late final AnimationController _controller;
-  late final Animation<double> _opacity;
+  late final Animation<double> _fade;
   late final Animation<double> _scale;
 
   @override
@@ -186,59 +163,191 @@ class _StoryGridItemState extends State<_StoryGridItem>
     super.initState();
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 320),
+      duration: const Duration(milliseconds: 180),
+      reverseDuration: const Duration(milliseconds: 140),
     );
-    _opacity = CurvedAnimation(
-      parent: _controller,
-      curve: Curves.easeOut,
-    );
-    _scale = Tween<double>(begin: 0.92, end: 1).animate(
+    _fade = CurvedAnimation(parent: _controller, curve: Curves.easeOut);
+    _scale = Tween<double>(begin: 0.86, end: 1).animate(
       CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic),
     );
-    Future<void>.delayed(widget.delay, () {
-      if (mounted) _controller.forward();
-    });
   }
 
   @override
   void dispose() {
+    _removePeek(immediate: true);
     _controller.dispose();
     super.dispose();
   }
 
+  Future<void> _showPeek() async {
+    if (_entry != null) return;
+    final overlay = Overlay.of(context, rootOverlay: true);
+    HapticFeedback.mediumImpact();
+    widget.onPeekChanged(true);
+
+    _entry = OverlayEntry(
+      builder: (context) => _StoryPeekOverlay(
+        item: widget.item,
+        fade: _fade,
+        scale: _scale,
+      ),
+    );
+    overlay.insert(_entry!);
+    await _controller.forward();
+  }
+
+  Future<void> _hidePeek() async {
+    if (_entry == null) return;
+    await _controller.reverse();
+    _removePeek();
+  }
+
+  void _removePeek({bool immediate = false}) {
+    _entry?.remove();
+    _entry = null;
+    if (!immediate && mounted) widget.onPeekChanged(false);
+  }
+
   @override
   Widget build(BuildContext context) {
-    return FadeTransition(
-      opacity: _opacity,
-      child: ScaleTransition(
-        scale: _scale,
-        child: GestureDetector(
-          onTap: widget.onTap,
-          child: Stack(
-            fit: StackFit.expand,
+    return GestureDetector(
+      onTap: widget.onTap,
+      onLongPressStart: (_) => _showPeek(),
+      onLongPressEnd: (_) => _hidePeek(),
+      onLongPressCancel: _hidePeek,
+      child: _StoryThumb(
+        item: widget.item,
+        cacheSide: widget.cacheSide,
+      ),
+    );
+  }
+}
+
+class _StoryThumb extends StatelessWidget {
+  const _StoryThumb({
+    required this.item,
+    required this.cacheSide,
+  });
+
+  final StoryMediaItem item;
+  final int cacheSide;
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        if (item.isVideo)
+          const ColoredBox(color: AppColors.black)
+        else if (item.isNetworkImage)
+          GridThumbnailImage(
+            url: item.gridImagePath,
+            cacheSize: cacheSide,
+          )
+        else
+          Image.asset(
+            item.imagePath,
+            fit: BoxFit.cover,
+          ),
+        if (item.isReel || item.isVideo)
+          const Positioned(
+            top: 8,
+            right: 8,
+            child: AppIcon(
+              AssetPaths.iconReelsSquare,
+              size: 22,
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+class _StoryPeekOverlay extends StatelessWidget {
+  const _StoryPeekOverlay({
+    required this.item,
+    required this.fade,
+    required this.scale,
+  });
+
+  final StoryMediaItem item;
+  final Animation<double> fade;
+  final Animation<double> scale;
+
+  @override
+  Widget build(BuildContext context) {
+    final media = MediaQuery.of(context);
+    final screen = media.size;
+    final previewW = (screen.width * 0.88).clamp(280.0, screen.width - 24);
+    final previewH = (previewW * 1.38).clamp(
+      360.0,
+      screen.height - media.padding.top - media.padding.bottom - 48,
+    );
+
+    return IgnorePointer(
+      child: AnimatedBuilder(
+        animation: fade,
+        builder: (context, child) {
+          return Stack(
             children: [
-              if (widget.item.isNetworkImage)
-                StampImage(
-                  path: widget.item.imagePath,
-                  stampId: widget.item.storyId ?? '',
-                  fit: BoxFit.cover,
-                  errorBuilder: (_, _, _) =>
-                      const ColoredBox(color: AppColors.surfaceGray),
-                )
-              else
-                Image.asset(
-                  widget.item.imagePath,
-                  fit: BoxFit.cover,
-                ),
-              if (widget.item.isReel)
-                const Positioned(
-                  top: 8,
-                  right: 8,
-                  child: AppIcon(
-                    AssetPaths.iconReelsSquare,
-                    size: 22,
+              ColoredBox(
+                color: AppColors.black.withValues(alpha: 0.42 * fade.value),
+              ),
+              Center(
+                child: FadeTransition(
+                  opacity: fade,
+                  child: ScaleTransition(
+                    scale: scale,
+                    child: SizedBox(
+                      width: previewW,
+                      height: previewH,
+                      child: child,
+                    ),
                   ),
                 ),
+              ),
+            ],
+          );
+        },
+        child: Material(
+          color: AppColors.white,
+          elevation: 18,
+          shadowColor: AppColors.black.withValues(alpha: 0.35),
+          borderRadius: BorderRadius.circular(18),
+          clipBehavior: Clip.antiAlias,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
+                child: Row(
+                  children: [
+                    ProfileAvatar(
+                      path: item.avatarPath,
+                      size: 28,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        item.storyLabel,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.black,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Expanded(
+                child: _StoryThumb(
+                  item: item,
+                  cacheSide: GridThumbnailImage.cacheSideFor(context) * 2,
+                ),
+              ),
             ],
           ),
         ),

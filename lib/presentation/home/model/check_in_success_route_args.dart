@@ -73,6 +73,35 @@ final class CheckInFounderOffer {
 }
 
 @immutable
+final class CheckInStampOffer {
+  const CheckInStampOffer({
+    required this.stampId,
+    required this.name,
+    required this.imageUrl,
+    this.slug = '',
+    this.coinCost = 0,
+  });
+
+  factory CheckInStampOffer.fromJson(Map<String, dynamic> json) {
+    return CheckInStampOffer(
+      stampId: (json['stampId'] as String?)?.trim() ?? '',
+      slug: (json['slug'] as String?)?.trim() ?? '',
+      name: (json['name'] as String?)?.trim() ?? '',
+      imageUrl: (json['imageUrl'] as String?)?.trim() ?? '',
+      coinCost: (json['coinCost'] as num?)?.toInt() ?? 0,
+    );
+  }
+
+  final String stampId;
+  final String slug;
+  final String name;
+  final String imageUrl;
+  final int coinCost;
+
+  bool get isValid => stampId.isNotEmpty && imageUrl.isNotEmpty;
+}
+
+@immutable
 final class CheckInSuccessRouteArgs {
   const CheckInSuccessRouteArgs({
     required this.placeName,
@@ -83,6 +112,7 @@ final class CheckInSuccessRouteArgs {
     this.rewards = const [],
     this.checkInId,
     this.founderOffer,
+    this.stampOffer,
     this.isFirstEver = false,
   });
 
@@ -94,6 +124,7 @@ final class CheckInSuccessRouteArgs {
   final List<CheckInRewardItem> rewards;
   final String? checkInId;
   final CheckInFounderOffer? founderOffer;
+  final CheckInStampOffer? stampOffer;
   final bool isFirstEver;
 
   String? get photoPath => photoPaths.isEmpty ? null : photoPaths.first;

@@ -28,48 +28,55 @@ class OtpView extends StatefulWidget {
 class _OtpViewState extends State<OtpView> with OtpViewMixin {
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.white,
-      body: GestureDetector(
-        onTap: () {
-          final focus = FocusScope.of(context);
-          if (!focus.hasPrimaryFocus && focus.focusedChild != null) {
-            focus.unfocus();
-          }
-        },
-        behavior: HitTestBehavior.translucent,
-        child: SafeArea(
-          child: BlocConsumer<OtpBloc, OtpState>(
-            listener: (context, state) async {
-              if (state is OtpError) {
-                showErrorSnackbar(state.message);
-              } else if (state is OtpSuccess) {
-                if (state.navigateTo == RoutePaths.home.path) {
-                  try {
-                    await getIt<UserRepository>().getCurrentUser();
-                  } catch (_) {}
+    return PopScope(
+      canPop: context.canPop(),
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop || !context.mounted) return;
+        context.go(RoutePaths.onboarding.path);
+      },
+      child: Scaffold(
+        backgroundColor: AppColors.white,
+        body: GestureDetector(
+          onTap: () {
+            final focus = FocusScope.of(context);
+            if (!focus.hasPrimaryFocus && focus.focusedChild != null) {
+              focus.unfocus();
+            }
+          },
+          behavior: HitTestBehavior.translucent,
+          child: SafeArea(
+            child: BlocConsumer<OtpBloc, OtpState>(
+              listener: (context, state) async {
+                if (state is OtpError) {
+                  showErrorSnackbar(state.message);
+                } else if (state is OtpSuccess) {
+                  if (state.navigateTo == RoutePaths.home.path) {
+                    try {
+                      await getIt<UserRepository>().getCurrentUser();
+                    } catch (_) {}
+                  }
+                  if (!context.mounted) return;
+                  if (state.navigateExtra != null) {
+                    context.go(state.navigateTo, extra: state.navigateExtra);
+                  } else {
+                    context.go(state.navigateTo);
+                  }
                 }
-                if (!context.mounted) return;
-                if (state.navigateExtra != null) {
-                  context.go(state.navigateTo, extra: state.navigateExtra);
-                } else {
-                  context.go(state.navigateTo);
-                }
-              }
-            },
-            builder: (context, state) {
-              return OtpLoadedBody(
-                formattedPhone: formattedPhone(state),
-                code: state.code,
-                resendSeconds: state.resendSeconds,
-                canResend: state.canResend,
-                isLoading: state is OtpLoading,
-                isResending: state is OtpResending,
-                onCodeChanged: onCodeChanged,
-                onVerify: onVerify,
-                onResend: onResend,
-              );
-            },
+              },
+              builder: (context, state) {
+                return OtpLoadedBody(
+                  formattedPhone: formattedPhone(state),
+                  code: state.code,
+                  resendSeconds: state.resendSeconds,
+                  canResend: state.canResend,
+                  isLoading: state is OtpLoading,
+                  isResending: state is OtpResending,
+                  onCodeChanged: onCodeChanged,
+                  onVerify: onVerify,
+                  onResend: onResend,
+                );
+              },
+            ),
           ),
         ),
       ),

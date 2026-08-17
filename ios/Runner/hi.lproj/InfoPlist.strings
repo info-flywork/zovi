@@ -1,0 +1,9 @@
+/* Native iOS permission descriptions. */
+
+"NSCameraUsageDescription" = "फ़ोटो और वीडियो लेने और शेयर करने के लिए कैमरा ऐक्सेस चाहिए।";
+"NSLocationAlwaysAndWhenInUseUsageDescription" = "चेक-इन, आस-पास के दोस्त और आपके पर्सनल मैप के लिए लोकेशन इस्तेमाल करते हैं।";
+"NSLocationAlwaysUsageDescription" = "चेक-इन, आस-पास के दोस्त और आपके पर्सनल मैप के लिए लोकेशन इस्तेमाल करते हैं।";
+"NSLocationWhenInUseUsageDescription" = "चेक-इन, आस-पास के दोस्त और आपके पर्सनल मैप के लिए लोकेशन इस्तेमाल करते हैं।";
+"NSMicrophoneUsageDescription" = "वीडियो रिकॉर्ड करने और वॉइस मैसेज भेजने के लिए माइक्रोफ़ोन चाहिए।";
+"NSPhotoLibraryAddUsageDescription" = "कैमरे से ली गई फ़ोटो और वीडियो सेव करने के लिए ऐक्सेस चाहिए।";
+"NSPhotoLibraryUsageDescription" = "फ़ोटो और वीडियो शेयर करने और प्रोफ़ाइल अपडेट करने के लिए फ़ोटो लाइब्रेरी चाहिए।";

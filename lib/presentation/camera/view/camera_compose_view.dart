@@ -17,9 +17,11 @@ import 'package:zovi/core/in_app_notification/in_app_notification_data.dart';
 import 'package:zovi/core/theme/app_colors.dart';
 import 'package:zovi/core/utils/constants/asset_paths.dart';
 import 'package:zovi/core/utils/enum/route_paths.dart';
+import 'package:zovi/core/utils/photo_library_access.dart';
 import 'package:zovi/core/widgets/app_confirm_dialog.dart';
 import 'package:zovi/core/widgets/app_icon.dart';
 import 'package:zovi/core/widgets/app_loading.dart';
+import 'package:zovi/core/widgets/app_video_player.dart';
 import 'package:zovi/core/widgets/stamp_image.dart';
 import 'package:zovi/domain/user/user_repository.dart';
 import 'package:zovi/presentation/camera/model/camera_compose_route_args.dart';
@@ -29,6 +31,8 @@ import 'package:zovi/presentation/camera/view/widgets/camera_text_editor_sheet.d
 import 'package:zovi/presentation/chat/view/widgets/chat_sticker_sheet.dart';
 import 'package:zovi/presentation/home/bloc/home_bloc.dart';
 import 'package:zovi/presentation/home/bloc/home_event.dart';
+import 'package:zovi/presentation/stories/bloc/stories_bloc.dart';
+import 'package:zovi/presentation/stories/bloc/stories_event.dart';
 
 enum _ComposeAudience { friendsOnly, public }
 
@@ -79,7 +83,7 @@ class _CameraComposeViewState extends State<CameraComposeView> {
   StreamSubscription<void>? _musicCompleteSub;
   var _musicSeeking = false;
   var _saving = false;
-  var _audience = _ComposeAudience.friendsOnly;
+  late _ComposeAudience _audience;
   final List<_ComposeTextItem> _texts = [];
   final List<_ComposeStampItem> _stamps = [];
   CameraMusicSelection? _selectedMusic;
@@ -96,6 +100,14 @@ class _CameraComposeViewState extends State<CameraComposeView> {
   var _hasEdits = false;
 
   CameraComposeRouteArgs get args => widget.args;
+
+  @override
+  void initState() {
+    super.initState();
+    _audience = args.intent == CameraPublishIntent.pulse
+        ? _ComposeAudience.public
+        : _ComposeAudience.friendsOnly;
+  }
 
   void _markEdited() {
     if (_hasEdits) return;
@@ -162,12 +174,8 @@ class _CameraComposeViewState extends State<CameraComposeView> {
     if (_saving) return;
     setState(() => _saving = true);
     try {
-      final permission = await PhotoManager.requestPermissionExtend(
-        requestOption: const PermissionRequestOption(
-          iosAccessLevel: IosAccessLevel.readWrite,
-        ),
-      );
-      if (!permission.hasAccess) {
+      final allowed = await ensurePhotoLibraryAddAccess();
+      if (!allowed) {
         if (!mounted) return;
         _showBanner(
           titleKey: 'camera_compose_save_permission',
@@ -177,13 +185,19 @@ class _CameraComposeViewState extends State<CameraComposeView> {
         return;
       }
 
-      final bytes = await _captureComposeBytes();
-      if (bytes == null || bytes.isEmpty) {
-        throw StateError('capture failed');
+      if (args.isVideo) {
+        await PhotoManager.editor.saveVideo(
+          File(args.imagePath),
+          title: 'zovi_${DateTime.now().millisecondsSinceEpoch}',
+        );
+      } else {
+        final bytes = await _captureComposeBytes();
+        if (bytes == null || bytes.isEmpty) {
+          throw StateError('capture failed');
+        }
+        final filename = 'zovi_${DateTime.now().millisecondsSinceEpoch}.png';
+        await PhotoManager.editor.saveImage(bytes, filename: filename);
       }
-
-      final filename = 'zovi_${DateTime.now().millisecondsSinceEpoch}.png';
-      await PhotoManager.editor.saveImage(bytes, filename: filename);
 
       if (!mounted) return;
       _showBanner(
@@ -212,6 +226,10 @@ class _CameraComposeViewState extends State<CameraComposeView> {
   }
 
   Future<void> _onClosePressed() async {
+    if (args.isVideo) {
+      if (mounted) context.pop();
+      return;
+    }
     // Re-opening an unchanged draft shouldn't ask to save it again.
     final needsSavePrompt = !args.fromDraft || _hasEdits;
     if (!needsSavePrompt) {
@@ -258,42 +276,67 @@ class _CameraComposeViewState extends State<CameraComposeView> {
     setState(() => _saving = true);
     File? tempFile;
     try {
-      final bytes = await _captureComposeBytes();
-      if (bytes == null || bytes.isEmpty) {
-        _showBanner(
-          titleKey: 'camera_compose_save_failed',
-          subtitleKey: 'camera_compose_save_failed_subtitle',
-          icon: AssetPaths.iconImportArrow,
+      final String uploadPath;
+      if (args.isVideo) {
+        uploadPath = args.imagePath;
+      } else {
+        final bytes = await _captureComposeBytes();
+        if (bytes == null || bytes.isEmpty) {
+          _showBanner(
+            titleKey: 'camera_compose_save_failed',
+            subtitleKey: 'camera_compose_save_failed_subtitle',
+            icon: AssetPaths.iconImportArrow,
+          );
+          return;
+        }
+
+        final dir = await getTemporaryDirectory();
+        tempFile = File(
+          '${dir.path}/story_share_${DateTime.now().millisecondsSinceEpoch}.png',
         );
-        return;
+        await tempFile.writeAsBytes(bytes, flush: true);
+        uploadPath = tempFile.path;
       }
 
-      final dir = await getTemporaryDirectory();
-      tempFile = File(
-        '${dir.path}/story_share_${DateTime.now().millisecondsSinceEpoch}.png',
-      );
-      await tempFile.writeAsBytes(bytes, flush: true);
+      final music = args.isVideo ? null : _selectedMusic;
+      final audience = _audience == _ComposeAudience.public
+          ? 'public'
+          : 'friends_only';
 
-      final music = _selectedMusic;
-      await getIt<UserRepository>().publishStory(
-        imagePath: tempFile.path,
-        audience: _audience == _ComposeAudience.public
-            ? 'public'
-            : 'friends_only',
-        musicTrackId: music?.track.id,
-        musicClipStartMs: music?.clipStart.inMilliseconds,
-        musicClipDurationMs: music?.clipDuration.inMilliseconds,
-      );
+      if (args.intent == CameraPublishIntent.pulse) {
+        final pulse = await getIt<UserRepository>().createPulseFromPhoto(
+          imagePath: uploadPath,
+          audience: audience,
+          sourceType: 'direct',
+        );
+        if (pulse == null) {
+          throw StateError('Pulse create failed.');
+        }
+      } else {
+        await getIt<UserRepository>().publishStory(
+          imagePath: uploadPath,
+          audience: audience,
+          musicTrackId: music?.track.id,
+          musicClipStartMs: music?.clipStart.inMilliseconds,
+          musicClipDurationMs: music?.clipDuration.inMilliseconds,
+          isVideo: args.isVideo,
+        );
+      }
 
       if (!mounted) return;
       await _stopMusicPreview();
       if (!mounted) return;
       _showBanner(
-        titleKey: 'camera_compose_shared',
-        subtitleKey: 'camera_compose_shared_subtitle',
+        titleKey: args.intent == CameraPublishIntent.pulse
+            ? 'camera_compose_pulse_shared'
+            : 'camera_compose_shared',
+        subtitleKey: args.intent == CameraPublishIntent.pulse
+            ? 'camera_compose_pulse_shared_subtitle'
+            : 'camera_compose_shared_subtitle',
         icon: AssetPaths.iconSendPlane,
       );
       getIt<HomeBloc>().add(const HomeStoriesRefreshRequested());
+      getIt<StoriesBloc>().add(const StoriesRefreshRequested(force: true));
       context.go(RoutePaths.home.path);
     } catch (_) {
       if (!mounted) return;
@@ -354,7 +397,7 @@ class _CameraComposeViewState extends State<CameraComposeView> {
   }
 
   void _onStageTapUp(TapUpDetails details) {
-    if (_isDragging) return;
+    if (args.isVideo || _isDragging) return;
     final box = _stageKey.currentContext?.findRenderObject() as RenderBox?;
     if (box == null) return;
 
@@ -627,7 +670,9 @@ class _CameraComposeViewState extends State<CameraComposeView> {
                     fit: StackFit.expand,
                     children: [
                       Positioned.fill(
-                        child: args.isAsset
+                        child: args.isVideo
+                            ? AppVideoPlayer(path: args.imagePath)
+                            : args.isAsset
                             ? Image.asset(args.imagePath, fit: BoxFit.cover)
                             : Image.file(
                                 File(args.imagePath),
@@ -777,21 +822,23 @@ class _CameraComposeViewState extends State<CameraComposeView> {
                                         child: Column(
                                           mainAxisSize: MainAxisSize.min,
                                           children: [
-                                            const SizedBox(height: 20),
-                                            _ToolIcon(
-                                              asset: AssetPaths.iconTextAa,
-                                              onTap: () => _openTextEditor(),
-                                            ),
-                                            const SizedBox(height: 20),
-                                            _ToolIcon(
-                                              asset: AssetPaths.iconSticker,
-                                              onTap: _openStampSheet,
-                                            ),
-                                            const SizedBox(height: 20),
-                                            _ToolIcon(
-                                              asset: AssetPaths.iconMusicNote,
-                                              onTap: _openMusicSheet,
-                                            ),
+                                            if (!args.isVideo) ...[
+                                              const SizedBox(height: 20),
+                                              _ToolIcon(
+                                                asset: AssetPaths.iconTextAa,
+                                                onTap: () => _openTextEditor(),
+                                              ),
+                                              const SizedBox(height: 20),
+                                              _ToolIcon(
+                                                asset: AssetPaths.iconSticker,
+                                                onTap: _openStampSheet,
+                                              ),
+                                              const SizedBox(height: 20),
+                                              _ToolIcon(
+                                                asset: AssetPaths.iconMusicNote,
+                                                onTap: _openMusicSheet,
+                                              ),
+                                            ],
                                           ],
                                         ),
                                       ),

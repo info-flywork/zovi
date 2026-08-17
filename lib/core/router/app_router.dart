@@ -142,15 +142,19 @@ abstract final class AppRouter {
           }
           return null;
         },
-        builder: (context, state) {
+        pageBuilder: (context, state) {
           final args = state.extra! as OtpRouteArgs;
-          return BlocProvider(
-            create: (_) => OtpBloc(
-              getIt(),
-              phone: args.phone,
-              selectedCountry: args.selectedCountry,
+          return CupertinoPage<void>(
+            key: state.pageKey,
+            name: state.name,
+            child: BlocProvider(
+              create: (_) => OtpBloc(
+                getIt(),
+                phone: args.phone,
+                selectedCountry: args.selectedCountry,
+              ),
+              child: const OtpView(),
             ),
-            child: const OtpView(),
           );
         },
       ),
@@ -247,7 +251,13 @@ abstract final class AppRouter {
       GoRoute(
         path: RoutePaths.camera.path,
         name: RoutePaths.camera.name,
-        builder: (context, state) => const CameraView(),
+        builder: (context, state) {
+          final extra = state.extra;
+          final intent = extra is CameraPublishIntent
+              ? extra
+              : CameraPublishIntent.story;
+          return CameraView(intent: intent);
+        },
       ),
       GoRoute(
         path: RoutePaths.cameraCompose.path,

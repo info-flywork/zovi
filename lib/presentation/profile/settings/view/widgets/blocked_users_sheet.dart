@@ -95,10 +95,8 @@ class _BlockedUsersSheetState extends State<BlockedUsersSheet> {
 
     _listKey.currentState?.removeItem(
       index,
-      (context, animation) => _BlockedUserRemoveTile(
-        user: removed,
-        animation: animation,
-      ),
+      (context, animation) =>
+          _BlockedUserRemoveTile(user: removed, animation: animation),
       duration: _removeDuration,
     );
 
@@ -237,10 +235,7 @@ class _BlockedUserRemoveTile extends StatelessWidget {
               ),
           child: Padding(
             padding: const EdgeInsets.only(bottom: 12),
-            child: _BlockedUserRow(
-              user: user,
-              onUnblock: onUnblock ?? () {},
-            ),
+            child: _BlockedUserRow(user: user, onUnblock: onUnblock ?? () {}),
           ),
         ),
       ),
@@ -283,10 +278,7 @@ class _BlockedEmptyState extends StatelessWidget {
 }
 
 class _BlockedUserRow extends StatelessWidget {
-  const _BlockedUserRow({
-    required this.user,
-    required this.onUnblock,
-  });
+  const _BlockedUserRow({required this.user, required this.onUnblock});
 
   final BlockedUser user;
   final VoidCallback onUnblock;

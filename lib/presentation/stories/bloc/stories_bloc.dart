@@ -1,8 +1,4 @@
-import 'dart:async';
-
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:zovi/core/cache/stamp_image_cache.dart';
-import 'package:zovi/core/di/injection.dart';
 import 'package:zovi/domain/user/user_repository.dart';
 import 'package:zovi/presentation/stories/bloc/stories_event.dart';
 import 'package:zovi/presentation/stories/bloc/stories_state.dart';
@@ -22,17 +18,13 @@ final class StoriesBloc extends Bloc<StoriesEvent, StoriesState> {
     final cached = _userRepository.peekStoryFeed();
     if (cached.isNotEmpty) {
       emit(StoriesLoaded(items: cached));
-      // Soft refresh in place — keep tiles on screen.
-      final items = await _userRepository.getStoryFeed(forceRefresh: true);
-      emit(StoriesLoaded(items: items));
-      _prefetchThumbnails(items);
-      return;
+      if (_userRepository.isStoryFeedFresh) return;
+    } else {
+      emit(const StoriesLoading());
     }
 
-    emit(const StoriesLoading());
     final items = await _userRepository.getStoryFeed();
-    emit(StoriesLoaded(items: items));
-    _prefetchThumbnails(items);
+    _emitIfGridChanged(emit, items);
   }
 
   Future<void> _onRefresh(
@@ -42,22 +34,33 @@ final class StoriesBloc extends Bloc<StoriesEvent, StoriesState> {
     final cached = _userRepository.peekStoryFeed();
     if (cached.isNotEmpty) {
       emit(StoriesLoaded(items: cached));
+      if (!event.force && _userRepository.isStoryFeedFresh) return;
     }
-    final items = await _userRepository.getStoryFeed(forceRefresh: true);
-    emit(StoriesLoaded(items: items));
-    _prefetchThumbnails(items);
+    final items = await _userRepository.getStoryFeed(
+      forceRefresh: event.force,
+    );
+    _emitIfGridChanged(emit, items);
   }
 
-  void _prefetchThumbnails(List<StoryMediaItem> items) {
-    final cache = getIt<StampImageCache>();
-    for (final item in items.take(30)) {
-      if (!item.isNetworkImage) continue;
-      unawaited(
-        cache.prefetch(
-          stampId: item.storyId ?? item.imagePath,
-          url: item.imagePath,
-        ),
-      );
+  void _emitIfGridChanged(
+    Emitter<StoriesState> emit,
+    List<StoryMediaItem> items,
+  ) {
+    final current = state;
+    if (current is StoriesLoaded && _sameGrid(current.items, items)) return;
+    emit(StoriesLoaded(items: items));
+  }
+
+  static bool _sameGrid(List<StoryMediaItem> a, List<StoryMediaItem> b) {
+    if (identical(a, b)) return true;
+    if (a.length != b.length) return false;
+    for (var i = 0; i < a.length; i++) {
+      if (a[i].storyId != b[i].storyId ||
+          a[i].imagePath != b[i].imagePath ||
+          a[i].isVideo != b[i].isVideo) {
+        return false;
+      }
     }
+    return true;
   }
 }

@@ -1,6 +1,7 @@
 part of '../profile_view.dart';
 
-class ProfileHeader extends StatelessWidget {
+@immutable
+final class ProfileHeader extends StatelessWidget {
   const ProfileHeader({
     required this.user,
     required this.onShareTap,
@@ -18,7 +19,8 @@ class ProfileHeader extends StatelessWidget {
         children: [
           Row(
             children: [
-              const Spacer(),
+              _ProfileCoinBalance(coins: user.coins),
+              Spacer(),
               GestureDetector(
                 onTap: () => context.push(RoutePaths.stickers.path),
                 child: const AppIcon(AssetPaths.iconProfileClip, size: 32),
@@ -65,6 +67,39 @@ class ProfileHeader extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+@immutable
+final class _ProfileCoinBalance extends StatelessWidget {
+  const _ProfileCoinBalance({required this.coins});
+
+  final int coins;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          '$coins',
+          style: const TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.w700,
+            height: 1,
+            letterSpacing: -0.32,
+            color: AppColors.deepRoast,
+          ),
+        ),
+        const SizedBox(width: 4),
+        Image.asset(
+          AssetPaths.zoviCoin,
+          width: 34,
+          height: 34,
+          fit: BoxFit.contain,
+        ),
+      ],
     );
   }
 }

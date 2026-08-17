@@ -128,3 +128,45 @@ class ProfileAvatar extends StatelessWidget {
     );
   }
 }
+
+class OverlappingProfileAvatars extends StatelessWidget {
+  const OverlappingProfileAvatars({
+    required this.avatars,
+    this.size = 34,
+    this.overlap = 11,
+    super.key,
+  });
+
+  final List<String> avatars;
+  final double size;
+  final double overlap;
+
+  @override
+  Widget build(BuildContext context) {
+    if (avatars.isEmpty) return const SizedBox.shrink();
+    final shown = avatars.take(3).toList();
+    final width = size + (shown.length - 1) * (size - overlap);
+
+    return SizedBox(
+      width: width,
+      height: size,
+      child: Stack(
+        children: [
+          for (var i = 0; i < shown.length; i++)
+            Positioned(
+              left: i * (size - overlap),
+              child: Container(
+                width: size,
+                height: size,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(color: AppColors.white, width: 3),
+                ),
+                child: ProfileAvatar(path: shown[i], size: size - 6),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}

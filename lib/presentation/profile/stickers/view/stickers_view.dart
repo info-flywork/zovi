@@ -113,11 +113,8 @@ class _StickersViewState extends State<StickersView> {
       );
       final myCreations = owned
           .map(
-            (item) => _StickerItem(
-              id: item.id,
-              path: item.imageUrl,
-              name: item.name,
-            ),
+            (item) =>
+                _StickerItem(id: item.id, path: item.imageUrl, name: item.name),
           )
           .toList();
       if (!mounted) return;
@@ -391,8 +388,10 @@ class _StickersViewState extends State<StickersView> {
                                 final created = await context.push<bool>(
                                   RoutePaths.createSticker.path,
                                 );
-                                if (!mounted || created != true) return;
-                                await _loadStickers(context.locale.languageCode);
+                                if (!context.mounted || created != true) return;
+                                await _loadStickers(
+                                  context.locale.languageCode,
+                                );
                               },
                             ),
                     ),
@@ -532,7 +531,8 @@ class _StickerSection extends StatelessWidget {
   final bool canDeleteSection;
   final bool isSelecting;
   final Set<_StampKey> selected;
-  final void Function(String sectionId, int index, _StickerItem stamp) onStampTap;
+  final void Function(String sectionId, int index, _StickerItem stamp)
+  onStampTap;
   final void Function(String sectionId, int index) onStampLongPress;
 
   @override

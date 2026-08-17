@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:zovi/core/theme/app_colors.dart';
 import 'package:zovi/core/utils/constants/asset_paths.dart';
 import 'package:zovi/core/widgets/app_button.dart';
+import 'package:zovi/core/widgets/stamp_image.dart';
 import 'package:zovi/domain/user/user_repository.dart';
 import 'package:zovi/presentation/home/model/check_in_success_route_args.dart';
 
@@ -136,14 +137,17 @@ Future<CheckInUnlockResult?> showCheckInUnlockRewardSheet(
     );
   }
 
-  return showCheckInUnlockStampSheet(context);
+  return showCheckInUnlockStampSheet(
+    context,
+    stamp: _unlockStamps[Random().nextInt(_unlockStamps.length)],
+  );
 }
 
 /// Sadece stamp unlock sheet'i açar.
 Future<CheckInUnlockResult?> showCheckInUnlockStampSheet(
-  BuildContext context,
-) {
-  final stamp = _unlockStamps[Random().nextInt(_unlockStamps.length)];
+  BuildContext context, {
+  required StampItem stamp,
+}) {
   return showModalBottomSheet<CheckInUnlockResult>(
     context: context,
     isScrollControlled: true,
@@ -208,11 +212,11 @@ class CheckInUnlockStampSheet extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 10),
-            Image.asset(
-              stamp.imagePath,
+            StampImage(
+              path: stamp.imagePath,
+              stampId: stamp.id,
               width: 180,
               height: 180,
-              fit: BoxFit.contain,
             ),
             const SizedBox(height: 10),
             AppButton(

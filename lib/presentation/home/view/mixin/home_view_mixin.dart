@@ -46,14 +46,27 @@ mixin HomeViewMixin on State<HomeView> {
   }
 
   Future<void> onAddTap() async {
-    final user = getIt<UserRepository>().currentUserListenable.value;
-    final isFirstCheckIn = (user?.checkIns ?? 0) <= 0;
+    final type = await showShareContentSheet(context);
+    if (!mounted || type == null) return;
 
-    if (isFirstCheckIn) {
-      final continued = await showFirstCheckInSheet(context);
-      if (continued != true || !mounted) return;
+    if (type == ShareContentType.checkIn) {
+      final user = getIt<UserRepository>().currentUserListenable.value;
+      final isFirstCheckIn = (user?.checkIns ?? 0) <= 0;
+
+      if (isFirstCheckIn) {
+        final continued = await showFirstCheckInSheet(context);
+        if (continued != true || !mounted) return;
+      }
+
+      await showCheckInCreateSheet(context);
+      return;
     }
 
-    await showCheckInCreateSheet(context);
+    await context.push(
+      RoutePaths.camera.path,
+      extra: type == ShareContentType.pulse
+          ? CameraPublishIntent.pulse
+          : CameraPublishIntent.story,
+    );
   }
 }

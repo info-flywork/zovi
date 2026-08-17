@@ -64,15 +64,22 @@ class HomeMapLastCheckInSheet extends StatelessWidget {
                 child: Stack(
                   clipBehavior: Clip.none,
                   children: [
-                    CheckInCyclingPhoto(
-                      paths: checkIn.photoPaths,
-                      size: _thumbSize,
-                      borderRadius: BorderRadius.circular(16),
-                      padding: const EdgeInsets.all(3),
-                      gradient: AppColors.storyRingGradient,
-                      indexListenable:
-                          getIt<UserRepository>().checkInPhotoIndexListenable,
-                    ),
+                    HomeMapCheckInMarker.hasPhotos(checkIn.photoPaths)
+                        ? CheckInCyclingPhoto(
+                            paths: checkIn.photoPaths,
+                            size: _thumbSize,
+                            borderRadius: BorderRadius.circular(16),
+                            padding: const EdgeInsets.all(3),
+                            gradient: AppColors.storyRingGradient,
+                            indexListenable: getIt<UserRepository>()
+                                .checkInPhotoIndexListenable,
+                          )
+                        : ProfileAvatar(
+                            path: _selfAvatarPath(checkIn.avatarPath),
+                            size: _thumbSize,
+                            showGradientRing: true,
+                            ringWidth: 3,
+                          ),
                     Positioned(
                       right: -2,
                       bottom: -2,
@@ -106,11 +113,10 @@ class HomeMapLastCheckInSheet extends StatelessWidget {
                                 ),
                               ),
                             )
-                          : Image.asset(
-                              checkIn.stampImagePath,
+                          : StampImage(
+                              path: checkIn.stampImagePath,
                               width: _stampSize,
                               height: _stampSize,
-                              fit: BoxFit.contain,
                             ),
                     ),
                   ],

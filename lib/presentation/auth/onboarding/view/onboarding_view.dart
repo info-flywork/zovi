@@ -45,46 +45,50 @@ class _OnboardingViewState extends State<OnboardingView>
     with OnboardingViewMixin {
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.white,
-      body: SafeArea(
-        child: BlocConsumer<OnboardingBloc, OnboardingState>(
-          listener: (context, state) {
-            if (state is OnboardingError) {
-              showErrorSnackbar(state.message);
-            } else if (state is OnboardingSuccess) {
-              if (state.navigateTo == RoutePaths.otp.path) {
-                context.go(
-                  state.navigateTo,
-                  extra: OtpRouteArgs(
-                    phone: state.phone,
-                    selectedCountry: state.selectedCountry,
-                  ),
-                );
-              } else if (state.navigateTo == RoutePaths.createProfile.path) {
-                context.go(
-                  state.navigateTo,
-                  extra: const CreateProfileRouteArgs(
-                    signupFlow: SignupFlow.social,
-                  ),
-                );
-              } else {
-                context.go(state.navigateTo);
+    return GestureDetector(
+      onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
+      child: Scaffold(
+        backgroundColor: AppColors.white,
+        resizeToAvoidBottomInset: true,
+        body: SafeArea(
+          child: BlocConsumer<OnboardingBloc, OnboardingState>(
+            listener: (context, state) {
+              if (state is OnboardingError) {
+                showErrorSnackbar(state.message);
+              } else if (state is OnboardingSuccess) {
+                if (state.navigateTo == RoutePaths.otp.path) {
+                  context.push(
+                    state.navigateTo,
+                    extra: OtpRouteArgs(
+                      phone: state.phone,
+                      selectedCountry: state.selectedCountry,
+                    ),
+                  );
+                } else if (state.navigateTo == RoutePaths.createProfile.path) {
+                  context.go(
+                    state.navigateTo,
+                    extra: const CreateProfileRouteArgs(
+                      signupFlow: SignupFlow.social,
+                    ),
+                  );
+                } else {
+                  context.go(state.navigateTo);
+                }
               }
-            }
-          },
-          builder: (context, state) {
-            return OnboardingLoadedBody(
-              phone: state.phone,
-              selectedCountry: state.selectedCountry,
-              isLoading: state is OnboardingLoading,
-              onPhoneChanged: onPhoneChanged,
-              onCountryTap: onCountryTap,
-              onSendCode: onSendCode,
-              onGoogle: onGoogle,
-              onApple: onApple,
-            );
-          },
+            },
+            builder: (context, state) {
+              return OnboardingLoadedBody(
+                phone: state.phone,
+                selectedCountry: state.selectedCountry,
+                isLoading: state is OnboardingLoading,
+                onPhoneChanged: onPhoneChanged,
+                onCountryTap: onCountryTap,
+                onSendCode: onSendCode,
+                onGoogle: onGoogle,
+                onApple: onApple,
+              );
+            },
+          ),
         ),
       ),
     );

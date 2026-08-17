@@ -1,0 +1,9 @@
+/* Native iOS permission descriptions. */
+
+"NSCameraUsageDescription" = "Нам нужен доступ к камере, чтобы снимать и делиться фото и видео.";
+"NSLocationAlwaysAndWhenInUseUsageDescription" = "Мы используем геолокацию для чекинов, друзей рядом и твоей персональной карты.";
+"NSLocationAlwaysUsageDescription" = "Мы используем геолокацию для чекинов, друзей рядом и твоей персональной карты.";
+"NSLocationWhenInUseUsageDescription" = "Мы используем геолокацию для чекинов, друзей рядом и твоей персональной карты.";
+"NSMicrophoneUsageDescription" = "Нам нужен микрофон, чтобы записывать видео и голосовые сообщения.";
+"NSPhotoLibraryAddUsageDescription" = "Нам нужен доступ, чтобы сохранять фото и видео с камеры.";
+"NSPhotoLibraryUsageDescription" = "Нам нужен доступ к галерее, чтобы делиться фото и видео и обновлять профиль.";

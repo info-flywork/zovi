@@ -62,7 +62,7 @@ class HomeMapMarker extends StatelessWidget {
           ),
         ),
         Text(
-          friend.name,
+          friend.mapLabel,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
           style: const TextStyle(

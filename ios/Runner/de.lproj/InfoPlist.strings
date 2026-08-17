@@ -1,0 +1,9 @@
+/* Native iOS permission descriptions. */
+
+"NSCameraUsageDescription" = "Wir benötigen Kamerazugriff, damit du Fotos und Videos aufnehmen und teilen kannst.";
+"NSLocationAlwaysAndWhenInUseUsageDescription" = "Wir nutzen deinen Standort für Check-ins, Freunde in der Nähe und deine persönliche Karte.";
+"NSLocationAlwaysUsageDescription" = "Wir nutzen deinen Standort für Check-ins, Freunde in der Nähe und deine persönliche Karte.";
+"NSLocationWhenInUseUsageDescription" = "Wir nutzen deinen Standort für Check-ins, Freunde in der Nähe und deine persönliche Karte.";
+"NSMicrophoneUsageDescription" = "Wir benötigen Mikrofonzugriff, damit du Videos aufnehmen und Sprachnachrichten senden kannst.";
+"NSPhotoLibraryAddUsageDescription" = "Wir benötigen Zugriff, um Fotos und Videos aus der Kamera zu speichern.";
+"NSPhotoLibraryUsageDescription" = "Wir benötigen Zugriff auf deine Mediathek, damit du Fotos und Videos teilen und dein Profil aktualisieren kannst.";
