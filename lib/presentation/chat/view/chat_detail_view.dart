@@ -239,7 +239,7 @@ final class _ChatDetailViewState extends State<ChatDetailView> {
     if (!changed) return false;
     _messages
       ..clear()
-      ..addAll(next);
+      ..addAll(_attachReplyStampPaths(next));
     _persistMessagesToCache();
     return true;
   }
@@ -431,7 +431,7 @@ final class _ChatDetailViewState extends State<ChatDetailView> {
     final mapped = [for (final m in cached) _mapRemote(m, myId)];
     _messages
       ..clear()
-      ..addAll(mapped);
+      ..addAll(_attachReplyStampPaths(mapped));
     _listKey = GlobalKey<AnimatedListState>();
     _newestRemoteAt = _messagesCache.newestAt(conversationId);
     _updateNewestCursor(mapped);
@@ -441,11 +441,15 @@ final class _ChatDetailViewState extends State<ChatDetailView> {
 
   _ChatMessage _mapRemote(ChatMessage m, String myId) {
     bool? replyMine;
+    String? replySender;
     final replyId = m.replyToMessageId?.trim();
     if (replyId != null && replyId.isNotEmpty) {
       for (final existing in _messages) {
         if (existing.id == replyId) {
           replyMine = existing.isMine;
+          if (!existing.isMine) {
+            replySender = existing.displayName;
+          }
           break;
         }
       }
@@ -507,6 +511,10 @@ final class _ChatDetailViewState extends State<ChatDetailView> {
           ? null
           : m.replyPreview,
       replyToIsMine: storyReply ? null : replyMine,
+      replyToStampPath: storyReply
+          ? null
+          : _stampPathForReply(m.replyPreview, replyId),
+      replyToSenderName: storyReply ? null : replySender,
       storyReplyMediaUrl: storyReply && m.mediaUrl.trim().isNotEmpty
           ? m.mediaUrl.trim()
           : null,
@@ -581,7 +589,7 @@ final class _ChatDetailViewState extends State<ChatDetailView> {
         for (final m in mapped)
           if (m.id != null) m.id!: m,
       };
-      final withReplyOwners = [
+      final withReplyOwners = _attachReplyStampPaths([
         for (final m in mapped)
           if (m.replyToId == null ||
               m.replyToIsMine != null ||
@@ -589,7 +597,7 @@ final class _ChatDetailViewState extends State<ChatDetailView> {
             m
           else
             m.copyWith(replyToIsMine: byId[m.replyToId]!.isMine),
-      ];
+      ]);
 
       final pendingLocals = [
         for (final m in _messages)
@@ -690,10 +698,10 @@ final class _ChatDetailViewState extends State<ChatDetailView> {
   }
 
   void _insertMessage(_ChatMessage message, {required bool animate}) {
-    final index = _messages.length;
     _messages.add(message);
     if (animate) {
-      _listKey.currentState?.insertItem(index, duration: _messageAnimDuration);
+      // Reverse list — the newly appended (newest) message is visual index 0.
+      _listKey.currentState?.insertItem(0, duration: _messageAnimDuration);
     } else {
       setState(() {});
     }
@@ -710,10 +718,12 @@ final class _ChatDetailViewState extends State<ChatDetailView> {
 
   void _removeMessageAt(int index, {required bool animate}) {
     if (index < 0 || index >= _messages.length) return;
+    // Reverse list — map the data index to its visual index before removing.
+    final visualIndex = _messages.length - 1 - index;
     final removed = _messages.removeAt(index);
     if (animate) {
       _listKey.currentState?.removeItem(
-        index,
+        visualIndex,
         (context, animation) => _AnimatedMessageTile(
           animation: animation,
           message: removed,
@@ -760,34 +770,20 @@ final class _ChatDetailViewState extends State<ChatDetailView> {
   }
 
   void _scrollToBottom({bool forceJump = false}) {
-    void jumpIfNeeded() {
-      if (!_scrollController.hasClients) return;
-      final max = _scrollController.position.maxScrollExtent;
-      if (forceJump || (_scrollController.offset - max).abs() > 1) {
-        _scrollController.jumpTo(max);
-      }
-    }
-
+    // Reverse list — the bottom (newest) is a fixed offset (minScrollExtent),
+    // so we never chase a drifting maxScrollExtent as bubbles load.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!_scrollController.hasClients) return;
-      final max = _scrollController.position.maxScrollExtent;
-      if (forceJump) {
-        _scrollController.jumpTo(max);
+      final target = _scrollController.position.minScrollExtent;
+      if (forceJump || (_scrollController.offset - target).abs() <= 1) {
+        _scrollController.jumpTo(target);
       } else {
         _scrollController.animateTo(
-          max,
+          target,
           duration: const Duration(milliseconds: 220),
           curve: Curves.easeOut,
         );
       }
-      // Layout can grow after AnimatedList insert / keyboard — settle again.
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        jumpIfNeeded();
-        Future<void>.delayed(const Duration(milliseconds: 80), () {
-          if (!mounted) return;
-          jumpIfNeeded();
-        });
-      });
     });
   }
 
@@ -797,13 +793,58 @@ final class _ChatDetailViewState extends State<ChatDetailView> {
   }
 
   String _previewForReply(_ChatMessage message) {
+    if (message.isStamp) {
+      return stampReplyPreviewFor(message.stampPath ?? '');
+    }
     if (message.text?.trim().isNotEmpty ?? false) {
       return message.text!.trim();
     }
     if (message.isImage) return '📷';
     if (message.isVoice) return '🎤';
-    if (message.isStamp) return '🏷️';
     return '';
+  }
+
+  String? _stampPathForReply(String preview, String? replyId) {
+    final fromPreview = stampPathFromReplyPreview(preview);
+    if (fromPreview != null) return fromPreview;
+    if (replyId == null || replyId.isEmpty) return null;
+    for (final existing in _messages) {
+      if (existing.id == replyId && existing.isStamp) {
+        return existing.stampPath;
+      }
+    }
+    return null;
+  }
+
+  List<_ChatMessage> _attachReplyStampPaths(List<_ChatMessage> items) {
+    final byId = <String, _ChatMessage>{
+      for (final m in items)
+        if ((m.id ?? '').isNotEmpty) m.id!: m,
+    };
+    return [
+      for (final m in items) _withReplyMeta(m, byId),
+    ];
+  }
+
+  _ChatMessage _withReplyMeta(
+    _ChatMessage m,
+    Map<String, _ChatMessage> byId,
+  ) {
+    final original = byId[m.replyToId];
+    if (original == null) return m;
+    return m.copyWith(
+      replyToIsMine: m.replyToIsMine ?? original.isMine,
+      replyToStampPath:
+          (m.replyToStampPath == null || m.replyToStampPath!.isEmpty) &&
+              original.isStamp
+          ? original.stampPath
+          : m.replyToStampPath,
+      replyToSenderName:
+          (m.replyToSenderName == null || m.replyToSenderName!.isEmpty) &&
+              !original.isMine
+          ? original.displayName
+          : m.replyToSenderName,
+    );
   }
 
   void _startReply(_ChatMessage message) {
@@ -920,6 +961,8 @@ final class _ChatDetailViewState extends State<ChatDetailView> {
 
     final reply = _replyingTo;
     final replyPreview = reply == null ? null : _previewForReply(reply);
+    final replySenderName =
+        reply == null || reply.isMine ? null : reply.displayName;
     final optimistic = _ChatMessage(
       id: 'local-${DateTime.now().microsecondsSinceEpoch}',
       text: text,
@@ -927,6 +970,8 @@ final class _ChatDetailViewState extends State<ChatDetailView> {
       replyToId: reply?.id,
       replyToText: replyPreview,
       replyToIsMine: reply?.isMine,
+      replyToStampPath: reply?.stampPath,
+      replyToSenderName: replySenderName,
     );
     _addMessage(optimistic);
     _controller.clear();
@@ -977,6 +1022,10 @@ final class _ChatDetailViewState extends State<ChatDetailView> {
                   ? saved.replyPreview
                   : optimistic.replyToText,
               replyToIsMine: optimistic.replyToIsMine,
+              replyToStampPath:
+                  stampPathFromReplyPreview(saved.replyPreview) ??
+                  optimistic.replyToStampPath,
+              replyToSenderName: optimistic.replyToSenderName,
             ),
             animate: false,
           );
@@ -993,6 +1042,10 @@ final class _ChatDetailViewState extends State<ChatDetailView> {
                 ? saved.replyPreview
                 : optimistic.replyToText,
             replyToIsMine: optimistic.replyToIsMine,
+            replyToStampPath:
+                stampPathFromReplyPreview(saved.replyPreview) ??
+                optimistic.replyToStampPath,
+            replyToSenderName: optimistic.replyToSenderName,
           ),
         );
       }
@@ -1081,6 +1134,10 @@ final class _ChatDetailViewState extends State<ChatDetailView> {
       replyToId: reply?.id,
       replyToText: replyPreview,
       replyToIsMine: reply?.isMine,
+      replyToStampPath: reply?.stampPath,
+      replyToSenderName: reply == null || reply.isMine
+          ? null
+          : reply.displayName,
     );
     _addMessage(optimistic);
     if (_replyingTo != null) {
@@ -1137,6 +1194,10 @@ final class _ChatDetailViewState extends State<ChatDetailView> {
         replyToId: mapped.replyToId ?? optimistic.replyToId,
         replyToText: mapped.replyToText ?? optimistic.replyToText,
         replyToIsMine: mapped.replyToIsMine ?? optimistic.replyToIsMine,
+        replyToStampPath:
+            mapped.replyToStampPath ?? optimistic.replyToStampPath,
+        replyToSenderName:
+            mapped.replyToSenderName ?? optimistic.replyToSenderName,
         isMine: true,
       );
 
@@ -1395,14 +1456,20 @@ final class _ChatDetailViewState extends State<ChatDetailView> {
                   : AnimatedList(
                       key: _listKey,
                       controller: _scrollController,
+                      // Reverse list: newest sits at the bottom (offset 0) and
+                      // stays pinned there as bubbles/images grow — no scroll
+                      // timing hacks needed to "start at the bottom".
+                      reverse: true,
                       physics: const ClampingScrollPhysics(),
                       padding: const EdgeInsets.fromLTRB(0, 16, 0, 8),
                       initialItemCount: _messages.length,
                       itemBuilder: (context, index, animation) {
-                        if (index < 0 || index >= _messages.length) {
+                        // Visual index 0 == last (newest) message.
+                        final dataIndex = _messages.length - 1 - index;
+                        if (dataIndex < 0 || dataIndex >= _messages.length) {
                           return const SizedBox.shrink();
                         }
-                        final message = _messages[index];
+                        final message = _messages[dataIndex];
                         return _AnimatedMessageTile(
                           animation: animation,
                           message: message,
@@ -1435,7 +1502,13 @@ final class _ChatDetailViewState extends State<ChatDetailView> {
                   if (_replyingTo != null) ...[
                     _ReplyComposerBar(
                       message: _replyingTo!,
-                      peerName: widget.args.name,
+                      authorName: _replyingTo!.isMine
+                          ? 'chat_reply_you'.tr()
+                          : (_replyingTo!.displayName.isNotEmpty
+                                ? _replyingTo!.displayName
+                                : (widget.args.isGroup
+                                      ? ''
+                                      : widget.args.name)),
                       onCancel: _cancelReply,
                     ),
                     const SizedBox(height: 8),
@@ -1486,6 +1559,8 @@ final class _ChatMessage {
     this.replyToId,
     this.replyToText,
     this.replyToIsMine,
+    this.replyToStampPath,
+    this.replyToSenderName,
     this.storyReplyMediaUrl,
     this.storyReplyRef,
     required this.isMine,
@@ -1505,6 +1580,8 @@ final class _ChatMessage {
   final String? replyToId;
   final String? replyToText;
   final bool? replyToIsMine;
+  final String? replyToStampPath;
+  final String? replyToSenderName;
   final String? storyReplyMediaUrl;
   final String? storyReplyRef;
   final bool isMine;
@@ -1519,6 +1596,14 @@ final class _ChatMessage {
       !isStoryReply &&
       ((replyToText?.trim().isNotEmpty ?? false) ||
           (replyToId?.trim().isNotEmpty ?? false));
+
+  String get displayName {
+    final name = senderName?.trim() ?? '';
+    if (name.isNotEmpty) return name;
+    final handle = senderUsername?.trim() ?? '';
+    if (handle.isEmpty) return '';
+    return handle.startsWith('@') ? handle.substring(1) : handle;
+  }
 
   _ChatMessage copyWith({
     String? id,
@@ -1535,6 +1620,8 @@ final class _ChatMessage {
     String? replyToId,
     String? replyToText,
     bool? replyToIsMine,
+    String? replyToStampPath,
+    String? replyToSenderName,
     String? storyReplyMediaUrl,
     String? storyReplyRef,
     bool? isMine,
@@ -1554,6 +1641,8 @@ final class _ChatMessage {
       replyToId: replyToId ?? this.replyToId,
       replyToText: replyToText ?? this.replyToText,
       replyToIsMine: replyToIsMine ?? this.replyToIsMine,
+      replyToStampPath: replyToStampPath ?? this.replyToStampPath,
+      replyToSenderName: replyToSenderName ?? this.replyToSenderName,
       storyReplyMediaUrl: storyReplyMediaUrl ?? this.storyReplyMediaUrl,
       storyReplyRef: storyReplyRef ?? this.storyReplyRef,
       isMine: isMine ?? this.isMine,
@@ -1723,27 +1812,28 @@ final class _SwipeToReplyState extends State<_SwipeToReply>
 final class _ReplyComposerBar extends StatelessWidget {
   const _ReplyComposerBar({
     required this.message,
-    required this.peerName,
+    required this.authorName,
     required this.onCancel,
   });
 
   final _ChatMessage message;
-  final String peerName;
+  final String authorName;
   final VoidCallback onCancel;
 
   @override
   Widget build(BuildContext context) {
-    final label = message.isMine
-        ? 'chat_reply_you'.tr()
-        : (peerName.trim().isNotEmpty ? peerName : 'chat_replying_to'.tr());
-    final preview = message.text?.trim().isNotEmpty == true
+    final label = authorName.trim();
+    final stampPath = message.stampPath?.trim() ?? '';
+    final preview = stampPath.isNotEmpty
+        ? ''
+        : message.text?.trim().isNotEmpty == true
         ? message.text!.trim()
         : message.isImage
         ? '📷'
         : message.isVoice
         ? '🎤'
         : message.isStamp
-        ? '🏷️'
+        ? 'chat_preview_sticker'.tr()
         : '';
 
     return Container(
@@ -1763,7 +1853,9 @@ final class _ReplyComposerBar extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  '${'chat_replying_to'.tr()} $label',
+                  label.isEmpty
+                      ? 'chat_replying_to'.tr()
+                      : '${'chat_replying_to'.tr()} $label',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
@@ -1773,21 +1865,27 @@ final class _ReplyComposerBar extends StatelessWidget {
                     color: AppColors.zoviOrange,
                   ),
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  preview,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w400,
-                    height: 1.2,
-                    color: AppColors.textSecondary,
+                if (preview.isNotEmpty) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    preview,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w400,
+                      height: 1.2,
+                      color: AppColors.textSecondary,
+                    ),
                   ),
-                ),
+                ],
               ],
             ),
           ),
+          if (stampPath.isNotEmpty) ...[
+            const SizedBox(width: 8),
+            _ReplyStampThumb(path: stampPath),
+          ],
           IconButton(
             onPressed: onCancel,
             visualDensity: VisualDensity.compact,
@@ -1890,11 +1988,13 @@ final class _QuotedReplyBlock extends StatelessWidget {
     required this.preview,
     required this.label,
     required this.isMineBubble,
+    this.stampPath,
   });
 
   final String preview;
   final String label;
   final bool isMineBubble;
+  final String? stampPath;
 
   @override
   Widget build(BuildContext context) {
@@ -1907,6 +2007,18 @@ final class _QuotedReplyBlock extends StatelessWidget {
     final textColor = isMineBubble
         ? AppColors.white.withValues(alpha: 0.85)
         : AppColors.textSecondary;
+    final resolvedStamp =
+        (stampPath?.trim().isNotEmpty ?? false)
+        ? stampPath!.trim()
+        : stampPathFromReplyPreview(preview);
+    final hasStamp = resolvedStamp != null && resolvedStamp.isNotEmpty;
+    final previewText = hasStamp
+        ? ''
+        : (preview == '🏷️' ||
+              preview.toLowerCase() == 'sticker' ||
+              preview.toLowerCase() == 'stamp')
+        ? 'chat_preview_sticker'.tr()
+        : preview;
 
     return Container(
       padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
@@ -1917,34 +2029,70 @@ final class _QuotedReplyBlock extends StatelessWidget {
         borderRadius: BorderRadius.circular(10),
         border: Border(left: BorderSide(color: barColor, width: 3)),
       ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Text(
-            label,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-              height: 1.2,
-              color: labelColor,
+          Expanded(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    height: 1.2,
+                    color: labelColor,
+                  ),
+                ),
+                if (previewText.isNotEmpty) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    previewText,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w400,
+                      height: 1.25,
+                      color: textColor,
+                    ),
+                  ),
+                ],
+              ],
             ),
           ),
-          const SizedBox(height: 2),
-          Text(
-            preview,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w400,
-              height: 1.25,
-              color: textColor,
-            ),
-          ),
+          if (hasStamp) ...[
+            const SizedBox(width: 8),
+            _ReplyStampThumb(path: resolvedStamp),
+          ],
         ],
+      ),
+    );
+  }
+}
+
+@immutable
+final class _ReplyStampThumb extends StatelessWidget {
+  const _ReplyStampThumb({required this.path});
+
+  final String path;
+
+  @override
+  Widget build(BuildContext context) {
+    const size = 44.0;
+    return SizedBox(
+      width: size,
+      height: size,
+      child: StampImage(
+        path: path,
+        width: size,
+        height: size,
+        fit: BoxFit.contain,
+        filterQuality: FilterQuality.medium,
       ),
     );
   }
@@ -2229,6 +2377,15 @@ final class _MessageBubble extends StatelessWidget {
   final String peerUserId;
   final String myUserId;
 
+  String _quotedReplyLabel() {
+    if (message.replyToIsMine == true) return 'chat_reply_you'.tr();
+    final stored = message.replyToSenderName?.trim() ?? '';
+    if (stored.isNotEmpty) return stored;
+    if (isGroup) return '';
+    if (peerName.trim().isNotEmpty) return peerName.trim();
+    return username.trim();
+  }
+
   void _openMedia(
     BuildContext context, {
     required String heroTag,
@@ -2446,9 +2603,8 @@ final class _MessageBubble extends StatelessWidget {
                 ] else if (message.hasReply) ...[
                   _QuotedReplyBlock(
                     preview: message.replyToText ?? '',
-                    label: message.replyToIsMine == true
-                        ? 'chat_reply_you'.tr()
-                        : (peerName.trim().isNotEmpty ? peerName : username),
+                    stampPath: message.replyToStampPath,
+                    label: _quotedReplyLabel(),
                     isMineBubble: true,
                   ),
                   const SizedBox(height: 8),
@@ -2503,9 +2659,8 @@ final class _MessageBubble extends StatelessWidget {
                 ] else if (message.hasReply) ...[
                   _QuotedReplyBlock(
                     preview: message.replyToText ?? '',
-                    label: message.replyToIsMine == true
-                        ? 'chat_reply_you'.tr()
-                        : (peerName.trim().isNotEmpty ? peerName : username),
+                    stampPath: message.replyToStampPath,
+                    label: _quotedReplyLabel(),
                     isMineBubble: false,
                   ),
                   const SizedBox(height: 8),

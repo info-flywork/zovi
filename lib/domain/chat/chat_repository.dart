@@ -147,6 +147,27 @@ String storyReplyPreviewFor({String? storyId, bool isPulse = false}) {
   return id.isEmpty ? 'story' : 'story:$id';
 }
 
+const _stampReplyPrefix = 'stamp:';
+
+String stampReplyPreviewFor(String path) {
+  final p = path.trim();
+  if (p.isEmpty) return '🏷️';
+  final encoded = '$_stampReplyPrefix$p';
+  return encoded.length <= 280 ? encoded : '🏷️';
+}
+
+String? stampPathFromReplyPreview(String? preview) {
+  final value = (preview ?? '').trim();
+  if (value.startsWith(_stampReplyPrefix)) {
+    final path = value.substring(_stampReplyPrefix.length).trim();
+    return path.isEmpty ? null : path;
+  }
+  if (value.startsWith('http://') || value.startsWith('https://')) {
+    return value;
+  }
+  return null;
+}
+
 String? storyIdFromReplyPreview(String? preview) {
   final value = (preview ?? '').trim();
   if (value.startsWith('story:')) {

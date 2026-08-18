@@ -203,13 +203,17 @@ final class _CameraComposeViewState extends State<CameraComposeView> {
       if (!mounted) return;
       _showBanner(
         titleKey: 'camera_compose_saved',
-        subtitleKey: 'camera_compose_saved_subtitle',
+        subtitleKey: args.isVideo
+            ? 'camera_compose_saved_subtitle_rush'
+            : 'camera_compose_saved_subtitle',
         icon: AssetPaths.iconImportArrow,
       );
     } catch (_) {
       if (!mounted) return;
       _showBanner(
-        titleKey: 'camera_compose_save_failed',
+        titleKey: args.isVideo
+            ? 'camera_compose_save_failed_rush'
+            : 'camera_compose_save_failed',
         subtitleKey: 'camera_compose_save_failed_subtitle',
         icon: AssetPaths.iconImportArrow,
       );
@@ -219,6 +223,10 @@ final class _CameraComposeViewState extends State<CameraComposeView> {
   }
 
   Future<void> _saveAsDraft() async {
+    if (args.isVideo) {
+      await CameraDrafts.saveRemoteFromPath(args.imagePath, isVideo: true);
+      return;
+    }
     final bytes = await _captureComposeBytes();
     if (bytes == null || bytes.isEmpty) {
       throw StateError('capture failed');
@@ -227,10 +235,6 @@ final class _CameraComposeViewState extends State<CameraComposeView> {
   }
 
   Future<void> _onClosePressed() async {
-    if (args.isVideo) {
-      if (mounted) context.pop();
-      return;
-    }
     // Re-opening an unchanged draft shouldn't ask to save it again.
     final needsSavePrompt = !args.fromDraft || _hasEdits;
     if (!needsSavePrompt) {
@@ -241,7 +245,9 @@ final class _CameraComposeViewState extends State<CameraComposeView> {
     final shouldSave = await showAppConfirmDialog(
       context,
       title: 'camera_compose_save_draft_title'.tr(),
-      subtitle: 'camera_compose_save_draft_subtitle'.tr(),
+      subtitle: args.isVideo
+          ? 'camera_compose_save_draft_subtitle_rush'.tr()
+          : 'camera_compose_save_draft_subtitle'.tr(),
       confirmLabel: 'camera_compose_save_draft_confirm'.tr(),
     );
     if (!mounted) return;
@@ -259,7 +265,9 @@ final class _CameraComposeViewState extends State<CameraComposeView> {
       } catch (_) {
         if (!mounted) return;
         _showBanner(
-          titleKey: 'camera_compose_save_failed',
+          titleKey: args.isVideo
+              ? 'camera_compose_save_failed_rush'
+              : 'camera_compose_save_failed',
           subtitleKey: 'camera_compose_save_failed_subtitle',
           icon: AssetPaths.iconImportArrow,
         );
@@ -787,43 +795,43 @@ final class _CameraComposeViewState extends State<CameraComposeView> {
                                 ),
                               ],
                               const Spacer(),
-                              SizedBox(
-                                width: 44,
-                                child: Column(
-                                  children: [
-                                    _ToolIcon(
-                                      asset: AssetPaths.iconSetting,
-                                      onTap: () {
-                                        setState(
-                                          () =>
-                                              _toolsExpanded = !_toolsExpanded,
-                                        );
-                                      },
-                                    ),
-                                    ClipRect(
-                                      child: TweenAnimationBuilder<double>(
-                                        tween: Tween<double>(
-                                          end: _toolsExpanded ? 1 : 0,
-                                        ),
-                                        duration: const Duration(
-                                          milliseconds: 280,
-                                        ),
-                                        curve: Curves.easeOutCubic,
-                                        builder: (context, value, child) {
-                                          return Align(
-                                            alignment: Alignment.topCenter,
-                                            heightFactor: value,
-                                            widthFactor: 1,
-                                            child: Opacity(
-                                              opacity: value.clamp(0.0, 1.0),
-                                              child: child,
-                                            ),
+                              if (!args.isVideo)
+                                SizedBox(
+                                  width: 44,
+                                  child: Column(
+                                    children: [
+                                      _ToolIcon(
+                                        asset: AssetPaths.iconSetting,
+                                        onTap: () {
+                                          setState(
+                                            () => _toolsExpanded =
+                                                !_toolsExpanded,
                                           );
                                         },
-                                        child: Column(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            if (!args.isVideo) ...[
+                                      ),
+                                      ClipRect(
+                                        child: TweenAnimationBuilder<double>(
+                                          tween: Tween<double>(
+                                            end: _toolsExpanded ? 1 : 0,
+                                          ),
+                                          duration: const Duration(
+                                            milliseconds: 280,
+                                          ),
+                                          curve: Curves.easeOutCubic,
+                                          builder: (context, value, child) {
+                                            return Align(
+                                              alignment: Alignment.topCenter,
+                                              heightFactor: value,
+                                              widthFactor: 1,
+                                              child: Opacity(
+                                                opacity: value.clamp(0.0, 1.0),
+                                                child: child,
+                                              ),
+                                            );
+                                          },
+                                          child: Column(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
                                               const SizedBox(height: 20),
                                               _ToolIcon(
                                                 asset: AssetPaths.iconTextAa,
@@ -840,13 +848,12 @@ final class _CameraComposeViewState extends State<CameraComposeView> {
                                                 onTap: _openMusicSheet,
                                               ),
                                             ],
-                                          ],
+                                          ),
                                         ),
                                       ),
-                                    ),
-                                  ],
+                                    ],
+                                  ),
                                 ),
-                              ),
                             ],
                           ),
                         ),

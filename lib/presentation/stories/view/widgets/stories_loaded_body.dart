@@ -240,12 +240,15 @@ final class _StoryThumb extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final thumb = item.thumbnailPath?.trim() ?? '';
+    if (item.isVideo && thumb.isEmpty) {
+      return VideoGridThumb(path: item.imagePath);
+    }
+
     return Stack(
       fit: StackFit.expand,
       children: [
-        if (item.isVideo)
-          const ColoredBox(color: AppColors.black)
-        else if (item.isNetworkImage)
+        if (item.isNetworkImage)
           GridThumbnailImage(
             url: item.gridImagePath,
             cacheSize: cacheSide,

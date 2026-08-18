@@ -20,7 +20,7 @@ import 'package:zovi/core/widgets/app_loading.dart';
 import 'package:zovi/presentation/camera/model/camera_compose_route_args.dart';
 import 'package:zovi/presentation/camera/view/widgets/camera_drafts_sheet.dart';
 
-enum _CameraMode { draft, story, pulse }
+enum _CameraMode { draft, story, video, pulse }
 
 @immutable
 final class CameraView extends StatefulWidget {
@@ -63,6 +63,8 @@ final class _CameraViewState extends State<CameraView> with WidgetsBindingObserv
   }
 
   bool get _isPulseMode => _mode == _CameraMode.pulse;
+
+  bool get _isVideoMode => _mode == _CameraMode.video;
 
   CameraPublishIntent get _publishIntent => switch (_mode) {
     _CameraMode.pulse => CameraPublishIntent.pulse,
@@ -275,7 +277,9 @@ final class _CameraViewState extends State<CameraView> with WidgetsBindingObserv
   }
 
   Future<void> _flipCamera() async {
-    if (_cameras.length < 2 || _capturing || _initializing) return;
+    if (_cameras.length < 2 || _capturing || _recording || _initializing) {
+      return;
+    }
     final next = _lens == CameraLensDirection.front
         ? CameraLensDirection.back
         : CameraLensDirection.front;
@@ -309,6 +313,26 @@ final class _CameraViewState extends State<CameraView> with WidgetsBindingObserv
     await _loadLatestGalleryPhoto();
   }
 
+  void _onShutterTap() {
+    if (_isVideoMode) {
+      if (_recording) {
+        unawaited(_stopRecording());
+      } else {
+        unawaited(_startRecording());
+      }
+      return;
+    }
+    unawaited(_capture());
+  }
+
+  void _selectMode(_CameraMode mode) {
+    if (_mode == mode) return;
+    if (_recording) {
+      unawaited(_cancelRecording());
+    }
+    setState(() => _mode = mode);
+  }
+
   Future<void> _capture() async {
     final controller = _controller;
     if (controller == null ||
@@ -336,7 +360,7 @@ final class _CameraViewState extends State<CameraView> with WidgetsBindingObserv
   }
 
   Future<void> _startRecording() async {
-    if (_isPulseMode) return;
+    if (!_isVideoMode) return;
     final controller = _controller;
     if (controller == null ||
         !controller.value.isInitialized ||
@@ -359,6 +383,18 @@ final class _CameraViewState extends State<CameraView> with WidgetsBindingObserv
       });
       setState(() => _recording = true);
     } catch (_) {}
+  }
+
+  Future<void> _cancelRecording() async {
+    _recordLimitTimer?.cancel();
+    final controller = _controller;
+    if (!_recording) return;
+    if (controller != null && controller.value.isRecordingVideo) {
+      try {
+        await controller.stopVideoRecording();
+      } catch (_) {}
+    }
+    if (mounted) setState(() => _recording = false);
   }
 
   Future<void> _stopRecording() async {
@@ -391,18 +427,22 @@ final class _CameraViewState extends State<CameraView> with WidgetsBindingObserv
     final XFile? file;
     if (_isPulseMode) {
       file = await ImagePicker().pickImage(source: ImageSource.gallery);
+    } else if (_isVideoMode) {
+      file = await ImagePicker().pickVideo(source: ImageSource.gallery);
     } else {
       file = await ImagePicker().pickMedia();
     }
     if (file == null || !mounted) return;
     final isVideo =
-        !_isPulseMode &&
-        (isVideoMimeType(file.mimeType) || isVideoMediaPath(file.path));
+        _isVideoMode ||
+        (!_isPulseMode &&
+            (isVideoMimeType(file.mimeType) || isVideoMediaPath(file.path)));
     if (!isVideo) await _setLastPhoto(file.path);
     await _openCompose(file.path, isVideo: isVideo);
   }
 
   Future<void> _openDraft() async {
+    if (_recording) await _cancelRecording();
     _modeBeforeDraft = _mode == _CameraMode.draft ? _modeBeforeDraft : _mode;
     setState(() => _mode = _CameraMode.draft);
     final pick = await showCameraDraftsSheet(context);
@@ -412,7 +452,12 @@ final class _CameraViewState extends State<CameraView> with WidgetsBindingObserv
       return;
     }
     await _setLastPhoto(pick.imagePath);
-    await _openCompose(pick.imagePath, fromDraft: true, draftId: pick.draftId);
+    await _openCompose(
+      pick.imagePath,
+      fromDraft: true,
+      draftId: pick.draftId,
+      isVideo: pick.isVideo,
+    );
   }
 
   Widget _buildGalleryThumb() {
@@ -476,14 +521,7 @@ final class _CameraViewState extends State<CameraView> with WidgetsBindingObserv
                   ),
                   const Spacer(),
                   GestureDetector(
-                    onTap: _recording ? null : _capture,
-                    onLongPressStart: _isPulseMode
-                        ? null
-                        : (_) => _startRecording(),
-                    onLongPressEnd: _isPulseMode
-                        ? null
-                        : (_) => _stopRecording(),
-                    onLongPressCancel: _isPulseMode ? null : _stopRecording,
+                    onTap: _onShutterTap,
                     child: _recording
                         ? Container(
                             width: 66,
@@ -527,29 +565,38 @@ final class _CameraViewState extends State<CameraView> with WidgetsBindingObserv
                             ),
                           ),
                         ),
-                        Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            _ModeLabel(
-                              label: 'camera_mode_draft'.tr(),
-                              selected: _mode == _CameraMode.draft,
-                              onTap: _openDraft,
+                        Expanded(
+                          child: FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                _ModeLabel(
+                                  label: 'camera_mode_draft'.tr(),
+                                  selected: _mode == _CameraMode.draft,
+                                  onTap: _openDraft,
+                                ),
+                                const SizedBox(width: 8),
+                                _ModeLabel(
+                                  label: 'camera_mode_story'.tr(),
+                                  selected: _mode == _CameraMode.story,
+                                  onTap: () => _selectMode(_CameraMode.story),
+                                ),
+                                const SizedBox(width: 8),
+                                _ModeLabel(
+                                  label: 'camera_mode_rush'.tr(),
+                                  selected: _mode == _CameraMode.video,
+                                  onTap: () => _selectMode(_CameraMode.video),
+                                ),
+                                const SizedBox(width: 8),
+                                _ModeLabel(
+                                  label: 'camera_mode_pulse'.tr(),
+                                  selected: _mode == _CameraMode.pulse,
+                                  onTap: () => _selectMode(_CameraMode.pulse),
+                                ),
+                              ],
                             ),
-                            const SizedBox(width: 10),
-                            _ModeLabel(
-                              label: 'camera_mode_story'.tr(),
-                              selected: _mode == _CameraMode.story,
-                              onTap: () =>
-                                  setState(() => _mode = _CameraMode.story),
-                            ),
-                            const SizedBox(width: 10),
-                            _ModeLabel(
-                              label: 'camera_mode_pulse'.tr(),
-                              selected: _mode == _CameraMode.pulse,
-                              onTap: () =>
-                                  setState(() => _mode = _CameraMode.pulse),
-                            ),
-                          ],
+                          ),
                         ),
                         _CircleIconButton(
                           onTap: _flipCamera,

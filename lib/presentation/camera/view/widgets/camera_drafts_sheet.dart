@@ -5,9 +5,11 @@ import 'package:flutter/material.dart';
 import 'package:zovi/core/di/injection.dart';
 import 'package:zovi/core/theme/app_colors.dart';
 import 'package:zovi/core/utils/constants/asset_paths.dart';
+import 'package:zovi/core/utils/media_kind.dart';
 import 'package:zovi/core/widgets/app_icon.dart';
 import 'package:zovi/core/widgets/app_loading.dart';
 import 'package:zovi/core/widgets/stamp_image.dart';
+import 'package:zovi/core/widgets/video_grid_thumb.dart';
 import 'package:zovi/domain/auth/auth_repository.dart';
 import 'package:zovi/presentation/camera/utils/camera_drafts.dart';
 
@@ -16,10 +18,12 @@ final class CameraDraftPick {
   const CameraDraftPick({
     required this.imagePath,
     this.draftId,
+    this.isVideo = false,
   });
 
   final String imagePath;
   final String? draftId;
+  final bool isVideo;
 }
 
 Future<CameraDraftPick?> showCameraDraftsSheet(BuildContext context) {
@@ -98,7 +102,11 @@ final class _CameraDraftsSheetState extends State<CameraDraftsSheet> {
       final file = await CameraDrafts.materializeRemoteDraft(draft);
       if (!mounted) return;
       Navigator.of(context).pop(
-        CameraDraftPick(imagePath: file.path, draftId: draft.id),
+        CameraDraftPick(
+          imagePath: file.path,
+          draftId: draft.id,
+          isVideo: draft.isVideo || isVideoMediaPath(file.path),
+        ),
       );
     } catch (_) {
       if (!mounted) return;
@@ -200,23 +208,30 @@ final class _CameraDraftsSheetState extends State<CameraDraftsSheet> {
                                 behavior: HitTestBehavior.opaque,
                                 child: ClipRRect(
                                   borderRadius: BorderRadius.circular(12),
-                                  child: StampImage(
-                                    path: draft.mediaUrl,
-                                    stampId: draft.id,
-                                    fit: BoxFit.cover,
-                                    errorBuilder: (_, _, _) => ColoredBox(
-                                      color: AppColors.white.withValues(
-                                        alpha: 0.12,
-                                      ),
-                                      child: const Center(
-                                        child: AppIcon(
-                                          AssetPaths.iconPhotoGallery,
-                                          size: 28,
-                                          color: AppColors.white,
+                                  child: draft.isVideo
+                                      ? VideoGridThumb(
+                                          path: draft.mediaUrl,
+                                          iconSize: 20,
+                                          placeholderColor: AppColors.white
+                                              .withValues(alpha: 0.12),
+                                        )
+                                      : StampImage(
+                                          path: draft.mediaUrl,
+                                          stampId: draft.id,
+                                          fit: BoxFit.cover,
+                                          errorBuilder: (_, _, _) => ColoredBox(
+                                            color: AppColors.white.withValues(
+                                              alpha: 0.12,
+                                            ),
+                                            child: const Center(
+                                              child: AppIcon(
+                                                AssetPaths.iconPhotoGallery,
+                                                size: 28,
+                                                color: AppColors.white,
+                                              ),
+                                            ),
+                                          ),
                                         ),
-                                      ),
-                                    ),
-                                  ),
                                 ),
                               );
                             },

@@ -16,6 +16,7 @@ final class SplashBloc extends Bloc<SplashEvent, SplashState> {
   final AuthRepository _authRepository;
   final UserRepository _userRepository;
 
+  static const _minSplashDuration = Duration(milliseconds: 1400);
   static const _expiredSessionSplashDelay = Duration(seconds: 2);
 
   /// Onboard/login olmuş ama token bitmiş kullanıcı splash'i görmeden
@@ -24,15 +25,34 @@ final class SplashBloc extends Bloc<SplashEvent, SplashState> {
     await Future<void>.delayed(_expiredSessionSplashDelay);
   }
 
+  Future<void> _holdSplashToMeetMinimum(DateTime startedAt) async {
+    final elapsed = DateTime.now().difference(startedAt);
+    final remaining = _minSplashDuration - elapsed;
+    if (remaining > Duration.zero) {
+      await Future<void>.delayed(remaining);
+    }
+  }
+
+  Future<void> _navigateWithMinimumSplash(
+    Emitter<SplashState> emit,
+    DateTime startedAt,
+    String path, {
+    Object? extra,
+  }) async {
+    await _holdSplashToMeetMinimum(startedAt);
+    emit(SplashNavigateTo(path, extra: extra));
+  }
+
   Future<void> _onStarted(
     SplashStarted event,
     Emitter<SplashState> emit,
   ) async {
+    final startedAt = DateTime.now();
     emit(const SplashLoading());
 
     final introDone = await _authRepository.isIntroDone();
     if (!introDone) {
-      emit(SplashNavigateTo(RoutePaths.intro.path));
+      await _navigateWithMinimumSplash(emit, startedAt, RoutePaths.intro.path);
       return;
     }
 
@@ -60,17 +80,30 @@ final class SplashBloc extends Bloc<SplashEvent, SplashState> {
           );
         }
 
-        emit(SplashNavigateTo(dest.path, extra: dest.extra));
+        await _navigateWithMinimumSplash(
+          emit,
+          startedAt,
+          dest.path,
+          extra: dest.extra,
+        );
         return;
       } on SessionExpiredException {
         await _authRepository.logout();
         _userRepository.clearSessionCache();
         await _holdSplashForExpiredSession();
-        emit(SplashNavigateTo(RoutePaths.onboarding.path));
+        await _navigateWithMinimumSplash(
+          emit,
+          startedAt,
+          RoutePaths.onboarding.path,
+        );
         return;
       } catch (_) {
         _userRepository.clearSessionCache();
-        emit(SplashNavigateTo(RoutePaths.onboarding.path));
+        await _navigateWithMinimumSplash(
+          emit,
+          startedAt,
+          RoutePaths.onboarding.path,
+        );
         return;
       }
     }
@@ -81,6 +114,6 @@ final class SplashBloc extends Bloc<SplashEvent, SplashState> {
     if (returningExpired) {
       await _holdSplashForExpiredSession();
     }
-    emit(SplashNavigateTo(RoutePaths.onboarding.path));
+    await _navigateWithMinimumSplash(emit, startedAt, RoutePaths.onboarding.path);
   }
 }

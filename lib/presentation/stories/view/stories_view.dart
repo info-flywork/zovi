@@ -13,6 +13,7 @@ import 'package:zovi/core/widgets/app_search_field.dart';
 import 'package:zovi/core/widgets/bottom_navigation_bar/main_wrapper.dart';
 import 'package:zovi/core/widgets/grid_thumbnail_image.dart';
 import 'package:zovi/core/widgets/profile_avatar.dart';
+import 'package:zovi/core/widgets/video_grid_thumb.dart';
 import 'package:zovi/domain/user/user_repository.dart';
 import 'package:zovi/presentation/stories/bloc/stories_bloc.dart';
 import 'package:zovi/presentation/stories/bloc/stories_event.dart';

@@ -49,7 +49,10 @@ final class _ZoviAppState extends State<ZoviApp> with WidgetsBindingObserver {
   }
 
   Future<void> _renewSessionOnResume() async {
-    final path = AppRouter.router.state.uri.path;
+    final matches = AppRouter.router.routerDelegate.currentConfiguration;
+    if (matches.isEmpty) return;
+
+    final path = matches.uri.path;
     if (_authRoutes.contains(path)) return;
 
     final stillValid = await getIt<AuthRepository>().renewSessionOnResume();

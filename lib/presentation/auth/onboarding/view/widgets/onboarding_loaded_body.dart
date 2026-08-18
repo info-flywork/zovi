@@ -26,8 +26,8 @@ final class OnboardingLoadedBody extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final phoneFormat = PhoneFormats.forCountry(selectedCountry.isoCode);
-    final canSendCode =
-        phoneFormat.isComplete(phone) && !isLoading;
+    final canSendCode = phoneFormat.isComplete(phone) && !isLoading;
+    final isIos = Theme.of(context).platform == TargetPlatform.iOS;
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
@@ -99,21 +99,39 @@ final class OnboardingLoadedBody extends StatelessWidget {
                     ],
                   ),
                   const SizedBox(height: 16),
-                  SocialLoginButton(
-                    label: 'continue_with_google'.tr(),
-                    iconPath: AssetPaths.iconGoogle,
-                    onTap: () {
-                      onGoogle();
-                    },
-                  ),
-                  const SizedBox(height: 10),
-                  SocialLoginButton(
-                    label: 'continue_with_apple'.tr(),
-                    iconPath: AssetPaths.iconApple,
-                    onTap: () {
-                      onApple();
-                    },
-                  ),
+                  if (isIos) ...[
+                    SocialLoginButton(
+                      label: 'continue_with_apple'.tr(),
+                      iconPath: AssetPaths.iconApple,
+                      onTap: () {
+                        onApple();
+                      },
+                    ),
+                    const SizedBox(height: 10),
+                    SocialLoginButton(
+                      label: 'continue_with_google'.tr(),
+                      iconPath: AssetPaths.iconGoogle,
+                      onTap: () {
+                        onGoogle();
+                      },
+                    ),
+                  ] else ...[
+                    SocialLoginButton(
+                      label: 'continue_with_google'.tr(),
+                      iconPath: AssetPaths.iconGoogle,
+                      onTap: () {
+                        onGoogle();
+                      },
+                    ),
+                    const SizedBox(height: 10),
+                    SocialLoginButton(
+                      label: 'continue_with_apple'.tr(),
+                      iconPath: AssetPaths.iconApple,
+                      onTap: () {
+                        onApple();
+                      },
+                    ),
+                  ],
                 ],
               ),
             ),

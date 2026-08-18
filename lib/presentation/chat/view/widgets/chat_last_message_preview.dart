@@ -30,7 +30,8 @@ ChatMediaPreviewKind? resolveChatMediaPreviewKind(String preview) {
       t == 'Stamp' ||
       t.toLowerCase() == 'sticker' ||
       t.toLowerCase() == 'stamp' ||
-      t.startsWith('🏷️')) {
+      t.startsWith('🏷️') ||
+      t.startsWith('stamp:')) {
     return ChatMediaPreviewKind.stamp;
   }
   return null;

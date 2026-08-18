@@ -1,6 +1,5 @@
 abstract final class StringConstants {
   static const String appName = 'zovi';
-  static const String tagline = 'be here, share now';
 
   static const String baseUrl = 'https://zovi.fly-work.com';
 

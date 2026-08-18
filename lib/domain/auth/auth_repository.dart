@@ -18,6 +18,7 @@ import 'package:zovi/core/managers/shared_pref_manager.dart';
 import 'package:zovi/core/network/network_manager.dart';
 import 'package:zovi/core/push/push_notification_service.dart';
 import 'package:zovi/core/utils/enum/request_type.dart';
+import 'package:zovi/core/utils/media_kind.dart';
 import 'package:zovi/domain/auth/models/auth_session.dart';
 import 'package:zovi/domain/auth/models/story_draft_item.dart';
 import 'package:zovi/domain/auth/models/username_availability.dart';
@@ -28,6 +29,12 @@ export 'package:zovi/domain/auth/models/story_draft_item.dart';
 @immutable
 final class SessionExpiredException implements Exception {
   const SessionExpiredException();
+}
+
+String _draftUploadFilename(String path, {required bool isVideo}) {
+  final name = path.split('/').last;
+  if (!isVideo || isVideoMediaPath(name)) return name;
+  return '$name.mp4';
 }
 
 final class AuthRepository {
@@ -1269,11 +1276,24 @@ final class AuthRepository {
     return items;
   }
 
-  Future<StoryDraftItem> uploadStoryDraft(String imagePath) async {
+  Future<StoryDraftItem> uploadStoryDraft(
+    String imagePath, {
+    bool isVideo = false,
+  }) async {
     final result = await _network.uploadFile<Map<String, dynamic>>(
       path: '/drafts',
       filePath: imagePath,
       fieldName: 'image',
+      filename: isVideo
+          ? _draftUploadFilename(imagePath, isVideo: true)
+          : imagePath.split('/').last,
+      sendTimeout: isVideo
+          ? const Duration(seconds: 120)
+          : const Duration(seconds: 60),
+      receiveTimeout: isVideo
+          ? const Duration(seconds: 120)
+          : const Duration(seconds: 60),
+      data: {if (isVideo) 'mediaType': 'video'},
       parserModel: (json) => json,
     );
     final raw = result?['draft'];
