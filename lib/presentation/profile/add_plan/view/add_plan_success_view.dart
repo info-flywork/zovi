@@ -8,7 +8,8 @@ import 'package:zovi/core/utils/enum/route_paths.dart';
 import 'package:zovi/core/widgets/profile_avatar.dart';
 import 'package:zovi/presentation/profile/bloc/profile_bloc.dart';
 
-class AddPlanSuccessView extends StatelessWidget {
+@immutable
+final class AddPlanSuccessView extends StatelessWidget {
   const AddPlanSuccessView({
     this.friendAvatars = const [],
     this.friendsLabel = '0',

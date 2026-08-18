@@ -34,7 +34,8 @@ Future<AccountPrivacy?> showAccountPrivacySheet(
   );
 }
 
-class AccountPrivacySheet extends StatefulWidget {
+@immutable
+final class AccountPrivacySheet extends StatefulWidget {
   const AccountPrivacySheet({
     required this.initial,
     this.titleKey = 'privacy_sheet_title',
@@ -54,7 +55,7 @@ class AccountPrivacySheet extends StatefulWidget {
   State<AccountPrivacySheet> createState() => _AccountPrivacySheetState();
 }
 
-class _AccountPrivacySheetState extends State<AccountPrivacySheet> {
+final class _AccountPrivacySheetState extends State<AccountPrivacySheet> {
   late AccountPrivacy _selected;
 
   static const _selectedBg = Color(0xFFF4F4F9);
@@ -137,7 +138,8 @@ class _AccountPrivacySheetState extends State<AccountPrivacySheet> {
   }
 }
 
-class _PrivacyOption extends StatelessWidget {
+@immutable
+final class _PrivacyOption extends StatelessWidget {
   const _PrivacyOption({
     required this.icon,
     required this.title,

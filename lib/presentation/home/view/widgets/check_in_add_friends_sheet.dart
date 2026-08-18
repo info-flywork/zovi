@@ -9,7 +9,8 @@ import 'package:zovi/core/widgets/app_search_field.dart';
 import 'package:zovi/core/widgets/profile_avatar.dart';
 import 'package:zovi/domain/auth/auth_repository.dart';
 
-class CheckInFriend {
+@immutable
+final class CheckInFriend {
   const CheckInFriend({
     required this.id,
     required this.name,
@@ -49,7 +50,8 @@ Future<List<CheckInFriend>?> showCheckInAddFriendsSheet(
   );
 }
 
-class CheckInAddFriendsSheet extends StatefulWidget {
+@immutable
+final class CheckInAddFriendsSheet extends StatefulWidget {
   const CheckInAddFriendsSheet({this.initiallySelected = const [], super.key});
 
   final List<CheckInFriend> initiallySelected;
@@ -58,7 +60,7 @@ class CheckInAddFriendsSheet extends StatefulWidget {
   State<CheckInAddFriendsSheet> createState() => _CheckInAddFriendsSheetState();
 }
 
-class _CheckInAddFriendsSheetState extends State<CheckInAddFriendsSheet> {
+final class _CheckInAddFriendsSheetState extends State<CheckInAddFriendsSheet> {
   late final Set<String> _selectedIds;
   String _query = '';
   List<CheckInFriend> _friends = const [];
@@ -245,7 +247,8 @@ class _CheckInAddFriendsSheetState extends State<CheckInAddFriendsSheet> {
   }
 }
 
-class _FriendSelectTile extends StatelessWidget {
+@immutable
+final class _FriendSelectTile extends StatelessWidget {
   const _FriendSelectTile({
     required this.friend,
     required this.selected,
@@ -318,7 +321,8 @@ class _FriendSelectTile extends StatelessWidget {
   }
 }
 
-class _FriendsEmptyState extends StatelessWidget {
+@immutable
+final class _FriendsEmptyState extends StatelessWidget {
   const _FriendsEmptyState();
 
   @override

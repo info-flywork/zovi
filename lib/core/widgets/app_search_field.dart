@@ -8,7 +8,8 @@ import 'package:zovi/core/widgets/app_icon.dart';
 /// Ortak arama alanı — 300ms debounce ile `onDebouncedChanged` tetikler.
 ///
 /// Boş durumda her zaman arama ikonu + [hintText] gösterilir.
-class AppSearchField extends StatefulWidget {
+@immutable
+final class AppSearchField extends StatefulWidget {
   const AppSearchField({
     required this.hintText,
     this.controller,
@@ -32,7 +33,7 @@ class AppSearchField extends StatefulWidget {
   State<AppSearchField> createState() => _AppSearchFieldState();
 }
 
-class _AppSearchFieldState extends State<AppSearchField> {
+final class _AppSearchFieldState extends State<AppSearchField> {
   late final TextEditingController _controller;
   late final bool _ownsController;
   Timer? _debounce;

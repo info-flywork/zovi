@@ -24,7 +24,8 @@ import 'package:zovi/domain/chat/chat_repository.dart';
 import 'package:zovi/domain/user/user_repository.dart';
 import 'package:zovi/presentation/stories/model/story_detail_route_args.dart';
 
-class StoryDetailView extends StatefulWidget {
+@immutable
+final class StoryDetailView extends StatefulWidget {
   const StoryDetailView({required this.args, super.key});
 
   final StoryDetailRouteArgs args;
@@ -33,7 +34,7 @@ class StoryDetailView extends StatefulWidget {
   State<StoryDetailView> createState() => _StoryDetailViewState();
 }
 
-class _StoryDetailViewState extends State<StoryDetailView>
+final class _StoryDetailViewState extends State<StoryDetailView>
     with SingleTickerProviderStateMixin {
   static const _storyDuration = Duration(seconds: 5);
 
@@ -747,7 +748,8 @@ class _StoryDetailViewState extends State<StoryDetailView>
   }
 }
 
-class _StoryMusicPill extends StatelessWidget {
+@immutable
+final class _StoryMusicPill extends StatelessWidget {
   const _StoryMusicPill({required this.item});
 
   final StoryMediaItem item;
@@ -855,7 +857,8 @@ class _StoryMusicPill extends StatelessWidget {
   }
 }
 
-class _SegmentedProgressBar extends StatelessWidget {
+@immutable
+final class _SegmentedProgressBar extends StatelessWidget {
   const _SegmentedProgressBar({
     required this.segmentCount,
     required this.activeIndex,
@@ -887,7 +890,8 @@ class _SegmentedProgressBar extends StatelessWidget {
   }
 }
 
-class _ProgressSegment extends StatelessWidget {
+@immutable
+final class _ProgressSegment extends StatelessWidget {
   const _ProgressSegment({required this.progress});
 
   final double progress;
@@ -914,7 +918,8 @@ class _ProgressSegment extends StatelessWidget {
   }
 }
 
-class _BottomOverlay extends StatelessWidget {
+@immutable
+final class _BottomOverlay extends StatelessWidget {
   const _BottomOverlay({
     required this.item,
     required this.liked,
@@ -1086,7 +1091,8 @@ class _BottomOverlay extends StatelessWidget {
   }
 }
 
-class _StoryReplyField extends StatelessWidget {
+@immutable
+final class _StoryReplyField extends StatelessWidget {
   const _StoryReplyField({
     required this.controller,
     required this.focusNode,
@@ -1145,7 +1151,8 @@ class _StoryReplyField extends StatelessWidget {
   }
 }
 
-class _LikeButton extends StatefulWidget {
+@immutable
+final class _LikeButton extends StatefulWidget {
   const _LikeButton({
     required this.liked,
     required this.likeCount,
@@ -1162,7 +1169,7 @@ class _LikeButton extends StatefulWidget {
   State<_LikeButton> createState() => _LikeButtonState();
 }
 
-class _LikeButtonState extends State<_LikeButton>
+final class _LikeButtonState extends State<_LikeButton>
     with SingleTickerProviderStateMixin {
   late final AnimationController _controller;
   late final Animation<double> _scale;
@@ -1295,7 +1302,8 @@ class _LikeButtonState extends State<_LikeButton>
   }
 }
 
-class _FloatingHeartData {
+@immutable
+final class _FloatingHeartData {
   const _FloatingHeartData({
     required this.id,
     required this.dx,
@@ -1309,7 +1317,8 @@ class _FloatingHeartData {
   final Duration delay;
 }
 
-class _FloatingHeart extends StatefulWidget {
+@immutable
+final class _FloatingHeart extends StatefulWidget {
   const _FloatingHeart({
     required this.data,
     required this.onCompleted,
@@ -1323,7 +1332,7 @@ class _FloatingHeart extends StatefulWidget {
   State<_FloatingHeart> createState() => _FloatingHeartState();
 }
 
-class _FloatingHeartState extends State<_FloatingHeart>
+final class _FloatingHeartState extends State<_FloatingHeart>
     with SingleTickerProviderStateMixin {
   late final AnimationController _controller;
   late final Animation<double> _dy;

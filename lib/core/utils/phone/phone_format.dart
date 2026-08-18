@@ -1,4 +1,7 @@
-class PhoneFormat {
+import 'package:flutter/foundation.dart';
+
+@immutable
+final class PhoneFormat {
   const PhoneFormat({
     required this.maxDigits,
     required this.groups,

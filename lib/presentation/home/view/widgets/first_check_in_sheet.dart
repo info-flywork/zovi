@@ -19,7 +19,8 @@ Future<bool?> showFirstCheckInSheet(BuildContext context) {
   );
 }
 
-class FirstCheckInSheet extends StatelessWidget {
+@immutable
+final class FirstCheckInSheet extends StatelessWidget {
   const FirstCheckInSheet({super.key});
 
   static const _pillOrange = Color(0xFFFF7C48);

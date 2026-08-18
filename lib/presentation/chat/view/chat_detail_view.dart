@@ -34,7 +34,8 @@ import 'package:zovi/presentation/chat/model/group_info_route_args.dart';
 import 'package:zovi/presentation/chat/view/widgets/chat_media_viewer.dart';
 import 'package:zovi/presentation/chat/view/widgets/chat_sticker_sheet.dart';
 
-class ChatDetailView extends StatefulWidget {
+@immutable
+final class ChatDetailView extends StatefulWidget {
   const ChatDetailView({required this.args, super.key});
 
   final ChatDetailRouteArgs args;
@@ -43,7 +44,7 @@ class ChatDetailView extends StatefulWidget {
   State<ChatDetailView> createState() => _ChatDetailViewState();
 }
 
-class _ChatDetailViewState extends State<ChatDetailView> {
+final class _ChatDetailViewState extends State<ChatDetailView> {
   static const _messageAnimDuration = Duration(milliseconds: 280);
 
   final _controller = TextEditingController();
@@ -1468,7 +1469,8 @@ class _ChatDetailViewState extends State<ChatDetailView> {
   }
 }
 
-class _ChatMessage {
+@immutable
+final class _ChatMessage {
   const _ChatMessage({
     this.id,
     this.text,
@@ -1559,7 +1561,8 @@ class _ChatMessage {
   }
 }
 
-class _ChatMessagesShimmer extends StatelessWidget {
+@immutable
+final class _ChatMessagesShimmer extends StatelessWidget {
   const _ChatMessagesShimmer();
 
   @override
@@ -1583,7 +1586,8 @@ class _ChatMessagesShimmer extends StatelessWidget {
   }
 }
 
-class _ChatBubbleShimmer extends StatelessWidget {
+@immutable
+final class _ChatBubbleShimmer extends StatelessWidget {
   const _ChatBubbleShimmer({required this.isMine, required this.width});
 
   final bool isMine;
@@ -1608,7 +1612,8 @@ class _ChatBubbleShimmer extends StatelessWidget {
   }
 }
 
-class _SwipeToReply extends StatefulWidget {
+@immutable
+final class _SwipeToReply extends StatefulWidget {
   const _SwipeToReply({required this.child, required this.onReply});
 
   final Widget child;
@@ -1618,7 +1623,7 @@ class _SwipeToReply extends StatefulWidget {
   State<_SwipeToReply> createState() => _SwipeToReplyState();
 }
 
-class _SwipeToReplyState extends State<_SwipeToReply>
+final class _SwipeToReplyState extends State<_SwipeToReply>
     with SingleTickerProviderStateMixin {
   static const _threshold = 56.0;
   static const _maxDrag = 72.0;
@@ -1714,7 +1719,8 @@ class _SwipeToReplyState extends State<_SwipeToReply>
   }
 }
 
-class _ReplyComposerBar extends StatelessWidget {
+@immutable
+final class _ReplyComposerBar extends StatelessWidget {
   const _ReplyComposerBar({
     required this.message,
     required this.peerName,
@@ -1794,7 +1800,8 @@ class _ReplyComposerBar extends StatelessWidget {
   }
 }
 
-class _StoryReplyQuote extends StatelessWidget {
+@immutable
+final class _StoryReplyQuote extends StatelessWidget {
   const _StoryReplyQuote({
     required this.mediaUrl,
     required this.isMineBubble,
@@ -1877,7 +1884,8 @@ class _StoryReplyQuote extends StatelessWidget {
   }
 }
 
-class _QuotedReplyBlock extends StatelessWidget {
+@immutable
+final class _QuotedReplyBlock extends StatelessWidget {
   const _QuotedReplyBlock({
     required this.preview,
     required this.label,
@@ -1942,7 +1950,8 @@ class _QuotedReplyBlock extends StatelessWidget {
   }
 }
 
-class _AnimatedMessageTile extends StatelessWidget {
+@immutable
+final class _AnimatedMessageTile extends StatelessWidget {
   const _AnimatedMessageTile({
     required this.animation,
     required this.message,
@@ -1983,7 +1992,8 @@ class _AnimatedMessageTile extends StatelessWidget {
   }
 }
 
-class _ChatRequestActionsBanner extends StatelessWidget {
+@immutable
+final class _ChatRequestActionsBanner extends StatelessWidget {
   const _ChatRequestActionsBanner({
     required this.busy,
     required this.onAccept,
@@ -2082,7 +2092,8 @@ class _ChatRequestActionsBanner extends StatelessWidget {
   }
 }
 
-class _ChatDetailHeader extends StatelessWidget {
+@immutable
+final class _ChatDetailHeader extends StatelessWidget {
   const _ChatDetailHeader({
     required this.args,
     required this.title,
@@ -2198,7 +2209,8 @@ class _ChatDetailHeader extends StatelessWidget {
   }
 }
 
-class _MessageBubble extends StatelessWidget {
+@immutable
+final class _MessageBubble extends StatelessWidget {
   const _MessageBubble({
     required this.message,
     required this.avatarPath,
@@ -2519,7 +2531,8 @@ class _MessageBubble extends StatelessWidget {
   }
 }
 
-class _VoiceBubble extends StatefulWidget {
+@immutable
+final class _VoiceBubble extends StatefulWidget {
   const _VoiceBubble({
     required this.path,
     required this.duration,
@@ -2534,7 +2547,7 @@ class _VoiceBubble extends StatefulWidget {
   State<_VoiceBubble> createState() => _VoiceBubbleState();
 }
 
-class _VoiceBubbleState extends State<_VoiceBubble> {
+final class _VoiceBubbleState extends State<_VoiceBubble> {
   final _player = AudioPlayer();
   var _isPlaying = false;
 
@@ -2649,7 +2662,8 @@ class _VoiceBubbleState extends State<_VoiceBubble> {
   }
 }
 
-class _VoiceRecordingBar extends StatelessWidget {
+@immutable
+final class _VoiceRecordingBar extends StatelessWidget {
   const _VoiceRecordingBar({
     required this.seconds,
     required this.isPaused,
@@ -2771,7 +2785,8 @@ class _VoiceRecordingBar extends StatelessWidget {
   }
 }
 
-class _ChatInputBar extends StatefulWidget {
+@immutable
+final class _ChatInputBar extends StatefulWidget {
   const _ChatInputBar({
     required this.controller,
     required this.focusNode,
@@ -2796,7 +2811,7 @@ class _ChatInputBar extends StatefulWidget {
   State<_ChatInputBar> createState() => _ChatInputBarState();
 }
 
-class _ChatInputBarState extends State<_ChatInputBar>
+final class _ChatInputBarState extends State<_ChatInputBar>
     with SingleTickerProviderStateMixin {
   static const _duration = Duration(milliseconds: 220);
   static const _cameraSlotWidth = 52.0;
@@ -2983,7 +2998,8 @@ class _ChatInputBarState extends State<_ChatInputBar>
   }
 }
 
-class _ChatCircleAction extends StatelessWidget {
+@immutable
+final class _ChatCircleAction extends StatelessWidget {
   const _ChatCircleAction({required this.icon});
 
   final String icon;
@@ -3003,6 +3019,7 @@ class _ChatCircleAction extends StatelessWidget {
   }
 }
 
-class _MediaPermissionDeniedException implements Exception {
+@immutable
+final class _MediaPermissionDeniedException implements Exception {
   const _MediaPermissionDeniedException();
 }

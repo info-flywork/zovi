@@ -1,8 +1,9 @@
+import 'package:flutter/foundation.dart';
 import 'package:zovi/domain/chat/chat_repository.dart';
 
 /// In-memory DM message cache so reopening a chat paints instantly
 /// without a shimmer / full refetch when nothing changed.
-class ChatMessagesCache {
+final class ChatMessagesCache {
   final Map<String, _ChatMessagesEntry> _entries = {};
 
   List<ChatMessage>? peek(String conversationId) {
@@ -75,7 +76,8 @@ class ChatMessagesCache {
   }
 }
 
-class _ChatMessagesEntry {
+@immutable
+final class _ChatMessagesEntry {
   const _ChatMessagesEntry({
     required this.messages,
     required this.newestAt,

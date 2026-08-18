@@ -1,6 +1,7 @@
 part of '../stories_view.dart';
 
-class StoriesLoadedBody extends StatelessWidget {
+@immutable
+final class StoriesLoadedBody extends StatelessWidget {
   const StoriesLoadedBody({
     required this.items,
     required this.onOpen,
@@ -17,7 +18,8 @@ class StoriesLoadedBody extends StatelessWidget {
   }
 }
 
-class StoriesGridShimmer extends StatelessWidget {
+@immutable
+final class StoriesGridShimmer extends StatelessWidget {
   const StoriesGridShimmer({super.key});
 
   @override
@@ -44,7 +46,8 @@ class StoriesGridShimmer extends StatelessWidget {
   }
 }
 
-class _StoriesEmptyState extends StatelessWidget {
+@immutable
+final class _StoriesEmptyState extends StatelessWidget {
   const _StoriesEmptyState();
 
   @override
@@ -79,7 +82,8 @@ class _StoriesEmptyState extends StatelessWidget {
   }
 }
 
-class _StoriesGrid extends StatefulWidget {
+@immutable
+final class _StoriesGrid extends StatefulWidget {
   const _StoriesGrid({
     required this.items,
     required this.onOpen,
@@ -92,7 +96,7 @@ class _StoriesGrid extends StatefulWidget {
   State<_StoriesGrid> createState() => _StoriesGridState();
 }
 
-class _StoriesGridState extends State<_StoriesGrid> {
+final class _StoriesGridState extends State<_StoriesGrid> {
   var _peeking = false;
 
   @override
@@ -133,7 +137,8 @@ class _StoriesGridState extends State<_StoriesGrid> {
   }
 }
 
-class _StoryGridItem extends StatefulWidget {
+@immutable
+final class _StoryGridItem extends StatefulWidget {
   const _StoryGridItem({
     required this.item,
     required this.cacheSide,
@@ -151,7 +156,7 @@ class _StoryGridItem extends StatefulWidget {
   State<_StoryGridItem> createState() => _StoryGridItemState();
 }
 
-class _StoryGridItemState extends State<_StoryGridItem>
+final class _StoryGridItemState extends State<_StoryGridItem>
     with SingleTickerProviderStateMixin {
   OverlayEntry? _entry;
   late final AnimationController _controller;
@@ -223,7 +228,8 @@ class _StoryGridItemState extends State<_StoryGridItem>
   }
 }
 
-class _StoryThumb extends StatelessWidget {
+@immutable
+final class _StoryThumb extends StatelessWidget {
   const _StoryThumb({
     required this.item,
     required this.cacheSide,
@@ -263,7 +269,8 @@ class _StoryThumb extends StatelessWidget {
   }
 }
 
-class _StoryPeekOverlay extends StatelessWidget {
+@immutable
+final class _StoryPeekOverlay extends StatelessWidget {
   const _StoryPeekOverlay({
     required this.item,
     required this.fade,

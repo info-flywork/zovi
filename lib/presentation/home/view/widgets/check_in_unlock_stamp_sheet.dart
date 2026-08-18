@@ -54,7 +54,8 @@ const _unlockTitles = [
   ),
 ];
 
-class TitleUnlockItem {
+@immutable
+final class TitleUnlockItem {
   const TitleUnlockItem({
     required this.emoji,
     required this.title,
@@ -71,7 +72,7 @@ class TitleUnlockItem {
 }
 
 /// Stamp veya unvan; "kaydet" / "add" ile seçilirse dolu, aksi halde `null`.
-class CheckInUnlockResult {
+final class CheckInUnlockResult {
   const CheckInUnlockResult.stamp(this.stamp)
     : titleLabel = null,
       titleImagePath = null;
@@ -160,7 +161,8 @@ Future<CheckInUnlockResult?> showCheckInUnlockStampSheet(
   );
 }
 
-class CheckInUnlockStampSheet extends StatelessWidget {
+@immutable
+final class CheckInUnlockStampSheet extends StatelessWidget {
   const CheckInUnlockStampSheet({required this.stamp, super.key});
 
   final StampItem stamp;
@@ -250,7 +252,8 @@ class CheckInUnlockStampSheet extends StatelessWidget {
   }
 }
 
-class CheckInUnlockTitleSheet extends StatelessWidget {
+@immutable
+final class CheckInUnlockTitleSheet extends StatelessWidget {
   const CheckInUnlockTitleSheet({
     required this.title,
     required this.placeName,

@@ -27,7 +27,8 @@ Future<UserProfileConfirmResult?> showUserProfileConfirmSheet(
   );
 }
 
-class UserProfileConfirmSheet extends StatelessWidget {
+@immutable
+final class UserProfileConfirmSheet extends StatelessWidget {
   const UserProfileConfirmSheet({
     required this.action,
     required this.username,

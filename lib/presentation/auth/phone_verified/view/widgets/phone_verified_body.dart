@@ -1,6 +1,7 @@
 part of '../phone_verified_view.dart';
 
-class PhoneVerifiedBody extends StatelessWidget {
+@immutable
+final class PhoneVerifiedBody extends StatelessWidget {
   const PhoneVerifiedBody({required this.onContinue, super.key});
 
   final VoidCallback onContinue;
@@ -55,7 +56,8 @@ class PhoneVerifiedBody extends StatelessWidget {
   }
 }
 
-class _VerificationStampCard extends StatelessWidget {
+@immutable
+final class _VerificationStampCard extends StatelessWidget {
   const _VerificationStampCard();
 
   static const _cardGradient = [Color(0xFFFF5C1A), Color(0xFFFF4D6D)];
@@ -125,7 +127,8 @@ class _VerificationStampCard extends StatelessWidget {
   }
 }
 
-class _NewBadge extends StatelessWidget {
+@immutable
+final class _NewBadge extends StatelessWidget {
   const _NewBadge();
 
   @override

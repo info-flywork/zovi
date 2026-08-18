@@ -7,7 +7,7 @@ import 'package:dio/dio.dart';
 import 'package:path_provider/path_provider.dart';
 
 /// Downloads remote music once and reuses the local file for later playback.
-class MusicAudioCache {
+final class MusicAudioCache {
   MusicAudioCache(this._dio);
 
   final Dio _dio;

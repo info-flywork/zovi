@@ -32,7 +32,8 @@ Future<StampItem?> showChatStickerSheet(
   );
 }
 
-class ChatStickerSheet extends StatefulWidget {
+@immutable
+final class ChatStickerSheet extends StatefulWidget {
   const ChatStickerSheet({
     this.initialChildSize = 0.62,
     this.minChildSize = 0.4,
@@ -48,7 +49,7 @@ class ChatStickerSheet extends StatefulWidget {
   State<ChatStickerSheet> createState() => _ChatStickerSheetState();
 }
 
-class _ChatStickerSheetState extends State<ChatStickerSheet> {
+final class _ChatStickerSheetState extends State<ChatStickerSheet> {
   final _authRepository = getIt<AuthRepository>();
 
   var _query = '';
@@ -255,7 +256,8 @@ class _ChatStickerSheetState extends State<ChatStickerSheet> {
   }
 }
 
-class _StampEmptyState extends StatelessWidget {
+@immutable
+final class _StampEmptyState extends StatelessWidget {
   const _StampEmptyState({required this.messageKey, this.onRetry});
 
   final String messageKey;

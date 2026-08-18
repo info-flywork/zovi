@@ -1,6 +1,7 @@
 part of '../onboarding_view.dart';
 
-class OnboardingLoadedBody extends StatelessWidget {
+@immutable
+final class OnboardingLoadedBody extends StatelessWidget {
   const OnboardingLoadedBody({
     required this.phone,
     required this.selectedCountry,

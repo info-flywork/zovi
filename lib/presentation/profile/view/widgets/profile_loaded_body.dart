@@ -1,6 +1,7 @@
 part of '../profile_view.dart';
 
-class ProfileLoadedBody extends StatefulWidget {
+@immutable
+final class ProfileLoadedBody extends StatefulWidget {
   const ProfileLoadedBody({
     required this.user,
     required this.checkIns,
@@ -26,7 +27,7 @@ class ProfileLoadedBody extends StatefulWidget {
   State<ProfileLoadedBody> createState() => _ProfileLoadedBodyState();
 }
 
-class _ProfileLoadedBodyState extends State<ProfileLoadedBody> {
+final class _ProfileLoadedBodyState extends State<ProfileLoadedBody> {
   static const _fallbackCenter = LatLng(34.0522, -118.2437);
 
   final _scrollController = ScrollController();
@@ -421,7 +422,8 @@ class _ProfileLoadedBodyState extends State<ProfileLoadedBody> {
   }
 }
 
-class _ProfileLinksRow extends StatelessWidget {
+@immutable
+final class _ProfileLinksRow extends StatelessWidget {
   const _ProfileLinksRow({required this.links});
 
   final List<ProfileLink> links;
@@ -467,7 +469,8 @@ class _ProfileLinksRow extends StatelessWidget {
   }
 }
 
-class _ProfileActionButton extends StatelessWidget {
+@immutable
+final class _ProfileActionButton extends StatelessWidget {
   const _ProfileActionButton({
     required this.label,
     required this.backgroundColor,

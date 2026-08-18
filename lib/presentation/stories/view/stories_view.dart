@@ -22,14 +22,15 @@ import 'package:zovi/presentation/stories/model/story_detail_route_args.dart';
 part 'mixin/stories_view_mixin.dart';
 part 'widgets/stories_loaded_body.dart';
 
-class StoriesView extends StatefulWidget {
+@immutable
+final class StoriesView extends StatefulWidget {
   const StoriesView({super.key});
 
   @override
   State<StoriesView> createState() => _StoriesViewState();
 }
 
-class _StoriesViewState extends State<StoriesView> with StoriesViewMixin {
+final class _StoriesViewState extends State<StoriesView> with StoriesViewMixin {
   @override
   void initState() {
     super.initState();

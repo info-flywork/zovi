@@ -9,7 +9,8 @@ import 'package:zovi/presentation/profile/user_profile/model/user_profile_route_
 import 'package:zovi/presentation/profile/user_profile/view/user_profile_view.dart';
 
 /// Deep link / share entry: shows profile shell immediately, hydrates in view.
-class PublicProfileLoaderView extends StatefulWidget {
+@immutable
+final class PublicProfileLoaderView extends StatefulWidget {
   const PublicProfileLoaderView({required this.username, super.key});
 
   final String username;
@@ -19,7 +20,7 @@ class PublicProfileLoaderView extends StatefulWidget {
       _PublicProfileLoaderViewState();
 }
 
-class _PublicProfileLoaderViewState extends State<PublicProfileLoaderView> {
+final class _PublicProfileLoaderViewState extends State<PublicProfileLoaderView> {
   late final String _handle = widget.username.startsWith('@')
       ? widget.username.substring(1).trim()
       : widget.username.trim();

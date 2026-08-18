@@ -1,6 +1,7 @@
 part of '../profile_view.dart';
 
-class ProfileTabs extends StatelessWidget {
+@immutable
+final class ProfileTabs extends StatelessWidget {
   const ProfileTabs({
     required this.controller,
     required this.onTabSelected,
@@ -60,7 +61,8 @@ class ProfileTabs extends StatelessWidget {
   }
 }
 
-class _TabItem extends StatelessWidget {
+@immutable
+final class _TabItem extends StatelessWidget {
   const _TabItem({
     required this.label,
     required this.selectedAmount,

@@ -2,7 +2,7 @@ import 'package:zovi/domain/auth/auth_repository.dart';
 
 /// In-memory catalog cache so reopening the music sheet doesn't re-hit the API
 /// for pages already loaded.
-class MusicCatalogCache {
+final class MusicCatalogCache {
   final List<MusicTrackItem> _browse = [];
   var _browseHasMore = true;
   final Map<String, _SearchCache> _search = {};
@@ -138,7 +138,7 @@ class MusicCatalogCache {
   }
 }
 
-class _SearchCache {
+final class _SearchCache {
   final List<MusicTrackItem> items = [];
   var hasMore = true;
 }

@@ -14,7 +14,8 @@ import 'package:zovi/domain/user/user_repository.dart';
 import 'package:zovi/presentation/home/model/check_in_success_route_args.dart';
 import 'package:zovi/presentation/home/view/widgets/check_in_unlock_stamp_sheet.dart';
 
-class CheckInSuccessView extends StatelessWidget {
+@immutable
+final class CheckInSuccessView extends StatelessWidget {
   const CheckInSuccessView({required this.args, super.key});
 
   final CheckInSuccessRouteArgs args;
@@ -378,7 +379,8 @@ class CheckInSuccessView extends StatelessWidget {
   }
 }
 
-class _RewardItem {
+@immutable
+final class _RewardItem {
   const _RewardItem({
     required this.icon,
     required this.text,
@@ -392,7 +394,8 @@ class _RewardItem {
   final bool isPng;
 }
 
-class _GlassCard extends StatelessWidget {
+@immutable
+final class _GlassCard extends StatelessWidget {
   const _GlassCard({required this.child});
 
   final Widget child;
@@ -428,7 +431,8 @@ class _GlassCard extends StatelessWidget {
   }
 }
 
-class _RewardRow extends StatelessWidget {
+@immutable
+final class _RewardRow extends StatelessWidget {
   const _RewardRow({required this.reward});
 
   final _RewardItem reward;

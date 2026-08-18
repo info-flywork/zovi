@@ -16,7 +16,8 @@ Future<bool> showLogoutSheet(BuildContext context) async {
   return result ?? false;
 }
 
-class LogoutSheet extends StatelessWidget {
+@immutable
+final class LogoutSheet extends StatelessWidget {
   const LogoutSheet({super.key});
 
   @override

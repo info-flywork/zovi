@@ -1,7 +1,8 @@
 part of '../home_view.dart';
 
 /// Üst üste binen pin’ler için yığılmış avatar + sayı rozeti.
-class HomeMapClusterMarker extends StatelessWidget {
+@immutable
+final class HomeMapClusterMarker extends StatelessWidget {
   const HomeMapClusterMarker({
     required this.avatarPaths,
     required this.count,

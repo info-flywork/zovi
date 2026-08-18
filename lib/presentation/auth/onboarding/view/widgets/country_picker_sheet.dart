@@ -1,6 +1,7 @@
 part of '../onboarding_view.dart';
 
-class CountryPickerSheet extends StatefulWidget {
+@immutable
+final class CountryPickerSheet extends StatefulWidget {
   const CountryPickerSheet({
     required this.selectedCountry,
     super.key,
@@ -24,7 +25,7 @@ class CountryPickerSheet extends StatefulWidget {
   State<CountryPickerSheet> createState() => _CountryPickerSheetState();
 }
 
-class _CountryPickerSheetState extends State<CountryPickerSheet> {
+final class _CountryPickerSheetState extends State<CountryPickerSheet> {
   final _searchController = TextEditingController();
   Timer? _debounce;
   String _query = '';
@@ -208,7 +209,8 @@ class _CountryPickerSheetState extends State<CountryPickerSheet> {
   }
 }
 
-class _CountrySearchEmpty extends StatelessWidget {
+@immutable
+final class _CountrySearchEmpty extends StatelessWidget {
   const _CountrySearchEmpty();
 
   @override
@@ -259,7 +261,8 @@ class _CountrySearchEmpty extends StatelessWidget {
   }
 }
 
-class _CountryFlag extends StatelessWidget {
+@immutable
+final class _CountryFlag extends StatelessWidget {
   const _CountryFlag({required this.country});
 
   final Country country;

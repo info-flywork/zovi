@@ -11,7 +11,8 @@ String _selfAvatarPath(String stored) {
   return user?.hasPhoto == true ? user!.avatarPath : '';
 }
 
-class HomeMapCheckInMarker extends StatelessWidget {
+@immutable
+final class HomeMapCheckInMarker extends StatelessWidget {
   const HomeMapCheckInMarker({
     required this.avatarPath,
     required this.photoPaths,
@@ -111,7 +112,8 @@ class HomeMapCheckInMarker extends StatelessWidget {
 }
 
 /// Unvan kazanıldığında map'te foto + avatar + unvan pill.
-class HomeMapTitleMarker extends StatelessWidget {
+@immutable
+final class HomeMapTitleMarker extends StatelessWidget {
   const HomeMapTitleMarker({
     required this.avatarPath,
     required this.photoPaths,
@@ -220,7 +222,8 @@ class HomeMapTitleMarker extends StatelessWidget {
   }
 }
 
-class _CircleImage extends StatelessWidget {
+@immutable
+final class _CircleImage extends StatelessWidget {
   const _CircleImage({
     required this.path,
     required this.isFile,
@@ -261,7 +264,8 @@ class _CircleImage extends StatelessWidget {
 ///
 /// [indexListenable] verilirse tüm instance’lar aynı indeksi paylaşır
 /// (marker + sheet senkron).
-class CheckInCyclingPhoto extends StatefulWidget {
+@immutable
+final class CheckInCyclingPhoto extends StatefulWidget {
   const CheckInCyclingPhoto({
     required this.paths,
     required this.size,
@@ -289,7 +293,7 @@ class CheckInCyclingPhoto extends StatefulWidget {
   State<CheckInCyclingPhoto> createState() => _CheckInCyclingPhotoState();
 }
 
-class _CheckInCyclingPhotoState extends State<CheckInCyclingPhoto> {
+final class _CheckInCyclingPhotoState extends State<CheckInCyclingPhoto> {
   var _localIndex = 0;
   Timer? _timer;
 

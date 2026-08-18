@@ -1,6 +1,6 @@
 import 'package:equatable/equatable.dart';
-import 'package:zovi/core/models/country.dart';
 import 'package:flutter/foundation.dart';
+import 'package:zovi/core/models/country.dart';
 
 @immutable
 sealed class OtpState extends Equatable {

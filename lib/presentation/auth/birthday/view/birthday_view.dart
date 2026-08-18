@@ -19,7 +19,8 @@ part 'mixin/birthday_view_mixin.dart';
 part 'widgets/birthday_date_picker.dart';
 part 'widgets/birthday_loaded_body.dart';
 
-class BirthdayView extends StatefulWidget {
+@immutable
+final class BirthdayView extends StatefulWidget {
   const BirthdayView({required this.signupFlow, super.key});
 
   final SignupFlow signupFlow;
@@ -28,7 +29,7 @@ class BirthdayView extends StatefulWidget {
   State<BirthdayView> createState() => _BirthdayViewState();
 }
 
-class _BirthdayViewState extends State<BirthdayView> with BirthdayViewMixin {
+final class _BirthdayViewState extends State<BirthdayView> with BirthdayViewMixin {
   @override
   Widget build(BuildContext context) {
     return Scaffold(

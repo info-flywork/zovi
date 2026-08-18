@@ -1,7 +1,7 @@
 import 'package:zovi/domain/tribe/tribe_repository.dart';
 
 /// In-memory tribe detail cache so group chat / group info reopen instantly.
-class TribeDetailCache {
+final class TribeDetailCache {
   final Map<String, Tribe> _byId = {};
 
   Tribe? peek(String tribeId) {

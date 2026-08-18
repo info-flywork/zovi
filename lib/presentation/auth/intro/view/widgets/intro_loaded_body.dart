@@ -1,6 +1,7 @@
 part of '../intro_view.dart';
 
-class IntroLoadedBody extends StatelessWidget {
+@immutable
+final class IntroLoadedBody extends StatelessWidget {
   const IntroLoadedBody({
     required this.pageController,
     required this.pageIndex,
@@ -48,7 +49,8 @@ class IntroLoadedBody extends StatelessWidget {
 }
 
 /// Clips each intro page so overflowing content cannot paint on adjacent pages.
-class _IntroPageClip extends StatelessWidget {
+@immutable
+final class _IntroPageClip extends StatelessWidget {
   const _IntroPageClip({required this.child});
 
   final Widget child;

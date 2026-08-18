@@ -22,7 +22,8 @@ import 'package:zovi/presentation/camera/view/widgets/camera_drafts_sheet.dart';
 
 enum _CameraMode { draft, story, pulse }
 
-class CameraView extends StatefulWidget {
+@immutable
+final class CameraView extends StatefulWidget {
   const CameraView({this.intent = CameraPublishIntent.story, super.key});
 
   final CameraPublishIntent intent;
@@ -31,7 +32,7 @@ class CameraView extends StatefulWidget {
   State<CameraView> createState() => _CameraViewState();
 }
 
-class _CameraViewState extends State<CameraView> with WidgetsBindingObserver {
+final class _CameraViewState extends State<CameraView> with WidgetsBindingObserver {
   static const _cacheFileName = 'camera_last_thumb.jpg';
 
   CameraController? _controller;
@@ -632,7 +633,8 @@ class _CameraViewState extends State<CameraView> with WidgetsBindingObserver {
   }
 }
 
-class _CircleIconButton extends StatelessWidget {
+@immutable
+final class _CircleIconButton extends StatelessWidget {
   const _CircleIconButton({required this.onTap, required this.child});
 
   final VoidCallback onTap;
@@ -658,7 +660,8 @@ class _CircleIconButton extends StatelessWidget {
   }
 }
 
-class _ModeLabel extends StatelessWidget {
+@immutable
+final class _ModeLabel extends StatelessWidget {
   const _ModeLabel({
     required this.label,
     required this.selected,

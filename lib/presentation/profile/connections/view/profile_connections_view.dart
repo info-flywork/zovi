@@ -20,7 +20,8 @@ import 'package:zovi/presentation/profile/connections/model/profile_connection_u
 import 'package:zovi/presentation/profile/connections/model/profile_connections_route_args.dart';
 import 'package:zovi/presentation/profile/connections/view/widgets/profile_connection_confirm_sheet.dart';
 
-class ProfileConnectionsView extends StatefulWidget {
+@immutable
+final class ProfileConnectionsView extends StatefulWidget {
   const ProfileConnectionsView({required this.args, super.key});
 
   final ProfileConnectionsRouteArgs args;
@@ -29,7 +30,7 @@ class ProfileConnectionsView extends StatefulWidget {
   State<ProfileConnectionsView> createState() => _ProfileConnectionsViewState();
 }
 
-class _ProfileConnectionsViewState extends State<ProfileConnectionsView>
+final class _ProfileConnectionsViewState extends State<ProfileConnectionsView>
     with SingleTickerProviderStateMixin {
   static const _removeDuration = Duration(milliseconds: 280);
 
@@ -342,7 +343,8 @@ class _ProfileConnectionsViewState extends State<ProfileConnectionsView>
 
 enum _ConnectionListMode { followers, friends }
 
-class _ConnectionsTabBar extends StatelessWidget {
+@immutable
+final class _ConnectionsTabBar extends StatelessWidget {
   const _ConnectionsTabBar({
     required this.followersLabel,
     required this.friendsLabel,
@@ -407,7 +409,8 @@ class _ConnectionsTabBar extends StatelessWidget {
   }
 }
 
-class _ConnectionsTab extends StatelessWidget {
+@immutable
+final class _ConnectionsTab extends StatelessWidget {
   const _ConnectionsTab({
     required this.label,
     required this.color,
@@ -443,7 +446,8 @@ class _ConnectionsTab extends StatelessWidget {
   }
 }
 
-class _ConnectionsList extends StatelessWidget {
+@immutable
+final class _ConnectionsList extends StatelessWidget {
   const _ConnectionsList({
     required this.listKey,
     required this.users,
@@ -507,7 +511,8 @@ class _ConnectionsList extends StatelessWidget {
   }
 }
 
-class _ConnectionRemoveTile extends StatelessWidget {
+@immutable
+final class _ConnectionRemoveTile extends StatelessWidget {
   const _ConnectionRemoveTile({
     required this.user,
     required this.mode,
@@ -542,7 +547,8 @@ class _ConnectionRemoveTile extends StatelessWidget {
   }
 }
 
-class _ConnectionTile extends StatelessWidget {
+@immutable
+final class _ConnectionTile extends StatelessWidget {
   const _ConnectionTile({
     required this.user,
     required this.mode,
@@ -636,7 +642,8 @@ class _ConnectionTile extends StatelessWidget {
   }
 }
 
-class _PillButton extends StatelessWidget {
+@immutable
+final class _PillButton extends StatelessWidget {
   const _PillButton({
     required this.label,
     required this.filled,

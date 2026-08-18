@@ -26,7 +26,8 @@ Future<bool> showProfileConnectionConfirmSheet(
   return result ?? false;
 }
 
-class ProfileConnectionConfirmSheet extends StatelessWidget {
+@immutable
+final class ProfileConnectionConfirmSheet extends StatelessWidget {
   const ProfileConnectionConfirmSheet({
     required this.action,
     required this.username,
@@ -111,7 +112,8 @@ class ProfileConnectionConfirmSheet extends StatelessWidget {
   }
 }
 
-class _UsernameSubtitle extends StatelessWidget {
+@immutable
+final class _UsernameSubtitle extends StatelessWidget {
   const _UsernameSubtitle({
     required this.template,
     required this.username,

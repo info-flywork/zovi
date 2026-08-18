@@ -1,6 +1,7 @@
 part of '../intro_view.dart';
 
-class IntroStampsPage extends StatefulWidget {
+@immutable
+final class IntroStampsPage extends StatefulWidget {
   const IntroStampsPage({super.key, this.isActive = false});
 
   final bool isActive;
@@ -9,7 +10,7 @@ class IntroStampsPage extends StatefulWidget {
   State<IntroStampsPage> createState() => _IntroStampsPageState();
 }
 
-class _IntroStampsPageState extends State<IntroStampsPage>
+final class _IntroStampsPageState extends State<IntroStampsPage>
     with SingleTickerProviderStateMixin {
   late final AnimationController _enter;
   late final Animation<double> _textFade;
@@ -194,7 +195,8 @@ class _IntroStampsPageState extends State<IntroStampsPage>
   }
 }
 
-class _StampCard extends StatelessWidget {
+@immutable
+final class _StampCard extends StatelessWidget {
   const _StampCard({
     required this.title,
     required this.subtitle,

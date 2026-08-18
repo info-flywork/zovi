@@ -1,7 +1,7 @@
 import 'package:zovi/domain/auth/auth_repository.dart';
 
 /// In-memory explore feed so reopening Stories doesn't blank the grid.
-class StoryCatalogCache {
+final class StoryCatalogCache {
   List<PublishedStory>? _items;
 
   List<PublishedStory>? peek() {

@@ -14,14 +14,15 @@ import 'package:zovi/core/widgets/app_icon.dart';
 import 'package:zovi/domain/tribe/tribe_repository.dart';
 import 'package:zovi/presentation/chat/model/chat_detail_route_args.dart';
 
-class TribeView extends StatefulWidget {
+@immutable
+final class TribeView extends StatefulWidget {
   const TribeView({super.key});
 
   @override
   State<TribeView> createState() => _TribeViewState();
 }
 
-class _TribeViewState extends State<TribeView> {
+final class _TribeViewState extends State<TribeView> {
   final TribeRepository _repository = getIt<TribeRepository>();
 
   // Group-chat placeholder avatar when a tribe has no member photos yet.
@@ -194,7 +195,8 @@ Future<bool> showJoinTribeSheet(
   return result ?? false;
 }
 
-class _JoinTribeSheet extends StatelessWidget {
+@immutable
+final class _JoinTribeSheet extends StatelessWidget {
   const _JoinTribeSheet({required this.tribeName});
 
   final String tribeName;
@@ -272,7 +274,8 @@ class _JoinTribeSheet extends StatelessWidget {
   }
 }
 
-class _TribePageShimmer extends StatelessWidget {
+@immutable
+final class _TribePageShimmer extends StatelessWidget {
   const _TribePageShimmer();
 
   @override
@@ -302,7 +305,8 @@ class _TribePageShimmer extends StatelessWidget {
   }
 }
 
-class _TribeShimmerBox extends StatelessWidget {
+@immutable
+final class _TribeShimmerBox extends StatelessWidget {
   const _TribeShimmerBox({
     this.width = double.infinity,
     required this.height,
@@ -326,7 +330,8 @@ class _TribeShimmerBox extends StatelessWidget {
   }
 }
 
-class _TribeHeader extends StatelessWidget {
+@immutable
+final class _TribeHeader extends StatelessWidget {
   const _TribeHeader();
 
   @override
@@ -360,7 +365,8 @@ class _TribeHeader extends StatelessWidget {
   }
 }
 
-class _FeaturedTribeCarousel extends StatefulWidget {
+@immutable
+final class _FeaturedTribeCarousel extends StatefulWidget {
   const _FeaturedTribeCarousel({required this.items, required this.onJoin});
 
   final List<Tribe> items;
@@ -370,7 +376,7 @@ class _FeaturedTribeCarousel extends StatefulWidget {
   State<_FeaturedTribeCarousel> createState() => _FeaturedTribeCarouselState();
 }
 
-class _FeaturedTribeCarouselState extends State<_FeaturedTribeCarousel> {
+final class _FeaturedTribeCarouselState extends State<_FeaturedTribeCarousel> {
   late final PageController _controller = PageController(
     viewportFraction: 0.86,
   );
@@ -416,7 +422,8 @@ class _FeaturedTribeCarouselState extends State<_FeaturedTribeCarousel> {
   }
 }
 
-class _FeaturedTribeCard extends StatelessWidget {
+@immutable
+final class _FeaturedTribeCard extends StatelessWidget {
   const _FeaturedTribeCard({required this.item, required this.onJoin});
 
   final Tribe item;
@@ -567,7 +574,8 @@ Widget _avatarImage(String path) {
   return Image.asset(path, fit: BoxFit.cover);
 }
 
-class _AvatarPile extends StatelessWidget {
+@immutable
+final class _AvatarPile extends StatelessWidget {
   const _AvatarPile({required this.avatars});
 
   final List<String> avatars;
@@ -603,7 +611,8 @@ class _AvatarPile extends StatelessWidget {
   }
 }
 
-class _TribeListTile extends StatelessWidget {
+@immutable
+final class _TribeListTile extends StatelessWidget {
   const _TribeListTile({required this.tribe, this.onTap});
 
   final Tribe tribe;
@@ -684,7 +693,8 @@ class _TribeListTile extends StatelessWidget {
   }
 }
 
-class _TribeListLeading extends StatelessWidget {
+@immutable
+final class _TribeListLeading extends StatelessWidget {
   const _TribeListLeading({required this.tribe});
 
   final Tribe tribe;

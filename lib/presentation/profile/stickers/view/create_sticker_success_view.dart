@@ -4,7 +4,8 @@ import 'package:go_router/go_router.dart';
 import 'package:zovi/core/theme/app_colors.dart';
 import 'package:zovi/core/utils/constants/asset_paths.dart';
 
-class CreateStickerSuccessView extends StatelessWidget {
+@immutable
+final class CreateStickerSuccessView extends StatelessWidget {
   const CreateStickerSuccessView({super.key});
 
   @override

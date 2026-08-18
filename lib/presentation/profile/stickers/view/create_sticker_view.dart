@@ -28,14 +28,15 @@ enum _StickerStyle {
   String get label => labelKey.tr();
 }
 
-class CreateStickerView extends StatefulWidget {
+@immutable
+final class CreateStickerView extends StatefulWidget {
   const CreateStickerView({super.key});
 
   @override
   State<CreateStickerView> createState() => _CreateStickerViewState();
 }
 
-class _CreateStickerViewState extends State<CreateStickerView> {
+final class _CreateStickerViewState extends State<CreateStickerView> {
   static const _uploadFill = Color(0xFFF4F4F9);
   static const _uploadBorder = Color(0xFFD2D2DA);
   static const _fieldFill = Color(0xFFF4F4F9);
@@ -255,11 +256,13 @@ class _CreateStickerViewState extends State<CreateStickerView> {
   }
 }
 
-class _PermissionDeniedException implements Exception {
+@immutable
+final class _PermissionDeniedException implements Exception {
   const _PermissionDeniedException();
 }
 
-class _CreateStickerHeader extends StatelessWidget {
+@immutable
+final class _CreateStickerHeader extends StatelessWidget {
   const _CreateStickerHeader();
 
   @override
@@ -293,7 +296,8 @@ class _CreateStickerHeader extends StatelessWidget {
   }
 }
 
-class _UploadCard extends StatelessWidget {
+@immutable
+final class _UploadCard extends StatelessWidget {
   const _UploadCard({
     required this.imagePath,
     required this.onUpload,
@@ -419,7 +423,8 @@ class _UploadCard extends StatelessWidget {
   }
 }
 
-class _PillButton extends StatelessWidget {
+@immutable
+final class _PillButton extends StatelessWidget {
   const _PillButton({
     required this.label,
     required this.iconAsset,
@@ -472,7 +477,8 @@ class _PillButton extends StatelessWidget {
   }
 }
 
-class _StyleChip extends StatelessWidget {
+@immutable
+final class _StyleChip extends StatelessWidget {
   const _StyleChip({
     required this.style,
     required this.isSelected,
@@ -524,7 +530,8 @@ class _StyleChip extends StatelessWidget {
   }
 }
 
-class _RoundedField extends StatelessWidget {
+@immutable
+final class _RoundedField extends StatelessWidget {
   const _RoundedField({
     required this.controller,
     required this.hintText,
@@ -580,7 +587,8 @@ class _RoundedField extends StatelessWidget {
   }
 }
 
-class _ContinueButton extends StatelessWidget {
+@immutable
+final class _ContinueButton extends StatelessWidget {
   const _ContinueButton({required this.onTap});
 
   final VoidCallback onTap;
@@ -619,7 +627,8 @@ class _ContinueButton extends StatelessWidget {
   }
 }
 
-class _DashedRRectPainter extends CustomPainter {
+@immutable
+final class _DashedRRectPainter extends CustomPainter {
   const _DashedRRectPainter({
     required this.color,
     required this.radius,

@@ -1,6 +1,7 @@
 part of '../chat_view.dart';
 
-class _ChatPreview {
+@immutable
+final class _ChatPreview {
   const _ChatPreview({
     required this.conversationId,
     required this.userId,
@@ -75,14 +76,15 @@ class _ChatPreview {
   }
 }
 
-class ChatLoadedBody extends StatefulWidget {
+@immutable
+final class ChatLoadedBody extends StatefulWidget {
   const ChatLoadedBody({super.key});
 
   @override
   State<ChatLoadedBody> createState() => _ChatLoadedBodyState();
 }
 
-class _ChatLoadedBodyState extends State<ChatLoadedBody>
+final class _ChatLoadedBodyState extends State<ChatLoadedBody>
     with WidgetsBindingObserver {
   static const _removeDuration = Duration(milliseconds: 280);
   static const _pollInterval = Duration(seconds: 8);
@@ -380,7 +382,8 @@ class _ChatLoadedBodyState extends State<ChatLoadedBody>
   }
 }
 
-class _ChatRemoveTile extends StatelessWidget {
+@immutable
+final class _ChatRemoveTile extends StatelessWidget {
   const _ChatRemoveTile({required this.chat, required this.animation});
 
   final _ChatPreview chat;
@@ -404,7 +407,8 @@ class _ChatRemoveTile extends StatelessWidget {
   }
 }
 
-class _ChatEmptyState extends StatelessWidget {
+@immutable
+final class _ChatEmptyState extends StatelessWidget {
   const _ChatEmptyState({required this.isSearching});
 
   final bool isSearching;
@@ -439,7 +443,8 @@ class _ChatEmptyState extends StatelessWidget {
   }
 }
 
-class _ChatTile extends StatelessWidget {
+@immutable
+final class _ChatTile extends StatelessWidget {
   const _ChatTile({
     required this.chat,
     required this.onTap,

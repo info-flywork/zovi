@@ -1,6 +1,7 @@
 part of '../birthday_view.dart';
 
-class BirthdayLoadedBody extends StatelessWidget {
+@immutable
+final class BirthdayLoadedBody extends StatelessWidget {
   const BirthdayLoadedBody({
     required this.birthDate,
     required this.stepCount,

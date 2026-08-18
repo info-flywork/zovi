@@ -1,6 +1,7 @@
 part of '../onboarding_view.dart';
 
-class OnboardingPhoneField extends StatefulWidget {
+@immutable
+final class OnboardingPhoneField extends StatefulWidget {
   const OnboardingPhoneField({
     required this.phone,
     required this.selectedCountry,
@@ -18,7 +19,7 @@ class OnboardingPhoneField extends StatefulWidget {
   State<OnboardingPhoneField> createState() => _OnboardingPhoneFieldState();
 }
 
-class _OnboardingPhoneFieldState extends State<OnboardingPhoneField> {
+final class _OnboardingPhoneFieldState extends State<OnboardingPhoneField> {
   late final TextEditingController _controller;
   late PhoneFormat _format;
   late CountryPhoneInputFormatter _formatter;

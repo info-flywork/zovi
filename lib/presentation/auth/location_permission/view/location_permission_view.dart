@@ -10,7 +10,8 @@ import 'package:zovi/presentation/auth/location_permission/bloc/location_permiss
 import 'package:zovi/presentation/auth/location_permission/bloc/location_permission_event.dart';
 import 'package:zovi/presentation/auth/location_permission/bloc/location_permission_state.dart';
 
-class LocationPermissionView extends StatelessWidget {
+@immutable
+final class LocationPermissionView extends StatelessWidget {
   const LocationPermissionView({super.key});
 
   @override
@@ -98,7 +99,8 @@ class LocationPermissionView extends StatelessWidget {
   }
 }
 
-class _FeatureRow extends StatelessWidget {
+@immutable
+final class _FeatureRow extends StatelessWidget {
   const _FeatureRow({required this.iconPath, required this.text});
 
   final String iconPath;
@@ -135,7 +137,8 @@ class _FeatureRow extends StatelessWidget {
   }
 }
 
-class _MapFirstPreview extends StatelessWidget {
+@immutable
+final class _MapFirstPreview extends StatelessWidget {
   const _MapFirstPreview();
 
   @override
@@ -169,7 +172,8 @@ class _MapFirstPreview extends StatelessWidget {
   }
 }
 
-class _MapSecondPreview extends StatelessWidget {
+@immutable
+final class _MapSecondPreview extends StatelessWidget {
   const _MapSecondPreview();
 
   static const _mapLabelStyle = TextStyle(

@@ -24,7 +24,8 @@ Future<NearbyAddPlanPlace?> showCheckInPlacePickerSheet(
   );
 }
 
-class _CheckInPlacePickerSheet extends StatelessWidget {
+@immutable
+final class _CheckInPlacePickerSheet extends StatelessWidget {
   const _CheckInPlacePickerSheet({
     required this.places,
     required this.selected,

@@ -1,7 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:zovi/core/utils/enum/request_type.dart';
 
-class NetworkManager {
+final class NetworkManager {
   NetworkManager(this._dio);
 
   final Dio _dio;

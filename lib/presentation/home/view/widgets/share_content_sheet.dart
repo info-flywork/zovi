@@ -20,14 +20,15 @@ Future<ShareContentType?> showShareContentSheet(BuildContext context) {
   );
 }
 
-class ShareContentSheet extends StatefulWidget {
+@immutable
+final class ShareContentSheet extends StatefulWidget {
   const ShareContentSheet({super.key});
 
   @override
   State<ShareContentSheet> createState() => _ShareContentSheetState();
 }
 
-class _ShareContentSheetState extends State<ShareContentSheet> {
+final class _ShareContentSheetState extends State<ShareContentSheet> {
   ShareContentType _selected = ShareContentType.pulse;
 
   static const _selectedBg = Color(0xFFF4F4F9);
@@ -112,7 +113,8 @@ class _ShareContentSheetState extends State<ShareContentSheet> {
   }
 }
 
-class _ShareContentOption extends StatelessWidget {
+@immutable
+final class _ShareContentOption extends StatelessWidget {
   const _ShareContentOption({
     required this.icon,
     required this.title,

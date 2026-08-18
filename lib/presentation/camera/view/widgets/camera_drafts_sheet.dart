@@ -11,7 +11,8 @@ import 'package:zovi/core/widgets/stamp_image.dart';
 import 'package:zovi/domain/auth/auth_repository.dart';
 import 'package:zovi/presentation/camera/utils/camera_drafts.dart';
 
-class CameraDraftPick {
+@immutable
+final class CameraDraftPick {
   const CameraDraftPick({
     required this.imagePath,
     this.draftId,
@@ -31,14 +32,15 @@ Future<CameraDraftPick?> showCameraDraftsSheet(BuildContext context) {
   );
 }
 
-class CameraDraftsSheet extends StatefulWidget {
+@immutable
+final class CameraDraftsSheet extends StatefulWidget {
   const CameraDraftsSheet({super.key});
 
   @override
   State<CameraDraftsSheet> createState() => _CameraDraftsSheetState();
 }
 
-class _CameraDraftsSheetState extends State<CameraDraftsSheet> {
+final class _CameraDraftsSheetState extends State<CameraDraftsSheet> {
   var _loading = true;
   var _opening = false;
   var _loadFailed = false;
@@ -230,7 +232,8 @@ class _CameraDraftsSheetState extends State<CameraDraftsSheet> {
   }
 }
 
-class _DraftsEmptyState extends StatelessWidget {
+@immutable
+final class _DraftsEmptyState extends StatelessWidget {
   const _DraftsEmptyState({
     required this.messageKey,
     this.onRetry,

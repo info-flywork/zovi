@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:zovi/core/theme/app_colors.dart';
 
-class AuthProgressBar extends StatelessWidget {
+@immutable
+final class AuthProgressBar extends StatelessWidget {
   const AuthProgressBar({
     required this.activeIndex,
     this.stepCount = 3,

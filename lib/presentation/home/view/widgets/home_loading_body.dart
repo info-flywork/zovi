@@ -1,6 +1,7 @@
 part of '../home_view.dart';
 
-class HomeLoadingBody extends StatelessWidget {
+@immutable
+final class HomeLoadingBody extends StatelessWidget {
   const HomeLoadingBody({super.key});
 
   static const _base = Color(0xFFE8E8E8);
@@ -103,7 +104,8 @@ class HomeLoadingBody extends StatelessWidget {
   }
 }
 
-class _ShimmerBox extends StatelessWidget {
+@immutable
+final class _ShimmerBox extends StatelessWidget {
   const _ShimmerBox({
     required this.width,
     required this.height,
@@ -127,7 +129,8 @@ class _ShimmerBox extends StatelessWidget {
   }
 }
 
-class _ShimmerCircle extends StatelessWidget {
+@immutable
+final class _ShimmerCircle extends StatelessWidget {
   const _ShimmerCircle({required this.size});
 
   final double size;

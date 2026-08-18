@@ -1,7 +1,7 @@
 import 'package:zovi/domain/auth/models/story_draft_item.dart';
 
 /// In-memory story drafts list. Refetch only when [dirty] after a new upload.
-class StoryDraftCache {
+final class StoryDraftCache {
   List<StoryDraftItem>? _items;
   var _dirty = true;
 

@@ -5,7 +5,8 @@ import 'package:video_player/video_player.dart';
 import 'package:zovi/core/theme/app_colors.dart';
 import 'package:zovi/core/widgets/app_loading.dart';
 
-class AppVideoPlayer extends StatefulWidget {
+@immutable
+final class AppVideoPlayer extends StatefulWidget {
   const AppVideoPlayer({
     required this.path,
     this.autoPlay = true,
@@ -25,7 +26,7 @@ class AppVideoPlayer extends StatefulWidget {
   State<AppVideoPlayer> createState() => _AppVideoPlayerState();
 }
 
-class _AppVideoPlayerState extends State<AppVideoPlayer> {
+final class _AppVideoPlayerState extends State<AppVideoPlayer> {
   VideoPlayerController? _controller;
   var _ready = false;
 

@@ -53,14 +53,15 @@ int? _asInt(Object? value) {
   return null;
 }
 
-class CheckInCreateSheet extends StatefulWidget {
+@immutable
+final class CheckInCreateSheet extends StatefulWidget {
   const CheckInCreateSheet({super.key});
 
   @override
   State<CheckInCreateSheet> createState() => _CheckInCreateSheetState();
 }
 
-class _CheckInCreateSheetState extends State<CheckInCreateSheet> {
+final class _CheckInCreateSheetState extends State<CheckInCreateSheet> {
   static const _maxLength = 160;
   static const _friendAnimDuration = Duration(milliseconds: 280);
   static const _photoAnimDuration = Duration(milliseconds: 280);
@@ -934,11 +935,13 @@ class _CheckInCreateSheetState extends State<CheckInCreateSheet> {
   }
 }
 
-class _CheckInPhotoPermissionDeniedException implements Exception {
+@immutable
+final class _CheckInPhotoPermissionDeniedException implements Exception {
   const _CheckInPhotoPermissionDeniedException();
 }
 
-class _CheckInPhotoThumb extends StatelessWidget {
+@immutable
+final class _CheckInPhotoThumb extends StatelessWidget {
   const _CheckInPhotoThumb({
     required this.path,
     required this.animation,
@@ -1020,7 +1023,8 @@ class _CheckInPhotoThumb extends StatelessWidget {
   }
 }
 
-class _AddFriendsChip extends StatelessWidget {
+@immutable
+final class _AddFriendsChip extends StatelessWidget {
   const _AddFriendsChip({required this.onTap});
 
   final VoidCallback onTap;
@@ -1067,7 +1071,8 @@ class _AddFriendsChip extends StatelessWidget {
   }
 }
 
-class _TaggedFriendChip extends StatelessWidget {
+@immutable
+final class _TaggedFriendChip extends StatelessWidget {
   const _TaggedFriendChip({
     required this.friend,
     required this.animation,
@@ -1146,7 +1151,8 @@ class _TaggedFriendChip extends StatelessWidget {
   }
 }
 
-class _CheckInLocationPin extends StatelessWidget {
+@immutable
+final class _CheckInLocationPin extends StatelessWidget {
   const _CheckInLocationPin({required this.avatarPath});
 
   final String avatarPath;

@@ -8,7 +8,8 @@ import 'package:zovi/presentation/auth/notification_permission/bloc/notification
 import 'package:zovi/presentation/auth/notification_permission/bloc/notification_permission_event.dart';
 import 'package:zovi/presentation/auth/notification_permission/bloc/notification_permission_state.dart';
 
-class NotificationPermissionView extends StatelessWidget {
+@immutable
+final class NotificationPermissionView extends StatelessWidget {
   const NotificationPermissionView({super.key});
 
   @override

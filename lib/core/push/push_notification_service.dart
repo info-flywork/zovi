@@ -15,7 +15,7 @@ import 'package:zovi/core/utils/navigation/open_chat_detail.dart';
 import 'package:zovi/core/utils/navigation/open_story_by_id.dart';
 
 /// Push + foreground in-app banner bridge for OneSignal.
-class PushNotificationService {
+final class PushNotificationService {
   var _started = false;
 
   Future<void> start() async {

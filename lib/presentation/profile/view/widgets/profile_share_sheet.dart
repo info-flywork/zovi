@@ -6,7 +6,8 @@ import 'package:zovi/core/theme/app_colors.dart';
 import 'package:zovi/core/utils/constants/asset_paths.dart';
 import 'package:zovi/core/widgets/app_icon.dart';
 
-class ProfileShareSheet extends StatelessWidget {
+@immutable
+final class ProfileShareSheet extends StatelessWidget {
   const ProfileShareSheet({
     required this.profileLink,
     required this.parentContext,

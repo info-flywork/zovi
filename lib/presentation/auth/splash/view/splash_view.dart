@@ -15,14 +15,15 @@ import 'package:zovi/presentation/auth/splash/bloc/splash_state.dart';
 part 'mixin/splash_view_mixin.dart';
 part 'widgets/splash_logo.dart';
 
-class SplashView extends StatefulWidget {
+@immutable
+final class SplashView extends StatefulWidget {
   const SplashView({super.key});
 
   @override
   State<SplashView> createState() => _SplashViewState();
 }
 
-class _SplashViewState extends State<SplashView> with SplashViewMixin {
+final class _SplashViewState extends State<SplashView> with SplashViewMixin {
   @override
   void initState() {
     super.initState();

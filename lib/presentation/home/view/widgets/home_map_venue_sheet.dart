@@ -1,6 +1,7 @@
 part of '../home_view.dart';
 
-class HomeMapVenueSheet extends StatelessWidget {
+@immutable
+final class HomeMapVenueSheet extends StatelessWidget {
   const HomeMapVenueSheet({
     required this.venue,
     required this.onClose,
@@ -93,7 +94,8 @@ class HomeMapVenueSheet extends StatelessWidget {
   }
 }
 
-class _VenueThumb extends StatelessWidget {
+@immutable
+final class _VenueThumb extends StatelessWidget {
   const _VenueThumb({this.photoPath});
 
   final String? photoPath;
@@ -127,7 +129,8 @@ class _VenueThumb extends StatelessWidget {
   }
 }
 
-class _VenueThumbFallback extends StatelessWidget {
+@immutable
+final class _VenueThumbFallback extends StatelessWidget {
   const _VenueThumbFallback();
 
   @override

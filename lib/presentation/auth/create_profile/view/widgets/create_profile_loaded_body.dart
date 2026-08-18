@@ -1,6 +1,7 @@
 part of '../create_profile_view.dart';
 
-class CreateProfileLoadedBody extends StatelessWidget {
+@immutable
+final class CreateProfileLoadedBody extends StatelessWidget {
   const CreateProfileLoadedBody({
     required this.fullName,
     required this.username,
@@ -143,7 +144,8 @@ class CreateProfileLoadedBody extends StatelessWidget {
   }
 }
 
-class _UsernameStatusRow extends StatelessWidget {
+@immutable
+final class _UsernameStatusRow extends StatelessWidget {
   const _UsernameStatusRow({required this.status});
 
   final UsernameAvailabilityStatus status;

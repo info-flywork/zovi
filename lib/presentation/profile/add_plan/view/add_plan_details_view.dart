@@ -12,7 +12,8 @@ import 'package:zovi/domain/user/user_repository.dart';
 import 'package:zovi/presentation/profile/add_plan/model/add_plan_place.dart';
 import 'package:zovi/presentation/profile/add_plan/model/add_plan_success_route_args.dart';
 
-class AddPlanDetailsView extends StatefulWidget {
+@immutable
+final class AddPlanDetailsView extends StatefulWidget {
   const AddPlanDetailsView({required this.place, super.key});
 
   final AddPlanPlace place;
@@ -21,7 +22,7 @@ class AddPlanDetailsView extends StatefulWidget {
   State<AddPlanDetailsView> createState() => _AddPlanDetailsViewState();
 }
 
-class _AddPlanDetailsViewState extends State<AddPlanDetailsView> {
+final class _AddPlanDetailsViewState extends State<AddPlanDetailsView> {
   static const _timeSlots = [
     '00:00',
     '02:00',
@@ -304,7 +305,8 @@ class _AddPlanDetailsViewState extends State<AddPlanDetailsView> {
   }
 }
 
-class _DetailsHeader extends StatelessWidget {
+@immutable
+final class _DetailsHeader extends StatelessWidget {
   const _DetailsHeader();
 
   @override
@@ -338,7 +340,8 @@ class _DetailsHeader extends StatelessWidget {
   }
 }
 
-class _SelectedPlaceCard extends StatelessWidget {
+@immutable
+final class _SelectedPlaceCard extends StatelessWidget {
   const _SelectedPlaceCard({required this.place, required this.onChangeTap});
 
   final AddPlanPlace place;
@@ -418,7 +421,8 @@ class _SelectedPlaceCard extends StatelessWidget {
   }
 }
 
-class _VisibilitySwitchRow extends StatelessWidget {
+@immutable
+final class _VisibilitySwitchRow extends StatelessWidget {
   const _VisibilitySwitchRow({
     required this.title,
     required this.subtitle,
@@ -477,7 +481,8 @@ class _VisibilitySwitchRow extends StatelessWidget {
   }
 }
 
-class _SaveButton extends StatelessWidget {
+@immutable
+final class _SaveButton extends StatelessWidget {
   const _SaveButton({required this.onTap, required this.isLoading});
 
   final VoidCallback onTap;

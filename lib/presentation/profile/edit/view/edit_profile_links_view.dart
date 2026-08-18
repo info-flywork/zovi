@@ -10,7 +10,8 @@ import 'package:zovi/core/utils/extensions/future_extensions.dart';
 import 'package:zovi/core/widgets/app_icon.dart';
 import 'package:zovi/domain/user/user_repository.dart';
 
-class EditProfileLinksView extends StatefulWidget {
+@immutable
+final class EditProfileLinksView extends StatefulWidget {
   const EditProfileLinksView({required this.links, super.key});
 
   final List<ProfileLink> links;
@@ -19,7 +20,7 @@ class EditProfileLinksView extends StatefulWidget {
   State<EditProfileLinksView> createState() => _EditProfileLinksViewState();
 }
 
-class _EditProfileLinksViewState extends State<EditProfileLinksView> {
+final class _EditProfileLinksViewState extends State<EditProfileLinksView> {
   late List<ProfileLink> _links;
 
   @override
@@ -113,7 +114,8 @@ class _EditProfileLinksViewState extends State<EditProfileLinksView> {
   }
 }
 
-class _LinksHeader extends StatelessWidget {
+@immutable
+final class _LinksHeader extends StatelessWidget {
   const _LinksHeader({required this.onBack, required this.onDone});
 
   final VoidCallback onBack;
@@ -168,7 +170,8 @@ class _LinksHeader extends StatelessWidget {
   }
 }
 
-class _AddLinkRow extends StatelessWidget {
+@immutable
+final class _AddLinkRow extends StatelessWidget {
   const _AddLinkRow({required this.onTap});
 
   final VoidCallback onTap;
@@ -204,7 +207,8 @@ class _AddLinkRow extends StatelessWidget {
   }
 }
 
-class _LinkItemRow extends StatelessWidget {
+@immutable
+final class _LinkItemRow extends StatelessWidget {
   const _LinkItemRow(this.link);
 
   final ProfileLink link;

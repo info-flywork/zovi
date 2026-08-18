@@ -13,7 +13,8 @@ import 'package:zovi/domain/user/user_repository.dart';
 import 'package:zovi/presentation/home/bloc/home_bloc.dart';
 import 'package:zovi/presentation/home/bloc/home_event.dart';
 
-class MainWrapper extends StatefulWidget {
+@immutable
+final class MainWrapper extends StatefulWidget {
   const MainWrapper({required this.navigationShell, super.key});
 
   final StatefulNavigationShell navigationShell;
@@ -25,7 +26,7 @@ class MainWrapper extends StatefulWidget {
   State<MainWrapper> createState() => _MainWrapperState();
 }
 
-class _MainWrapperState extends State<MainWrapper> {
+final class _MainWrapperState extends State<MainWrapper> {
   /// Nav item index → shell branch index (camera is a push, not a branch).
   static const _branchForNavItem = {0: 0, 2: 1, 3: 2, 4: 3};
 
@@ -158,7 +159,8 @@ class _MainWrapperState extends State<MainWrapper> {
   }
 }
 
-class _NavItem extends StatelessWidget {
+@immutable
+final class _NavItem extends StatelessWidget {
   const _NavItem({
     required this.label,
     required this.selected,

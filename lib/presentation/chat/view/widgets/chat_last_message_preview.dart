@@ -37,7 +37,8 @@ ChatMediaPreviewKind? resolveChatMediaPreviewKind(String preview) {
 }
 
 /// Last-message row for chat / request lists (icon + label for media).
-class ChatLastMessagePreview extends StatelessWidget {
+@immutable
+final class ChatLastMessagePreview extends StatelessWidget {
   const ChatLastMessagePreview({
     super.key,
     required this.preview,

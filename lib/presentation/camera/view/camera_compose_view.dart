@@ -38,7 +38,7 @@ enum _ComposeAudience { friendsOnly, public }
 
 enum _DragKind { none, text, stamp }
 
-class _ComposeTextItem {
+final class _ComposeTextItem {
   _ComposeTextItem({
     required this.id,
     required this.draft,
@@ -52,7 +52,7 @@ class _ComposeTextItem {
   double rotation = 0;
 }
 
-class _ComposeStampItem {
+final class _ComposeStampItem {
   _ComposeStampItem({
     required this.id,
     required this.stamp,
@@ -66,7 +66,8 @@ class _ComposeStampItem {
   double rotation = 0;
 }
 
-class CameraComposeView extends StatefulWidget {
+@immutable
+final class CameraComposeView extends StatefulWidget {
   const CameraComposeView({required this.args, super.key});
 
   final CameraComposeRouteArgs args;
@@ -75,7 +76,7 @@ class CameraComposeView extends StatefulWidget {
   State<CameraComposeView> createState() => _CameraComposeViewState();
 }
 
-class _CameraComposeViewState extends State<CameraComposeView> {
+final class _CameraComposeViewState extends State<CameraComposeView> {
   final _stageKey = GlobalKey();
   final _composeKey = GlobalKey();
   final _musicPlayer = AudioPlayer();
@@ -1023,7 +1024,8 @@ class _CameraComposeViewState extends State<CameraComposeView> {
   }
 }
 
-class _DraggableComposeItem extends StatelessWidget {
+@immutable
+final class _DraggableComposeItem extends StatelessWidget {
   const _DraggableComposeItem({
     required this.child,
     required this.dragging,
@@ -1069,7 +1071,8 @@ class _DraggableComposeItem extends StatelessWidget {
   }
 }
 
-class _DeleteDropZone extends StatelessWidget {
+@immutable
+final class _DeleteDropZone extends StatelessWidget {
   const _DeleteDropZone({required this.active});
 
   final bool active;
@@ -1108,7 +1111,8 @@ class _DeleteDropZone extends StatelessWidget {
   }
 }
 
-class _SelectedMusicPill extends StatelessWidget {
+@immutable
+final class _SelectedMusicPill extends StatelessWidget {
   const _SelectedMusicPill({required this.selection, required this.onClear});
 
   final CameraMusicSelection selection;
@@ -1208,7 +1212,8 @@ class _SelectedMusicPill extends StatelessWidget {
   }
 }
 
-class _MarqueeText extends StatefulWidget {
+@immutable
+final class _MarqueeText extends StatefulWidget {
   const _MarqueeText({required this.text, required this.style});
 
   final String text;
@@ -1218,7 +1223,7 @@ class _MarqueeText extends StatefulWidget {
   State<_MarqueeText> createState() => _MarqueeTextState();
 }
 
-class _MarqueeTextState extends State<_MarqueeText>
+final class _MarqueeTextState extends State<_MarqueeText>
     with SingleTickerProviderStateMixin {
   static const _gap = 32.0;
   static const _speedPxPerSec = 24.0;
@@ -1345,7 +1350,8 @@ class _MarqueeTextState extends State<_MarqueeText>
   }
 }
 
-class _ToolIcon extends StatelessWidget {
+@immutable
+final class _ToolIcon extends StatelessWidget {
   const _ToolIcon({required this.asset, required this.onTap});
 
   final String asset;

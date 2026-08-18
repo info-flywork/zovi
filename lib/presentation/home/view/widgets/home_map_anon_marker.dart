@@ -1,6 +1,7 @@
 part of '../home_view.dart';
 
-class HomeMapAnonMarker extends StatefulWidget {
+@immutable
+final class HomeMapAnonMarker extends StatefulWidget {
   const HomeMapAnonMarker({
     required this.user,
     required this.expanded,
@@ -16,7 +17,7 @@ class HomeMapAnonMarker extends StatefulWidget {
   State<HomeMapAnonMarker> createState() => _HomeMapAnonMarkerState();
 }
 
-class _HomeMapAnonMarkerState extends State<HomeMapAnonMarker>
+final class _HomeMapAnonMarkerState extends State<HomeMapAnonMarker>
     with SingleTickerProviderStateMixin {
   late final AnimationController _controller = AnimationController(
     vsync: this,
@@ -133,7 +134,8 @@ class _HomeMapAnonMarkerState extends State<HomeMapAnonMarker>
   }
 }
 
-class _TightPngIcon extends StatelessWidget {
+@immutable
+final class _TightPngIcon extends StatelessWidget {
   const _TightPngIcon({
     required this.asset,
     required this.size,

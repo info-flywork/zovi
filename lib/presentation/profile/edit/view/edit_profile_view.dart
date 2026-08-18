@@ -15,7 +15,8 @@ import 'package:zovi/presentation/profile/edit/model/edit_profile_field_type.dar
 import 'package:zovi/presentation/profile/edit/model/edit_profile_links_route_args.dart';
 import 'package:zovi/presentation/home/view/widgets/check_in_add_photo_sheet.dart';
 
-class EditProfileView extends StatefulWidget {
+@immutable
+final class EditProfileView extends StatefulWidget {
   const EditProfileView({required this.user, super.key});
 
   final UserProfile user;
@@ -24,7 +25,7 @@ class EditProfileView extends StatefulWidget {
   State<EditProfileView> createState() => _EditProfileViewState();
 }
 
-class _EditProfileViewState extends State<EditProfileView> {
+final class _EditProfileViewState extends State<EditProfileView> {
   late String _avatarPath;
   late String _name;
   late String _username;
@@ -195,7 +196,8 @@ class _EditProfileViewState extends State<EditProfileView> {
   }
 }
 
-class _EditProfileHeader extends StatelessWidget {
+@immutable
+final class _EditProfileHeader extends StatelessWidget {
   const _EditProfileHeader({required this.onBack});
 
   final VoidCallback onBack;
@@ -229,7 +231,8 @@ class _EditProfileHeader extends StatelessWidget {
   }
 }
 
-class _EditProfileRow extends StatelessWidget {
+@immutable
+final class _EditProfileRow extends StatelessWidget {
   const _EditProfileRow({
     required this.label,
     required this.value,
@@ -286,7 +289,8 @@ class _EditProfileRow extends StatelessWidget {
   }
 }
 
-class _EditProfileLinksRow extends StatelessWidget {
+@immutable
+final class _EditProfileLinksRow extends StatelessWidget {
   const _EditProfileLinksRow({required this.links, required this.onTap});
 
   final List<ProfileLink> links;

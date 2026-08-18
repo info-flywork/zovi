@@ -32,14 +32,15 @@ enum _PlanCategory {
   String get label => labelKey.tr();
 }
 
-class AddPlanView extends StatefulWidget {
+@immutable
+final class AddPlanView extends StatefulWidget {
   const AddPlanView({super.key});
 
   @override
   State<AddPlanView> createState() => _AddPlanViewState();
 }
 
-class _AddPlanViewState extends State<AddPlanView> {
+final class _AddPlanViewState extends State<AddPlanView> {
   _PlanCategory _selectedCategory = _PlanCategory.all;
   String _searchQuery = '';
   AddPlanPlace? _selectedPlace;
@@ -215,7 +216,8 @@ class _AddPlanViewState extends State<AddPlanView> {
   }
 }
 
-class _EmptyPlanState extends StatelessWidget {
+@immutable
+final class _EmptyPlanState extends StatelessWidget {
   const _EmptyPlanState({super.key});
 
   @override
@@ -242,7 +244,8 @@ class _EmptyPlanState extends StatelessWidget {
   }
 }
 
-class _AddPlanHeader extends StatelessWidget {
+@immutable
+final class _AddPlanHeader extends StatelessWidget {
   const _AddPlanHeader();
 
   @override
@@ -276,7 +279,8 @@ class _AddPlanHeader extends StatelessWidget {
   }
 }
 
-class _CategoryFilterRow extends StatelessWidget {
+@immutable
+final class _CategoryFilterRow extends StatelessWidget {
   const _CategoryFilterRow({
     required this.selectedCategory,
     required this.onCategoryTap,
@@ -341,7 +345,8 @@ class _CategoryFilterRow extends StatelessWidget {
   }
 }
 
-class _NearbyTitle extends StatelessWidget {
+@immutable
+final class _NearbyTitle extends StatelessWidget {
   const _NearbyTitle();
 
   @override
@@ -365,7 +370,8 @@ class _NearbyTitle extends StatelessWidget {
   }
 }
 
-class _PlanList extends StatelessWidget {
+@immutable
+final class _PlanList extends StatelessWidget {
   const _PlanList({
     required super.key,
     required this.plans,
@@ -396,7 +402,8 @@ class _PlanList extends StatelessWidget {
   }
 }
 
-class _PlanListShimmer extends StatelessWidget {
+@immutable
+final class _PlanListShimmer extends StatelessWidget {
   const _PlanListShimmer({super.key});
 
   @override
@@ -421,7 +428,8 @@ class _PlanListShimmer extends StatelessWidget {
   }
 }
 
-class _NearbyPlanCard extends StatelessWidget {
+@immutable
+final class _NearbyPlanCard extends StatelessWidget {
   const _NearbyPlanCard({
     required this.plan,
     required this.isSelected,
@@ -520,7 +528,8 @@ class _NearbyPlanCard extends StatelessWidget {
   }
 }
 
-class _ContinueButton extends StatelessWidget {
+@immutable
+final class _ContinueButton extends StatelessWidget {
   const _ContinueButton({required this.enabled, required this.onTap});
 
   final bool enabled;

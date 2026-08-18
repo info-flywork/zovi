@@ -1,6 +1,7 @@
 part of '../home_view.dart';
 
-class HomeMapLastCheckInSheet extends StatelessWidget {
+@immutable
+final class HomeMapLastCheckInSheet extends StatelessWidget {
   const HomeMapLastCheckInSheet({
     required this.checkIn,
     required this.onClose,

@@ -84,7 +84,8 @@ Future<void> showPulseMediaViewer(
   );
 }
 
-class ChatMediaViewer extends StatelessWidget {
+@immutable
+final class ChatMediaViewer extends StatelessWidget {
   const ChatMediaViewer({
     required this.heroTag,
     this.assetPath,

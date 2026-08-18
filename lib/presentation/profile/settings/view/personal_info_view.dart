@@ -11,7 +11,8 @@ import 'package:zovi/core/widgets/app_icon.dart';
 import 'package:zovi/domain/auth/auth_repository.dart';
 import 'package:zovi/presentation/profile/settings/view/widgets/delete_account_sheet.dart';
 
-class PersonalInfoView extends StatelessWidget {
+@immutable
+final class PersonalInfoView extends StatelessWidget {
   const PersonalInfoView({super.key});
 
   static const _monthKeys = [
@@ -143,7 +144,8 @@ class PersonalInfoView extends StatelessWidget {
   }
 }
 
-class _PersonalInfoHeader extends StatelessWidget {
+@immutable
+final class _PersonalInfoHeader extends StatelessWidget {
   const _PersonalInfoHeader();
 
   @override
@@ -175,7 +177,8 @@ class _PersonalInfoHeader extends StatelessWidget {
   }
 }
 
-class _InfoRow extends StatelessWidget {
+@immutable
+final class _InfoRow extends StatelessWidget {
   const _InfoRow({required this.label, required this.value});
 
   final String label;
@@ -215,7 +218,8 @@ class _InfoRow extends StatelessWidget {
   }
 }
 
-class _PersonalInfoDivider extends StatelessWidget {
+@immutable
+final class _PersonalInfoDivider extends StatelessWidget {
   const _PersonalInfoDivider();
 
   @override

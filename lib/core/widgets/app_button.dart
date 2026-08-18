@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:zovi/core/theme/app_colors.dart';
 
-class AppButton extends StatelessWidget {
+@immutable
+final class AppButton extends StatelessWidget {
   const AppButton({
     required this.label,
     required this.onPressed,

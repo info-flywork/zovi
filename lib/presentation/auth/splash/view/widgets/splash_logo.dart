@@ -1,6 +1,7 @@
 part of '../splash_view.dart';
 
-class SplashLogo extends StatelessWidget {
+@immutable
+final class SplashLogo extends StatelessWidget {
   const SplashLogo({super.key});
 
   @override

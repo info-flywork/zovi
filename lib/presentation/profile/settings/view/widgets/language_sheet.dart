@@ -63,7 +63,8 @@ Future<AppLanguage?> showLanguageSheet(
   );
 }
 
-class LanguageSheet extends StatefulWidget {
+@immutable
+final class LanguageSheet extends StatefulWidget {
   const LanguageSheet({required this.initial, super.key});
 
   final AppLanguage initial;
@@ -72,7 +73,7 @@ class LanguageSheet extends StatefulWidget {
   State<LanguageSheet> createState() => _LanguageSheetState();
 }
 
-class _LanguageSheetState extends State<LanguageSheet> {
+final class _LanguageSheetState extends State<LanguageSheet> {
   late AppLanguage _selected;
 
   @override
@@ -171,7 +172,8 @@ class _LanguageSheetState extends State<LanguageSheet> {
   }
 }
 
-class _LanguageRow extends StatelessWidget {
+@immutable
+final class _LanguageRow extends StatelessWidget {
   const _LanguageRow({
     required this.language,
     required this.selected,

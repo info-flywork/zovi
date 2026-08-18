@@ -1,6 +1,6 @@
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
-class AuthCacheManager {
+final class AuthCacheManager {
   AuthCacheManager(this._storage);
 
   final FlutterSecureStorage _storage;

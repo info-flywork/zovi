@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart';
+
 enum InAppNotificationAction {
   none,
   friendRequest,
@@ -6,7 +8,8 @@ enum InAppNotificationAction {
   openChat,
 }
 
-class InAppNotificationData {
+@immutable
+final class InAppNotificationData {
   const InAppNotificationData({
     required this.username,
     required this.messageKey,

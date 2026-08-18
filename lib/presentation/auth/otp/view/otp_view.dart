@@ -18,14 +18,15 @@ import 'package:zovi/presentation/auth/widgets/auth_progress_bar.dart';
 part 'mixin/otp_view_mixin.dart';
 part 'widgets/otp_loaded_body.dart';
 
-class OtpView extends StatefulWidget {
+@immutable
+final class OtpView extends StatefulWidget {
   const OtpView({super.key});
 
   @override
   State<OtpView> createState() => _OtpViewState();
 }
 
-class _OtpViewState extends State<OtpView> with OtpViewMixin {
+final class _OtpViewState extends State<OtpView> with OtpViewMixin {
   @override
   Widget build(BuildContext context) {
     return PopScope(

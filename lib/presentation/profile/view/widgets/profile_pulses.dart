@@ -1,6 +1,7 @@
 part of '../profile_view.dart';
 
-class ProfilePulses extends StatelessWidget {
+@immutable
+final class ProfilePulses extends StatelessWidget {
   const ProfilePulses({
     required this.pulses,
     this.isLoading = false,
@@ -71,7 +72,8 @@ class ProfilePulses extends StatelessWidget {
   }
 }
 
-class _PulseGridShimmer extends StatelessWidget {
+@immutable
+final class _PulseGridShimmer extends StatelessWidget {
   const _PulseGridShimmer();
 
   @override
@@ -103,7 +105,8 @@ class _PulseGridShimmer extends StatelessWidget {
   }
 }
 
-class _EmptyTabState extends StatelessWidget {
+@immutable
+final class _EmptyTabState extends StatelessWidget {
   const _EmptyTabState({
     required this.icon,
     required this.text,
@@ -142,7 +145,8 @@ class _EmptyTabState extends StatelessWidget {
   }
 }
 
-class _PulseCard extends StatelessWidget {
+@immutable
+final class _PulseCard extends StatelessWidget {
   const _PulseCard({required this.imagePath, this.isVideo = false});
 
   final String imagePath;

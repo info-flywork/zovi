@@ -1,6 +1,7 @@
 part of '../home_view.dart';
 
-class HomeHeaderSection extends StatelessWidget {
+@immutable
+final class HomeHeaderSection extends StatelessWidget {
   const HomeHeaderSection({required this.hasUnreadMessages, super.key});
 
   final bool hasUnreadMessages;

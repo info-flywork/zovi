@@ -23,7 +23,8 @@ Future<bool> showAppConfirmDialog(
   return result ?? false;
 }
 
-class AppConfirmDialog extends StatelessWidget {
+@immutable
+final class AppConfirmDialog extends StatelessWidget {
   const AppConfirmDialog({
     required this.title,
     required this.subtitle,

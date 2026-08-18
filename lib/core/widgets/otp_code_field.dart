@@ -4,7 +4,8 @@ import 'package:flutter/services.dart';
 import 'package:zovi/core/theme/app_colors.dart';
 
 /// 6 haneli OTP kutuları + altındaki tekrar gönder satırı.
-class OtpCodeField extends StatelessWidget {
+@immutable
+final class OtpCodeField extends StatelessWidget {
   const OtpCodeField({
     required this.code,
     required this.onChanged,
@@ -46,7 +47,8 @@ class OtpCodeField extends StatelessWidget {
   }
 }
 
-class _OtpDigitRow extends StatefulWidget {
+@immutable
+final class _OtpDigitRow extends StatefulWidget {
   const _OtpDigitRow({
     required this.code,
     required this.onChanged,
@@ -61,7 +63,7 @@ class _OtpDigitRow extends StatefulWidget {
   State<_OtpDigitRow> createState() => _OtpDigitRowState();
 }
 
-class _OtpDigitRowState extends State<_OtpDigitRow> {
+final class _OtpDigitRowState extends State<_OtpDigitRow> {
   late final FocusNode _focusNode;
   late final TextEditingController _controller;
 
@@ -141,7 +143,8 @@ class _OtpDigitRowState extends State<_OtpDigitRow> {
   }
 }
 
-class _OtpDigitBox extends StatelessWidget {
+@immutable
+final class _OtpDigitBox extends StatelessWidget {
   const _OtpDigitBox({
     required this.digit,
     required this.isFilled,
@@ -181,7 +184,8 @@ class _OtpDigitBox extends StatelessWidget {
   }
 }
 
-class _OtpResendRow extends StatelessWidget {
+@immutable
+final class _OtpResendRow extends StatelessWidget {
   const _OtpResendRow({
     required this.canResend,
     required this.resendSeconds,

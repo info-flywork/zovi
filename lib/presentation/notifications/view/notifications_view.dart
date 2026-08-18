@@ -26,7 +26,8 @@ enum _NotificationLeading { avatar, heartCircle }
 
 enum _ActionState { idle, followRequestSent, requestSent }
 
-class _NotificationItem {
+@immutable
+final class _NotificationItem {
   const _NotificationItem({
     required this.id,
     required this.type,
@@ -115,14 +116,15 @@ class _NotificationItem {
   }
 }
 
-class NotificationsView extends StatefulWidget {
+@immutable
+final class NotificationsView extends StatefulWidget {
   const NotificationsView({super.key});
 
   @override
   State<NotificationsView> createState() => _NotificationsViewState();
 }
 
-class _NotificationsViewState extends State<NotificationsView> {
+final class _NotificationsViewState extends State<NotificationsView> {
   var _loading = true;
   List<_NotificationItem> _items = const [];
   final Map<String, _ActionState> _actionStates = {};
@@ -622,7 +624,8 @@ class _NotificationsViewState extends State<NotificationsView> {
   }
 }
 
-class _Section extends StatelessWidget {
+@immutable
+final class _Section extends StatelessWidget {
   const _Section({
     required this.title,
     required this.items,
@@ -695,7 +698,8 @@ class _Section extends StatelessWidget {
 
 /// Collapses its child to zero height before the row leaves the list, so a
 /// delete reads as the row folding away instead of blinking out.
-class _CollapsibleRow extends StatefulWidget {
+@immutable
+final class _CollapsibleRow extends StatefulWidget {
   const _CollapsibleRow({
     required this.removing,
     required this.onRemoved,
@@ -711,7 +715,7 @@ class _CollapsibleRow extends StatefulWidget {
   State<_CollapsibleRow> createState() => _CollapsibleRowState();
 }
 
-class _CollapsibleRowState extends State<_CollapsibleRow>
+final class _CollapsibleRowState extends State<_CollapsibleRow>
     with SingleTickerProviderStateMixin {
   late final AnimationController _controller = AnimationController(
     vsync: this,
@@ -754,7 +758,8 @@ class _CollapsibleRowState extends State<_CollapsibleRow>
   }
 }
 
-class _NotificationTile extends StatelessWidget {
+@immutable
+final class _NotificationTile extends StatelessWidget {
   const _NotificationTile({
     required this.item,
     required this.actionState,
@@ -816,7 +821,8 @@ class _NotificationTile extends StatelessWidget {
   }
 }
 
-class _Leading extends StatelessWidget {
+@immutable
+final class _Leading extends StatelessWidget {
   const _Leading({required this.item});
 
   final _NotificationItem item;
@@ -862,7 +868,8 @@ class _Leading extends StatelessWidget {
   }
 }
 
-class _NotificationText extends StatelessWidget {
+@immutable
+final class _NotificationText extends StatelessWidget {
   const _NotificationText({required this.item});
 
   final _NotificationItem item;
@@ -952,7 +959,8 @@ class _NotificationText extends StatelessWidget {
   }
 }
 
-class _ActionButton extends StatelessWidget {
+@immutable
+final class _ActionButton extends StatelessWidget {
   const _ActionButton({
     required this.action,
     required this.state,

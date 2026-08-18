@@ -1,6 +1,7 @@
 part of '../onboarding_view.dart';
 
-class SocialLoginButton extends StatelessWidget {
+@immutable
+final class SocialLoginButton extends StatelessWidget {
   const SocialLoginButton({
     required this.label,
     required this.iconPath,

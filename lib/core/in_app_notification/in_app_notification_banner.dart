@@ -8,7 +8,8 @@ import 'package:zovi/core/utils/constants/asset_paths.dart';
 import 'package:zovi/core/widgets/app_icon.dart';
 import 'package:zovi/core/widgets/profile_avatar.dart';
 
-class InAppNotificationBanner extends StatefulWidget {
+@immutable
+final class InAppNotificationBanner extends StatefulWidget {
   const InAppNotificationBanner({
     required this.data,
     required this.onDismiss,
@@ -33,7 +34,7 @@ class InAppNotificationBanner extends StatefulWidget {
       _InAppNotificationBannerState();
 }
 
-class _InAppNotificationBannerState extends State<InAppNotificationBanner> {
+final class _InAppNotificationBannerState extends State<InAppNotificationBanner> {
   bool _followRequestSent = false;
 
   @override
@@ -137,7 +138,8 @@ class _InAppNotificationBannerState extends State<InAppNotificationBanner> {
   }
 }
 
-class _MessageText extends StatelessWidget {
+@immutable
+final class _MessageText extends StatelessWidget {
   const _MessageText({required this.data});
 
   final InAppNotificationData data;
@@ -250,7 +252,8 @@ class _MessageText extends StatelessWidget {
   }
 }
 
-class _Trailing extends StatelessWidget {
+@immutable
+final class _Trailing extends StatelessWidget {
   const _Trailing({
     required this.data,
     required this.followRequestSent,
@@ -304,7 +307,8 @@ class _Trailing extends StatelessWidget {
   }
 }
 
-class _StoryThumb extends StatelessWidget {
+@immutable
+final class _StoryThumb extends StatelessWidget {
   const _StoryThumb({required this.path});
 
   final String path;

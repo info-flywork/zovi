@@ -8,14 +8,15 @@ import 'package:zovi/core/utils/constants/asset_paths.dart';
 import 'package:zovi/core/widgets/app_icon.dart';
 import 'package:zovi/core/widgets/otp_code_field.dart';
 
-class ChangePasswordView extends StatefulWidget {
+@immutable
+final class ChangePasswordView extends StatefulWidget {
   const ChangePasswordView({super.key});
 
   @override
   State<ChangePasswordView> createState() => _ChangePasswordViewState();
 }
 
-class _ChangePasswordViewState extends State<ChangePasswordView> {
+final class _ChangePasswordViewState extends State<ChangePasswordView> {
   static const _handle = 'jhondoe4512';
   static const _email = 'jhondoe4512@gmail.com';
   static const _resendDuration = 30;
@@ -135,7 +136,8 @@ class _ChangePasswordViewState extends State<ChangePasswordView> {
   }
 }
 
-class _ChangePasswordHeader extends StatelessWidget {
+@immutable
+final class _ChangePasswordHeader extends StatelessWidget {
   const _ChangePasswordHeader();
 
   @override

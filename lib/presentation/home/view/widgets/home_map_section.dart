@@ -1,6 +1,7 @@
 part of '../home_view.dart';
 
-class HomeMapSection extends StatefulWidget {
+@immutable
+final class HomeMapSection extends StatefulWidget {
   const HomeMapSection({
     required this.mapFriends,
     required this.onAddTap,
@@ -14,7 +15,7 @@ class HomeMapSection extends StatefulWidget {
   State<HomeMapSection> createState() => _HomeMapSectionState();
 }
 
-class _HomeMapSectionState extends State<HomeMapSection>
+final class _HomeMapSectionState extends State<HomeMapSection>
     with TickerProviderStateMixin, WidgetsBindingObserver {
   static const _fallbackCenter = LatLng(41.0082, 28.9784);
   static const _defaultZoom = 16.0;
@@ -1590,7 +1591,8 @@ class _HomeMapSectionState extends State<HomeMapSection>
 
 enum _MapFilter { nearby, friends, venues }
 
-class _MapFilterMenu extends StatelessWidget {
+@immutable
+final class _MapFilterMenu extends StatelessWidget {
   const _MapFilterMenu({
     required this.animation,
     required this.selected,
@@ -1727,7 +1729,8 @@ class _MapFilterMenu extends StatelessWidget {
   }
 }
 
-class _MapFilterLabel extends StatelessWidget {
+@immutable
+final class _MapFilterLabel extends StatelessWidget {
   const _MapFilterLabel({
     required this.label,
     required this.selected,
@@ -1778,7 +1781,8 @@ class _MapFilterLabel extends StatelessWidget {
   }
 }
 
-class _MapFilterIconButton extends StatelessWidget {
+@immutable
+final class _MapFilterIconButton extends StatelessWidget {
   const _MapFilterIconButton({
     required this.asset,
     required this.selected,
@@ -1813,7 +1817,8 @@ class _MapFilterIconButton extends StatelessWidget {
   }
 }
 
-class _MapSendButton extends StatelessWidget {
+@immutable
+final class _MapSendButton extends StatelessWidget {
   const _MapSendButton({required this.onTap, this.isLoading = false});
 
   final VoidCallback onTap;
@@ -1855,7 +1860,8 @@ class _MapSendButton extends StatelessWidget {
   }
 }
 
-class _MapAddButton extends StatelessWidget {
+@immutable
+final class _MapAddButton extends StatelessWidget {
   const _MapAddButton({required this.onTap});
 
   final VoidCallback onTap;
@@ -1886,7 +1892,8 @@ class _MapAddButton extends StatelessWidget {
   }
 }
 
-class _MapPinItem {
+@immutable
+final class _MapPinItem {
   const _MapPinItem._({
     required this.point,
     required this.avatarPath,
@@ -1926,7 +1933,8 @@ class _MapPinItem {
   bool get isSelf => friend == null;
 }
 
-class _MapPinCluster {
+@immutable
+final class _MapPinCluster {
   const _MapPinCluster({
     required this.center,
     required this.members,

@@ -1,6 +1,7 @@
 part of '../intro_view.dart';
 
-class IntroAroundPage extends StatefulWidget {
+@immutable
+final class IntroAroundPage extends StatefulWidget {
   const IntroAroundPage({super.key});
 
   static const _creamBorder = Color(0xFFF5E6D8);
@@ -21,7 +22,7 @@ class IntroAroundPage extends StatefulWidget {
   State<IntroAroundPage> createState() => _IntroAroundPageState();
 }
 
-class _IntroAroundPageState extends State<IntroAroundPage>
+final class _IntroAroundPageState extends State<IntroAroundPage>
     with SingleTickerProviderStateMixin {
   late final AnimationController _orbit;
 
@@ -252,7 +253,8 @@ class _IntroAroundPageState extends State<IntroAroundPage>
   }
 }
 
-class _RadarRing extends StatelessWidget {
+@immutable
+final class _RadarRing extends StatelessWidget {
   const _RadarRing({required this.diameter, required this.color});
 
   final double diameter;
@@ -271,7 +273,8 @@ class _RadarRing extends StatelessWidget {
   }
 }
 
-class _RadarAvatar extends StatelessWidget {
+@immutable
+final class _RadarAvatar extends StatelessWidget {
   const _RadarAvatar({
     required this.center,
     required this.asset,

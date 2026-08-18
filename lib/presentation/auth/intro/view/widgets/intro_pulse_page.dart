@@ -1,6 +1,7 @@
 part of '../intro_view.dart';
 
-class IntroPulsePage extends StatefulWidget {
+@immutable
+final class IntroPulsePage extends StatefulWidget {
   const IntroPulsePage({super.key, this.isActive = false});
 
   final bool isActive;
@@ -9,7 +10,7 @@ class IntroPulsePage extends StatefulWidget {
   State<IntroPulsePage> createState() => _IntroPulsePageState();
 }
 
-class _IntroPulsePageState extends State<IntroPulsePage>
+final class _IntroPulsePageState extends State<IntroPulsePage>
     with SingleTickerProviderStateMixin {
   late final AnimationController _enter;
   late final Animation<double> _textFade;
@@ -195,7 +196,8 @@ class _IntroPulsePageState extends State<IntroPulsePage>
   }
 }
 
-class _PulseCard extends StatelessWidget {
+@immutable
+final class _PulseCard extends StatelessWidget {
   const _PulseCard({
     required this.image,
     required this.name,

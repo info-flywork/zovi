@@ -22,7 +22,8 @@ import 'package:zovi/presentation/profile/settings/view/widgets/blocked_users_sh
 const _leaveRed = Color(0xFFE30A17);
 const _streakPink = Color(0xFFFF4D6D);
 
-class GroupInfoView extends StatefulWidget {
+@immutable
+final class GroupInfoView extends StatefulWidget {
   const GroupInfoView({required this.args, super.key});
 
   final GroupInfoRouteArgs args;
@@ -31,7 +32,7 @@ class GroupInfoView extends StatefulWidget {
   State<GroupInfoView> createState() => _GroupInfoViewState();
 }
 
-class _GroupInfoViewState extends State<GroupInfoView> {
+final class _GroupInfoViewState extends State<GroupInfoView> {
   final TribeRepository _tribes = getIt<TribeRepository>();
   var _notificationsOn = true;
   var _leaving = false;
@@ -360,7 +361,8 @@ class _GroupInfoViewState extends State<GroupInfoView> {
   }
 }
 
-class _GroupMember {
+@immutable
+final class _GroupMember {
   const _GroupMember({
     required this.avatarPath,
     required this.streak,
@@ -387,7 +389,8 @@ class _GroupMember {
       username.trim().isNotEmpty ? username.trim() : profileName;
 }
 
-class _StatChip extends StatelessWidget {
+@immutable
+final class _StatChip extends StatelessWidget {
   const _StatChip({required this.label, required this.icon});
 
   final String label;
@@ -421,7 +424,8 @@ class _StatChip extends StatelessWidget {
   }
 }
 
-class _SectionLabel extends StatelessWidget {
+@immutable
+final class _SectionLabel extends StatelessWidget {
   const _SectionLabel(this.text);
 
   final String text;
@@ -441,7 +445,8 @@ class _SectionLabel extends StatelessWidget {
   }
 }
 
-class _SettingsCard extends StatelessWidget {
+@immutable
+final class _SettingsCard extends StatelessWidget {
   const _SettingsCard({required this.children});
 
   final List<Widget> children;
@@ -460,7 +465,8 @@ class _SettingsCard extends StatelessWidget {
   }
 }
 
-class _SettingsRow extends StatelessWidget {
+@immutable
+final class _SettingsRow extends StatelessWidget {
   const _SettingsRow({
     required this.icon,
     required this.title,
@@ -504,7 +510,8 @@ class _SettingsRow extends StatelessWidget {
   }
 }
 
-class _MemberRow extends StatelessWidget {
+@immutable
+final class _MemberRow extends StatelessWidget {
   const _MemberRow({required this.member, required this.onTap});
 
   final _GroupMember member;
@@ -548,7 +555,8 @@ class _MemberRow extends StatelessWidget {
   }
 }
 
-class _MembersListShimmer extends StatelessWidget {
+@immutable
+final class _MembersListShimmer extends StatelessWidget {
   const _MembersListShimmer();
 
   @override
@@ -601,7 +609,8 @@ Future<bool> showLeaveGroupSheet(BuildContext context) async {
   return result ?? false;
 }
 
-class _LeaveGroupSheet extends StatelessWidget {
+@immutable
+final class _LeaveGroupSheet extends StatelessWidget {
   const _LeaveGroupSheet();
 
   @override
@@ -692,7 +701,8 @@ Future<void> _showMemberProfileSheet(
   );
 }
 
-class _MemberProfileSheet extends StatelessWidget {
+@immutable
+final class _MemberProfileSheet extends StatelessWidget {
   const _MemberProfileSheet({
     required this.member,
     required this.parentContext,

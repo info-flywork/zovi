@@ -5,7 +5,8 @@ import 'package:zovi/core/widgets/app_icon.dart';
 
 /// Height + fade insert/remove without [SizeTransition]'s ClipRect, so
 /// horizontal swipe overflow stays visible.
-class ChatListItemTransition extends StatelessWidget {
+@immutable
+final class ChatListItemTransition extends StatelessWidget {
   const ChatListItemTransition({
     required this.animation,
     required this.child,
@@ -36,7 +37,8 @@ class ChatListItemTransition extends StatelessWidget {
 }
 
 /// Sola kaydırınca kart kayar, sağda yuvarlatılmış çöp alanı açılır ve açık kalır.
-class ChatSwipeDeleteTile extends StatefulWidget {
+@immutable
+final class ChatSwipeDeleteTile extends StatefulWidget {
   const ChatSwipeDeleteTile({
     required this.child,
     required this.isOpen,
@@ -56,7 +58,7 @@ class ChatSwipeDeleteTile extends StatefulWidget {
   State<ChatSwipeDeleteTile> createState() => _ChatSwipeDeleteTileState();
 }
 
-class _ChatSwipeDeleteTileState extends State<ChatSwipeDeleteTile> {
+final class _ChatSwipeDeleteTileState extends State<ChatSwipeDeleteTile> {
   var _offset = 0.0;
 
   @override

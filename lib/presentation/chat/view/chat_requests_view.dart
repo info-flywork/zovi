@@ -19,7 +19,8 @@ import 'package:zovi/presentation/chat/view/widgets/chat_swipe_delete_tile.dart'
 
 const _deleteRequestRed = Color(0xFFEC1C24);
 
-class ChatRequestsView extends StatefulWidget {
+@immutable
+final class ChatRequestsView extends StatefulWidget {
   const ChatRequestsView({required this.requests, super.key});
 
   final List<ChatRequestItem> requests;
@@ -28,7 +29,7 @@ class ChatRequestsView extends StatefulWidget {
   State<ChatRequestsView> createState() => _ChatRequestsViewState();
 }
 
-class _ChatRequestsViewState extends State<ChatRequestsView> {
+final class _ChatRequestsViewState extends State<ChatRequestsView> {
   static const _removeDuration = Duration(milliseconds: 280);
 
   late List<ChatRequestItem> _requests;
@@ -262,7 +263,8 @@ class _ChatRequestsViewState extends State<ChatRequestsView> {
   }
 }
 
-class _RequestRemoveTile extends StatelessWidget {
+@immutable
+final class _RequestRemoveTile extends StatelessWidget {
   const _RequestRemoveTile({required this.request, required this.animation});
 
   final ChatRequestItem request;
@@ -286,7 +288,8 @@ class _RequestRemoveTile extends StatelessWidget {
   }
 }
 
-class _RequestTile extends StatelessWidget {
+@immutable
+final class _RequestTile extends StatelessWidget {
   const _RequestTile({required this.request, required this.onTap});
 
   final ChatRequestItem request;
@@ -342,7 +345,8 @@ class _RequestTile extends StatelessWidget {
   }
 }
 
-class _RequestEmptyState extends StatelessWidget {
+@immutable
+final class _RequestEmptyState extends StatelessWidget {
   const _RequestEmptyState();
 
   @override

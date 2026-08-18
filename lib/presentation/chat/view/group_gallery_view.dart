@@ -13,7 +13,8 @@ import 'package:zovi/domain/tribe/tribe_repository.dart';
 import 'package:zovi/presentation/chat/model/group_info_route_args.dart';
 import 'package:zovi/presentation/chat/view/widgets/chat_media_viewer.dart';
 
-class GroupGalleryView extends StatefulWidget {
+@immutable
+final class GroupGalleryView extends StatefulWidget {
   const GroupGalleryView({required this.args, super.key});
 
   final GroupInfoRouteArgs args;
@@ -22,7 +23,7 @@ class GroupGalleryView extends StatefulWidget {
   State<GroupGalleryView> createState() => _GroupGalleryViewState();
 }
 
-class _GroupGalleryViewState extends State<GroupGalleryView> {
+final class _GroupGalleryViewState extends State<GroupGalleryView> {
   final ChatRepository _chat = getIt<ChatRepository>();
   final TribeRepository _tribes = getIt<TribeRepository>();
 
@@ -238,7 +239,8 @@ class _GroupGalleryViewState extends State<GroupGalleryView> {
   }
 }
 
-class _GalleryShimmer extends StatelessWidget {
+@immutable
+final class _GalleryShimmer extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return GridView.builder(

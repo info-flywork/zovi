@@ -1,6 +1,7 @@
 part of '../otp_view.dart';
 
-class OtpLoadedBody extends StatelessWidget {
+@immutable
+final class OtpLoadedBody extends StatelessWidget {
   const OtpLoadedBody({
     required this.formattedPhone,
     required this.code,

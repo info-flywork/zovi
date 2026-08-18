@@ -1,8 +1,10 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:zovi/core/utils/phone/phone_format.dart';
 
-class CountryPhoneInputFormatter extends TextInputFormatter {
-  CountryPhoneInputFormatter(this.format);
+@immutable
+final class CountryPhoneInputFormatter extends TextInputFormatter {
+  const CountryPhoneInputFormatter(this.format);
 
   final PhoneFormat format;
 

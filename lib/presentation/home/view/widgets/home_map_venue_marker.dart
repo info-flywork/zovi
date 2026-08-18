@@ -1,6 +1,7 @@
 part of '../home_view.dart';
 
-class HomeMapVenueMarker extends StatelessWidget {
+@immutable
+final class HomeMapVenueMarker extends StatelessWidget {
   const HomeMapVenueMarker({required this.venue, super.key});
 
   final MapVenue venue;

@@ -14,14 +14,15 @@ import 'package:zovi/domain/user/user_repository.dart';
 const _streakPink = Color(0xFFFF4D6D);
 const _categoryFill = Color(0xFFF4F4F9);
 
-class LifestyleStreakView extends StatefulWidget {
+@immutable
+final class LifestyleStreakView extends StatefulWidget {
   const LifestyleStreakView({super.key});
 
   @override
   State<LifestyleStreakView> createState() => _LifestyleStreakViewState();
 }
 
-class _LifestyleStreakViewState extends State<LifestyleStreakView> {
+final class _LifestyleStreakViewState extends State<LifestyleStreakView> {
   static const _categories = <_StreakCategory>[
     _StreakCategory(
       key: 'culture',
@@ -399,7 +400,8 @@ class _LifestyleStreakViewState extends State<LifestyleStreakView> {
   }
 }
 
-class _StreakEmptyState extends StatelessWidget {
+@immutable
+final class _StreakEmptyState extends StatelessWidget {
   const _StreakEmptyState();
 
   @override
@@ -430,7 +432,8 @@ class _StreakEmptyState extends StatelessWidget {
   }
 }
 
-class _StreakCategory {
+@immutable
+final class _StreakCategory {
   const _StreakCategory({
     required this.key,
     required this.emoji,
@@ -442,7 +445,8 @@ class _StreakCategory {
   final String labelKey;
 }
 
-class _PointsBadgeShimmer extends StatelessWidget {
+@immutable
+final class _PointsBadgeShimmer extends StatelessWidget {
   const _PointsBadgeShimmer();
 
   @override
@@ -462,7 +466,8 @@ class _PointsBadgeShimmer extends StatelessWidget {
   }
 }
 
-class _StreakUsersShimmer extends StatelessWidget {
+@immutable
+final class _StreakUsersShimmer extends StatelessWidget {
   const _StreakUsersShimmer();
 
   @override
@@ -481,7 +486,8 @@ class _StreakUsersShimmer extends StatelessWidget {
   }
 }
 
-class _StreakUserRowShimmer extends StatelessWidget {
+@immutable
+final class _StreakUserRowShimmer extends StatelessWidget {
   const _StreakUserRowShimmer();
 
   @override
@@ -544,7 +550,8 @@ class _StreakUserRowShimmer extends StatelessWidget {
   }
 }
 
-class _CategoryCard extends StatelessWidget {
+@immutable
+final class _CategoryCard extends StatelessWidget {
   const _CategoryCard({
     required this.emoji,
     required this.label,
@@ -600,7 +607,8 @@ class _CategoryCard extends StatelessWidget {
   }
 }
 
-class _StreakUser {
+@immutable
+final class _StreakUser {
   const _StreakUser({
     required this.avatarPath,
     required this.categories,
@@ -625,7 +633,8 @@ class _StreakUser {
       _LifestyleStreakViewState._interestsLabel(categories);
 }
 
-class _StreakUserRow extends StatelessWidget {
+@immutable
+final class _StreakUserRow extends StatelessWidget {
   const _StreakUserRow({required this.user, required this.onTap});
 
   final _StreakUser user;

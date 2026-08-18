@@ -203,7 +203,7 @@ final class TribeBoard extends Equatable {
   List<Object?> get props => [featured, tribes];
 }
 
-class TribeRepository {
+final class TribeRepository {
   TribeRepository(this._network, {TribeDetailCache? detailCache})
       : _detailCache = detailCache ?? TribeDetailCache();
 

@@ -30,7 +30,8 @@ Future<void> openProfileLink(String rawUrl) async {
   }
 }
 
-class _ProfileLinksSheet extends StatelessWidget {
+@immutable
+final class _ProfileLinksSheet extends StatelessWidget {
   const _ProfileLinksSheet({required this.links});
 
   final List<ProfileLink> links;
@@ -71,7 +72,8 @@ class _ProfileLinksSheet extends StatelessWidget {
   }
 }
 
-class _ProfileLinkSheetRow extends StatelessWidget {
+@immutable
+final class _ProfileLinkSheetRow extends StatelessWidget {
   const _ProfileLinkSheetRow({required this.link});
 
   final ProfileLink link;

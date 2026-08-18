@@ -26,14 +26,15 @@ import 'package:zovi/presentation/chat/view/widgets/chat_swipe_delete_tile.dart'
 part 'mixin/chat_view_mixin.dart';
 part 'widgets/chat_loaded_body.dart';
 
-class ChatView extends StatefulWidget {
+@immutable
+final class ChatView extends StatefulWidget {
   const ChatView({super.key});
 
   @override
   State<ChatView> createState() => _ChatViewState();
 }
 
-class _ChatViewState extends State<ChatView> with ChatViewMixin {
+final class _ChatViewState extends State<ChatView> with ChatViewMixin {
   @override
   void initState() {
     super.initState();

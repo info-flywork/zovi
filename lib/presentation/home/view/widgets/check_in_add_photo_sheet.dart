@@ -23,7 +23,8 @@ Future<CheckInPhotoSource?> showCheckInAddPhotoSheet(
   );
 }
 
-class CheckInAddPhotoSheet extends StatefulWidget {
+@immutable
+final class CheckInAddPhotoSheet extends StatefulWidget {
   const CheckInAddPhotoSheet({
     this.initial = CheckInPhotoSource.camera,
     super.key,
@@ -35,7 +36,7 @@ class CheckInAddPhotoSheet extends StatefulWidget {
   State<CheckInAddPhotoSheet> createState() => _CheckInAddPhotoSheetState();
 }
 
-class _CheckInAddPhotoSheetState extends State<CheckInAddPhotoSheet> {
+final class _CheckInAddPhotoSheetState extends State<CheckInAddPhotoSheet> {
   late CheckInPhotoSource _selected;
 
   static const _selectedBg = Color(0xFFF4F4F9);
@@ -108,7 +109,8 @@ class _CheckInAddPhotoSheetState extends State<CheckInAddPhotoSheet> {
   }
 }
 
-class _PhotoSourceOption extends StatelessWidget {
+@immutable
+final class _PhotoSourceOption extends StatelessWidget {
   const _PhotoSourceOption({
     required this.icon,
     required this.title,

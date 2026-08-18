@@ -1,6 +1,7 @@
 part of '../home_view.dart';
 
-class HomeMapFriendSheet extends StatefulWidget {
+@immutable
+final class HomeMapFriendSheet extends StatefulWidget {
   const HomeMapFriendSheet({
     required this.friend,
     required this.viewerLocation,
@@ -20,7 +21,7 @@ class HomeMapFriendSheet extends StatefulWidget {
   State<HomeMapFriendSheet> createState() => _HomeMapFriendSheetState();
 }
 
-class _HomeMapFriendSheetState extends State<HomeMapFriendSheet> {
+final class _HomeMapFriendSheetState extends State<HomeMapFriendSheet> {
   late final TextEditingController _controller = TextEditingController();
 
   static const _thumbSize = 68.0;
@@ -318,7 +319,8 @@ class _HomeMapFriendSheetState extends State<HomeMapFriendSheet> {
   }
 }
 
-class _FriendSheetStreakBadge extends StatelessWidget {
+@immutable
+final class _FriendSheetStreakBadge extends StatelessWidget {
   const _FriendSheetStreakBadge({required this.streak});
 
   final int streak;

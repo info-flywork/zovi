@@ -1,6 +1,7 @@
 part of '../profile_view.dart';
 
-class ProfilePlans extends StatelessWidget {
+@immutable
+final class ProfilePlans extends StatelessWidget {
   const ProfilePlans({required this.plans, super.key});
 
   final List<PlanItem> plans;
@@ -70,7 +71,8 @@ class ProfilePlans extends StatelessWidget {
   }
 }
 
-class _EmptyProfileSection extends StatelessWidget {
+@immutable
+final class _EmptyProfileSection extends StatelessWidget {
   const _EmptyProfileSection({
     required this.icon,
     required this.text,
@@ -109,7 +111,8 @@ class _EmptyProfileSection extends StatelessWidget {
   }
 }
 
-class _PlanCard extends StatelessWidget {
+@immutable
+final class _PlanCard extends StatelessWidget {
   const _PlanCard({required this.plan});
 
   final PlanItem plan;

@@ -6,7 +6,7 @@ import 'package:dio/dio.dart';
 import 'package:path_provider/path_provider.dart';
 
 /// Downloads CDN stamp/sticker images once and reuses local files.
-class StampImageCache {
+final class StampImageCache {
   StampImageCache([Dio? dio])
       : _dio = dio ??
             Dio(

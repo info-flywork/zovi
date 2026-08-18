@@ -14,7 +14,8 @@ import 'package:zovi/core/widgets/app_loading.dart';
 import 'package:zovi/core/widgets/app_search_field.dart';
 import 'package:zovi/domain/auth/auth_repository.dart';
 
-class CameraMusicTrack {
+@immutable
+final class CameraMusicTrack {
   const CameraMusicTrack({
     required this.id,
     required this.title,
@@ -77,7 +78,8 @@ bool _isGenericMusicProvider(String value) {
       n == 'ai';
 }
 
-class CameraMusicSelection {
+@immutable
+final class CameraMusicSelection {
   const CameraMusicSelection({
     required this.track,
     required this.clipStart,
@@ -99,14 +101,15 @@ Future<CameraMusicSelection?> showCameraMusicSheet(BuildContext context) {
   );
 }
 
-class CameraMusicSheet extends StatefulWidget {
+@immutable
+final class CameraMusicSheet extends StatefulWidget {
   const CameraMusicSheet({super.key});
 
   @override
   State<CameraMusicSheet> createState() => _CameraMusicSheetState();
 }
 
-class _CameraMusicSheetState extends State<CameraMusicSheet> {
+final class _CameraMusicSheetState extends State<CameraMusicSheet> {
   static const _pageSize = 10;
 
   var _query = '';
@@ -264,7 +267,8 @@ class _CameraMusicSheetState extends State<CameraMusicSheet> {
   }
 }
 
-class _MusicListSheet extends StatefulWidget {
+@immutable
+final class _MusicListSheet extends StatefulWidget {
   const _MusicListSheet({
     required this.tracks,
     required this.isLoading,
@@ -291,7 +295,7 @@ class _MusicListSheet extends StatefulWidget {
   State<_MusicListSheet> createState() => _MusicListSheetState();
 }
 
-class _MusicListSheetState extends State<_MusicListSheet> {
+final class _MusicListSheetState extends State<_MusicListSheet> {
   ScrollController? _scrollController;
 
   @override
@@ -422,7 +426,8 @@ class _MusicListSheetState extends State<_MusicListSheet> {
   }
 }
 
-class _MusicEmptyState extends StatelessWidget {
+@immutable
+final class _MusicEmptyState extends StatelessWidget {
   const _MusicEmptyState();
 
   @override
@@ -454,7 +459,8 @@ class _MusicEmptyState extends StatelessWidget {
   }
 }
 
-class _MusicTrackCover extends StatelessWidget {
+@immutable
+final class _MusicTrackCover extends StatelessWidget {
   const _MusicTrackCover({required this.track});
 
   final CameraMusicTrack track;
@@ -489,7 +495,8 @@ class _MusicTrackCover extends StatelessWidget {
   }
 }
 
-class _MusicTrackTile extends StatelessWidget {
+@immutable
+final class _MusicTrackTile extends StatelessWidget {
   const _MusicTrackTile({required this.track, required this.onTap});
 
   final CameraMusicTrack track;
@@ -554,7 +561,8 @@ class _MusicTrackTile extends StatelessWidget {
   }
 }
 
-class _MusicTrimSheet extends StatefulWidget {
+@immutable
+final class _MusicTrimSheet extends StatefulWidget {
   const _MusicTrimSheet({
     required this.track,
     required this.onBack,
@@ -569,7 +577,7 @@ class _MusicTrimSheet extends StatefulWidget {
   State<_MusicTrimSheet> createState() => _MusicTrimSheetState();
 }
 
-class _MusicTrimSheetState extends State<_MusicTrimSheet> {
+final class _MusicTrimSheetState extends State<_MusicTrimSheet> {
   static const _minClip = Duration(seconds: 5);
 
   /// Track üzerinde seçimin başlangıç/bitiş oranı (0–1).
@@ -866,7 +874,8 @@ class _MusicTrimSheetState extends State<_MusicTrimSheet> {
 
 enum _TrimDragKind { none, move, start, end }
 
-class _MusicWaveformTrim extends StatefulWidget {
+@immutable
+final class _MusicWaveformTrim extends StatefulWidget {
   const _MusicWaveformTrim({
     required this.startNorm,
     required this.endNorm,
@@ -883,7 +892,7 @@ class _MusicWaveformTrim extends StatefulWidget {
   State<_MusicWaveformTrim> createState() => _MusicWaveformTrimState();
 }
 
-class _MusicWaveformTrimState extends State<_MusicWaveformTrim> {
+final class _MusicWaveformTrimState extends State<_MusicWaveformTrim> {
   static const _handleHit = 28.0;
 
   static const _heights = [
@@ -1023,7 +1032,8 @@ class _MusicWaveformTrimState extends State<_MusicWaveformTrim> {
   }
 }
 
-class _TrimHandle extends StatelessWidget {
+@immutable
+final class _TrimHandle extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(

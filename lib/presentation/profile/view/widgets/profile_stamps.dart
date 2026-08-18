@@ -1,6 +1,7 @@
 part of '../profile_view.dart';
 
-class ProfileStamps extends StatelessWidget {
+@immutable
+final class ProfileStamps extends StatelessWidget {
   const ProfileStamps({required this.stamps, super.key});
 
   final List<StampItem> stamps;
@@ -38,7 +39,8 @@ class ProfileStamps extends StatelessWidget {
   }
 }
 
-class _EmptyStampsState extends StatelessWidget {
+@immutable
+final class _EmptyStampsState extends StatelessWidget {
   const _EmptyStampsState({required this.text});
 
   final String text;
@@ -73,7 +75,8 @@ class _EmptyStampsState extends StatelessWidget {
   }
 }
 
-class _StampCard extends StatelessWidget {
+@immutable
+final class _StampCard extends StatelessWidget {
   const _StampCard({required this.stamp});
 
   final StampItem stamp;

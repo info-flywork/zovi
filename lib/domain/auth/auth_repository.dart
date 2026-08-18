@@ -25,11 +25,12 @@ import 'package:zovi/domain/auth/models/username_taken_exception.dart';
 
 export 'package:zovi/domain/auth/models/story_draft_item.dart';
 
-class SessionExpiredException implements Exception {
+@immutable
+final class SessionExpiredException implements Exception {
   const SessionExpiredException();
 }
 
-class AuthRepository {
+final class AuthRepository {
   AuthRepository(
     this._authCache,
     this._prefs,
@@ -1847,7 +1848,8 @@ class AuthRepository {
   }
 }
 
-class CachedPersonalInfo {
+@immutable
+final class CachedPersonalInfo {
   const CachedPersonalInfo({
     required this.email,
     required this.phoneE164,
@@ -1904,7 +1906,8 @@ class CachedPersonalInfo {
   }
 }
 
-class StampCatalogItem {
+@immutable
+final class StampCatalogItem {
   const StampCatalogItem({
     required this.id,
     required this.name,
@@ -1924,7 +1927,8 @@ class StampCatalogItem {
   final String imageUrl;
 }
 
-class MusicTrackItem {
+@immutable
+final class MusicTrackItem {
   const MusicTrackItem({
     required this.id,
     required this.title,
@@ -1956,7 +1960,8 @@ class MusicTrackItem {
   final String audioUrl;
 }
 
-class MusicTracksPage {
+@immutable
+final class MusicTracksPage {
   const MusicTracksPage({
     required this.tracks,
     required this.hasMore,
@@ -1970,7 +1975,8 @@ class MusicTracksPage {
   final bool expanding;
 }
 
-class PulseLikeSnapshot {
+@immutable
+final class PulseLikeSnapshot {
   const PulseLikeSnapshot({
     required this.id,
     required this.likeCount,
@@ -1990,7 +1996,8 @@ class PulseLikeSnapshot {
   final bool likedByMe;
 }
 
-class UserStickerItem {
+@immutable
+final class UserStickerItem {
   const UserStickerItem({
     required this.id,
     required this.title,
@@ -2010,7 +2017,8 @@ class UserStickerItem {
   final String imageUrl;
 }
 
-class FriendJoiningPlace {
+@immutable
+final class FriendJoiningPlace {
   const FriendJoiningPlace({
     required this.placeName,
     required this.friendsCount,
@@ -2054,7 +2062,8 @@ class FriendJoiningPlace {
   final List<String> friendUsernames;
 }
 
-class UserPlanItem {
+@immutable
+final class UserPlanItem {
   const UserPlanItem({
     required this.id,
     required this.placeName,
@@ -2097,7 +2106,8 @@ class UserPlanItem {
   final bool showToNearby;
 }
 
-class BlockedAccount {
+@immutable
+final class BlockedAccount {
   const BlockedAccount({
     required this.userId,
     required this.username,
@@ -2117,14 +2127,16 @@ class BlockedAccount {
   final String avatarUrl;
 }
 
-class StoryFeed {
+@immutable
+final class StoryFeed {
   const StoryFeed({required this.me, this.friends = const []});
 
   final StoryFeedMe me;
   final List<StoryFeedUser> friends;
 }
 
-class StoryFeedUser {
+@immutable
+final class StoryFeedUser {
   const StoryFeedUser({
     required this.userId,
     required this.name,
@@ -2168,7 +2180,8 @@ class StoryFeedUser {
   }
 }
 
-class StoryFeedMe {
+@immutable
+final class StoryFeedMe {
   const StoryFeedMe({
     required this.userId,
     required this.name,
@@ -2206,7 +2219,8 @@ class StoryFeedMe {
   final List<PublishedStory> stories;
 }
 
-class PublishedStory {
+@immutable
+final class PublishedStory {
   const PublishedStory({
     required this.id,
     required this.userId,
@@ -2299,7 +2313,8 @@ class PublishedStory {
   }
 }
 
-class ConnectionUser {
+@immutable
+final class ConnectionUser {
   const ConnectionUser({
     required this.userId,
     required this.username,
@@ -2322,7 +2337,8 @@ class ConnectionUser {
   final String avatarUrl;
 }
 
-class FollowRelationship {
+@immutable
+final class FollowRelationship {
   const FollowRelationship({
     this.following = false,
     this.followedBy = false,
@@ -2376,7 +2392,8 @@ class FollowRelationship {
   }
 }
 
-class FollowActionResult {
+@immutable
+final class FollowActionResult {
   const FollowActionResult({
     required this.status,
     this.relationship = const FollowRelationship(),
@@ -2399,7 +2416,8 @@ class FollowActionResult {
   final String? requestId;
 }
 
-class AppNotificationItem {
+@immutable
+final class AppNotificationItem {
   const AppNotificationItem({
     required this.id,
     required this.type,

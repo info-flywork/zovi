@@ -9,7 +9,8 @@ import 'package:zovi/core/widgets/app_icon.dart';
 
 enum CameraTextEditorTab { keyboard, fonts, style, typography, color }
 
-class CameraTextDraft {
+@immutable
+final class CameraTextDraft {
   const CameraTextDraft({
     this.text = '',
     this.fontId = 'montserrat',
@@ -106,7 +107,8 @@ TextStyle _fontStyle(String id) {
   };
 }
 
-class _FontOption {
+@immutable
+final class _FontOption {
   const _FontOption(this.id, this.label, {this.locked = false});
 
   final String id;
@@ -191,7 +193,8 @@ Future<CameraTextDraft?> showCameraTextEditorSheet(
   );
 }
 
-class CameraTextEditorSheet extends StatefulWidget {
+@immutable
+final class CameraTextEditorSheet extends StatefulWidget {
   const CameraTextEditorSheet({required this.initial, super.key});
 
   final CameraTextDraft initial;
@@ -200,7 +203,7 @@ class CameraTextEditorSheet extends StatefulWidget {
   State<CameraTextEditorSheet> createState() => _CameraTextEditorSheetState();
 }
 
-class _CameraTextEditorSheetState extends State<CameraTextEditorSheet> {
+final class _CameraTextEditorSheetState extends State<CameraTextEditorSheet> {
   late final TextEditingController _controller;
   late final FocusNode _focusNode;
   late CameraTextDraft _draft;
@@ -449,7 +452,8 @@ class _CameraTextEditorSheetState extends State<CameraTextEditorSheet> {
   }
 }
 
-class _TabIcon extends StatelessWidget {
+@immutable
+final class _TabIcon extends StatelessWidget {
   const _TabIcon({
     required this.asset,
     required this.selected,
@@ -484,7 +488,8 @@ class _TabIcon extends StatelessWidget {
   }
 }
 
-class _FontsPanel extends StatelessWidget {
+@immutable
+final class _FontsPanel extends StatelessWidget {
   const _FontsPanel({required this.selectedId, required this.onSelect});
 
   final String selectedId;
@@ -565,7 +570,8 @@ class _FontsPanel extends StatelessWidget {
   }
 }
 
-class _StylePanel extends StatelessWidget {
+@immutable
+final class _StylePanel extends StatelessWidget {
   const _StylePanel({required this.draft, required this.onChanged});
 
   final CameraTextDraft draft;
@@ -657,7 +663,8 @@ class _StylePanel extends StatelessWidget {
   }
 }
 
-class _StyleChip extends StatelessWidget {
+@immutable
+final class _StyleChip extends StatelessWidget {
   const _StyleChip({
     required this.icon,
     required this.label,
@@ -709,7 +716,8 @@ class _StyleChip extends StatelessWidget {
   }
 }
 
-class _AlignIcon extends StatelessWidget {
+@immutable
+final class _AlignIcon extends StatelessWidget {
   const _AlignIcon({
     required this.asset,
     required this.selected,
@@ -744,7 +752,8 @@ class _AlignIcon extends StatelessWidget {
   }
 }
 
-class _TypographyPanel extends StatelessWidget {
+@immutable
+final class _TypographyPanel extends StatelessWidget {
   const _TypographyPanel({required this.draft, required this.onChanged});
 
   final CameraTextDraft draft;
@@ -787,7 +796,8 @@ class _TypographyPanel extends StatelessWidget {
   }
 }
 
-class _SliderRow extends StatelessWidget {
+@immutable
+final class _SliderRow extends StatelessWidget {
   const _SliderRow({
     required this.icon,
     required this.value,
@@ -845,7 +855,8 @@ class _SliderRow extends StatelessWidget {
   }
 }
 
-class _ColorPanel extends StatelessWidget {
+@immutable
+final class _ColorPanel extends StatelessWidget {
   const _ColorPanel({required this.selected, required this.onSelect});
 
   final Color selected;
@@ -939,7 +950,8 @@ class _ColorPanel extends StatelessWidget {
   }
 }
 
-class _CustomColorPickerDialog extends StatefulWidget {
+@immutable
+final class _CustomColorPickerDialog extends StatefulWidget {
   const _CustomColorPickerDialog({required this.initial});
 
   final Color initial;
@@ -949,7 +961,7 @@ class _CustomColorPickerDialog extends StatefulWidget {
       _CustomColorPickerDialogState();
 }
 
-class _CustomColorPickerDialogState extends State<_CustomColorPickerDialog> {
+final class _CustomColorPickerDialogState extends State<_CustomColorPickerDialog> {
   late HSVColor _hsv;
 
   @override
@@ -1142,7 +1154,8 @@ class _CustomColorPickerDialogState extends State<_CustomColorPickerDialog> {
   }
 }
 
-class _SvPicker extends StatelessWidget {
+@immutable
+final class _SvPicker extends StatelessWidget {
   const _SvPicker({
     required this.hsv,
     required this.pureHue,
@@ -1227,7 +1240,8 @@ class _SvPicker extends StatelessWidget {
   }
 }
 
-class _HueBar extends StatelessWidget {
+@immutable
+final class _HueBar extends StatelessWidget {
   const _HueBar({required this.hue, required this.onChanged});
 
   final double hue;

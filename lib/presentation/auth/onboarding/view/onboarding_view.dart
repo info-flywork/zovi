@@ -34,14 +34,15 @@ part 'widgets/onboarding_phone_field.dart';
 part 'widgets/social_login_button.dart';
 part 'widgets/country_picker_sheet.dart';
 
-class OnboardingView extends StatefulWidget {
+@immutable
+final class OnboardingView extends StatefulWidget {
   const OnboardingView({super.key});
 
   @override
   State<OnboardingView> createState() => _OnboardingViewState();
 }
 
-class _OnboardingViewState extends State<OnboardingView>
+final class _OnboardingViewState extends State<OnboardingView>
     with OnboardingViewMixin {
   @override
   Widget build(BuildContext context) {

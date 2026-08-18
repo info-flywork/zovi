@@ -15,7 +15,8 @@ import 'package:zovi/domain/auth/models/username_availability.dart';
 import 'package:zovi/domain/user/user_repository.dart';
 import 'package:zovi/presentation/profile/edit/model/edit_profile_field_type.dart';
 
-class EditProfileFieldView extends StatefulWidget {
+@immutable
+final class EditProfileFieldView extends StatefulWidget {
   const EditProfileFieldView({
     required this.field,
     required this.initialValue,
@@ -29,7 +30,7 @@ class EditProfileFieldView extends StatefulWidget {
   State<EditProfileFieldView> createState() => _EditProfileFieldViewState();
 }
 
-class _EditProfileFieldViewState extends State<EditProfileFieldView> {
+final class _EditProfileFieldViewState extends State<EditProfileFieldView> {
   late final TextEditingController _controller;
   bool _saving = false;
   Timer? _usernameDebounce;
@@ -320,7 +321,8 @@ class _EditProfileFieldViewState extends State<EditProfileFieldView> {
 
 enum _UsernameCheckStatus { idle, checking, available, taken, invalid }
 
-class _UsernameStatusRow extends StatelessWidget {
+@immutable
+final class _UsernameStatusRow extends StatelessWidget {
   const _UsernameStatusRow({required this.status});
 
   final _UsernameCheckStatus status;
@@ -377,7 +379,8 @@ class _UsernameStatusRow extends StatelessWidget {
   }
 }
 
-class _EditFieldHeader extends StatelessWidget {
+@immutable
+final class _EditFieldHeader extends StatelessWidget {
   const _EditFieldHeader({
     required this.title,
     required this.onBack,

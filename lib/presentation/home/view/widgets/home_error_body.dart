@@ -1,6 +1,7 @@
 part of '../home_view.dart';
 
-class HomeErrorBody extends StatelessWidget {
+@immutable
+final class HomeErrorBody extends StatelessWidget {
   const HomeErrorBody({required this.message, super.key});
 
   final String message;

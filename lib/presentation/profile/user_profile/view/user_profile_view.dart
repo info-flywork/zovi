@@ -33,7 +33,8 @@ enum _UserProfileTab { pulse, stamps, checkIn }
 
 const _streakPink = Color(0xFFFF4D6D);
 
-class UserProfileView extends StatefulWidget {
+@immutable
+final class UserProfileView extends StatefulWidget {
   const UserProfileView({required this.args, super.key});
 
   final UserProfileRouteArgs args;
@@ -42,7 +43,7 @@ class UserProfileView extends StatefulWidget {
   State<UserProfileView> createState() => _UserProfileViewState();
 }
 
-class _UserProfileViewState extends State<UserProfileView>
+final class _UserProfileViewState extends State<UserProfileView>
     with SingleTickerProviderStateMixin {
   late PublicUserProfile _user;
   late final TabController _tabController;
@@ -806,7 +807,8 @@ class _UserProfileViewState extends State<UserProfileView>
   }
 }
 
-class _ProfileShimmer extends StatelessWidget {
+@immutable
+final class _ProfileShimmer extends StatelessWidget {
   const _ProfileShimmer({required this.child});
 
   final Widget child;
@@ -821,7 +823,8 @@ class _ProfileShimmer extends StatelessWidget {
   }
 }
 
-class _ShimmerBox extends StatelessWidget {
+@immutable
+final class _ShimmerBox extends StatelessWidget {
   const _ShimmerBox({
     required this.width,
     required this.height,
@@ -845,7 +848,8 @@ class _ShimmerBox extends StatelessWidget {
   }
 }
 
-class _BioLineShimmer extends StatelessWidget {
+@immutable
+final class _BioLineShimmer extends StatelessWidget {
   const _BioLineShimmer({required this.width});
 
   final double width;
@@ -858,7 +862,8 @@ class _BioLineShimmer extends StatelessWidget {
   }
 }
 
-class _StatsRowShimmer extends StatelessWidget {
+@immutable
+final class _StatsRowShimmer extends StatelessWidget {
   const _StatsRowShimmer();
 
   @override
@@ -885,7 +890,8 @@ class _StatsRowShimmer extends StatelessWidget {
   }
 }
 
-class _PlansShimmer extends StatelessWidget {
+@immutable
+final class _PlansShimmer extends StatelessWidget {
   const _PlansShimmer();
 
   @override
@@ -911,7 +917,8 @@ class _PlansShimmer extends StatelessWidget {
   }
 }
 
-class _TabsBodyShimmer extends StatelessWidget {
+@immutable
+final class _TabsBodyShimmer extends StatelessWidget {
   const _TabsBodyShimmer();
 
   @override
@@ -941,7 +948,8 @@ class _TabsBodyShimmer extends StatelessWidget {
   }
 }
 
-class _TopBar extends StatelessWidget {
+@immutable
+final class _TopBar extends StatelessWidget {
   const _TopBar({
     required this.streak,
     required this.onBack,
@@ -1009,7 +1017,8 @@ class _TopBar extends StatelessWidget {
   }
 }
 
-class _StatsRow extends StatelessWidget {
+@immutable
+final class _StatsRow extends StatelessWidget {
   const _StatsRow({
     required this.checkIns,
     required this.followers,
@@ -1097,7 +1106,8 @@ class _StatsRow extends StatelessWidget {
   }
 }
 
-class _MutualFriendsRow extends StatelessWidget {
+@immutable
+final class _MutualFriendsRow extends StatelessWidget {
   const _MutualFriendsRow({required this.avatars, required this.count});
 
   final List<String> avatars;
@@ -1149,7 +1159,8 @@ class _MutualFriendsRow extends StatelessWidget {
 
 const _disabledActionBg = Color(0xFFD8D8D8);
 
-class _UserProfileLinksRow extends StatelessWidget {
+@immutable
+final class _UserProfileLinksRow extends StatelessWidget {
   const _UserProfileLinksRow({required this.links});
 
   final List<ProfileLink> links;
@@ -1195,7 +1206,8 @@ class _UserProfileLinksRow extends StatelessWidget {
   }
 }
 
-class _ActionRow extends StatelessWidget {
+@immutable
+final class _ActionRow extends StatelessWidget {
   const _ActionRow({
     required this.relationship,
     required this.isDisabled,
@@ -1320,7 +1332,8 @@ class _ActionRow extends StatelessWidget {
   }
 }
 
-class _UserPlans extends StatelessWidget {
+@immutable
+final class _UserPlans extends StatelessWidget {
   const _UserPlans({required this.plans});
 
   final List<PlanItem> plans;
@@ -1362,7 +1375,8 @@ class _UserPlans extends StatelessWidget {
   }
 }
 
-class _UserPlanCard extends StatelessWidget {
+@immutable
+final class _UserPlanCard extends StatelessWidget {
   const _UserPlanCard({required this.plan});
 
   final PlanItem plan;
@@ -1451,7 +1465,8 @@ class _UserPlanCard extends StatelessWidget {
   }
 }
 
-class _UserTabs extends StatelessWidget {
+@immutable
+final class _UserTabs extends StatelessWidget {
   const _UserTabs({required this.controller, required this.onSelect});
 
   final TabController controller;
@@ -1508,7 +1523,8 @@ class _UserTabs extends StatelessWidget {
   }
 }
 
-class _UserTabItem extends StatelessWidget {
+@immutable
+final class _UserTabItem extends StatelessWidget {
   const _UserTabItem({
     required this.label,
     required this.selectedAmount,
@@ -1553,7 +1569,8 @@ class _UserTabItem extends StatelessWidget {
   }
 }
 
-class _PulseStrip extends StatelessWidget {
+@immutable
+final class _PulseStrip extends StatelessWidget {
   const _PulseStrip({required this.pulses});
 
   final List<PulseItem> pulses;
@@ -1612,7 +1629,8 @@ class _PulseStrip extends StatelessWidget {
   }
 }
 
-class _PulseNetworkImage extends StatelessWidget {
+@immutable
+final class _PulseNetworkImage extends StatelessWidget {
   const _PulseNetworkImage({required this.path, this.isVideo = false});
 
   final String path;
@@ -1665,7 +1683,8 @@ class _PulseNetworkImage extends StatelessWidget {
   }
 }
 
-class _StampGrid extends StatelessWidget {
+@immutable
+final class _StampGrid extends StatelessWidget {
   const _StampGrid({required this.stamps});
 
   final List<StampItem> stamps;
@@ -1740,7 +1759,8 @@ class _StampGrid extends StatelessWidget {
   }
 }
 
-class _CheckInList extends StatelessWidget {
+@immutable
+final class _CheckInList extends StatelessWidget {
   const _CheckInList({required this.checkIns});
 
   final List<CheckInItem> checkIns;
@@ -1837,7 +1857,8 @@ class _CheckInList extends StatelessWidget {
   }
 }
 
-class _EmptyUserTabState extends StatelessWidget {
+@immutable
+final class _EmptyUserTabState extends StatelessWidget {
   const _EmptyUserTabState({required this.icon, required this.messageKey});
 
   final String icon;

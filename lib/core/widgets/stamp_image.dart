@@ -5,7 +5,8 @@ import 'package:zovi/core/cache/stamp_image_cache.dart';
 import 'package:zovi/core/di/injection.dart';
 
 /// Renders a stamp from a local asset path or a CDN URL (disk-cached).
-class StampImage extends StatefulWidget {
+@immutable
+final class StampImage extends StatefulWidget {
   const StampImage({
     required this.path,
     this.stampId = '',
@@ -36,7 +37,7 @@ class StampImage extends StatefulWidget {
   State<StampImage> createState() => _StampImageState();
 }
 
-class _StampImageState extends State<StampImage> {
+final class _StampImageState extends State<StampImage> {
   File? _cachedFile;
   var _failed = false;
   var _loading = false;

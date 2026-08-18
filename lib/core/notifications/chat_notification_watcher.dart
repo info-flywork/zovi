@@ -11,7 +11,7 @@ import 'package:zovi/domain/chat/chat_repository.dart';
 /// Foreground chat banners when OneSignal/APNs doesn't deliver (common in
 /// debug). Shares a seen-key set with [PushNotificationService] so a push
 /// and a poll never double-fire the same message.
-class ChatNotificationWatcher with WidgetsBindingObserver {
+final class ChatNotificationWatcher with WidgetsBindingObserver {
   ChatNotificationWatcher(this._chat, this._auth);
 
   static const _interval = Duration(seconds: 2);

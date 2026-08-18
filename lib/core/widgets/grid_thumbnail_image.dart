@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 
 /// Small square grid tile — decode-resized, cache-friendly network image.
-class GridThumbnailImage extends StatelessWidget {
+@immutable
+final class GridThumbnailImage extends StatelessWidget {
   const GridThumbnailImage({
     required this.url,
     this.cacheSize,

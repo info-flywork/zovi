@@ -8,7 +8,8 @@ import 'package:zovi/core/widgets/app_search_field.dart';
 import 'package:zovi/core/widgets/profile_avatar.dart';
 import 'package:zovi/domain/user/user_repository.dart';
 
-class BlockedUser {
+@immutable
+final class BlockedUser {
   const BlockedUser({
     this.userId = '',
     required this.username,
@@ -39,7 +40,8 @@ Future<List<BlockedUser>> showBlockedUsersSheet(
   return current;
 }
 
-class BlockedUsersSheet extends StatefulWidget {
+@immutable
+final class BlockedUsersSheet extends StatefulWidget {
   const BlockedUsersSheet({
     required this.users,
     required this.onUsersChanged,
@@ -53,7 +55,7 @@ class BlockedUsersSheet extends StatefulWidget {
   State<BlockedUsersSheet> createState() => _BlockedUsersSheetState();
 }
 
-class _BlockedUsersSheetState extends State<BlockedUsersSheet> {
+final class _BlockedUsersSheetState extends State<BlockedUsersSheet> {
   static const _removeDuration = Duration(milliseconds: 280);
 
   GlobalKey<AnimatedListState> _listKey = GlobalKey<AnimatedListState>();
@@ -207,7 +209,8 @@ class _BlockedUsersSheetState extends State<BlockedUsersSheet> {
   }
 }
 
-class _BlockedUserRemoveTile extends StatelessWidget {
+@immutable
+final class _BlockedUserRemoveTile extends StatelessWidget {
   const _BlockedUserRemoveTile({
     required this.user,
     required this.animation,
@@ -243,7 +246,8 @@ class _BlockedUserRemoveTile extends StatelessWidget {
   }
 }
 
-class _BlockedEmptyState extends StatelessWidget {
+@immutable
+final class _BlockedEmptyState extends StatelessWidget {
   const _BlockedEmptyState({required this.hasUsers});
 
   final bool hasUsers;
@@ -277,7 +281,8 @@ class _BlockedEmptyState extends StatelessWidget {
   }
 }
 
-class _BlockedUserRow extends StatelessWidget {
+@immutable
+final class _BlockedUserRow extends StatelessWidget {
   const _BlockedUserRow({required this.user, required this.onUnblock});
 
   final BlockedUser user;

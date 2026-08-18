@@ -1,6 +1,7 @@
 part of '../create_profile_view.dart';
 
-class ProfileTextField extends StatefulWidget {
+@immutable
+final class ProfileTextField extends StatefulWidget {
   const ProfileTextField({
     required this.label,
     required this.hint,
@@ -28,7 +29,7 @@ class ProfileTextField extends StatefulWidget {
   State<ProfileTextField> createState() => _ProfileTextFieldState();
 }
 
-class _ProfileTextFieldState extends State<ProfileTextField> {
+final class _ProfileTextFieldState extends State<ProfileTextField> {
   late final TextEditingController _controller;
 
   @override
@@ -132,7 +133,8 @@ class _ProfileTextFieldState extends State<ProfileTextField> {
 }
 
 /// Tek isim: 25, isim + soyisim (boşluk varsa): 50.
-class FullNameLengthLimitingFormatter extends TextInputFormatter {
+@immutable
+final class FullNameLengthLimitingFormatter extends TextInputFormatter {
   const FullNameLengthLimitingFormatter();
 
   static const singleNameMax = 25;

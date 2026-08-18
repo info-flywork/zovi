@@ -1,6 +1,7 @@
 part of '../profile_view.dart';
 
-class ProfileMap extends StatelessWidget {
+@immutable
+final class ProfileMap extends StatelessWidget {
   const ProfileMap({
     required this.location,
     required this.point,
@@ -104,7 +105,8 @@ class ProfileMap extends StatelessWidget {
   }
 }
 
-class _ProfileMapExpanded extends StatelessWidget {
+@immutable
+final class _ProfileMapExpanded extends StatelessWidget {
   const _ProfileMapExpanded({
     required this.location,
     required this.point,
@@ -171,7 +173,8 @@ class _ProfileMapExpanded extends StatelessWidget {
   }
 }
 
-class _ProfileMapSurface extends StatelessWidget {
+@immutable
+final class _ProfileMapSurface extends StatelessWidget {
   const _ProfileMapSurface({
     required this.point,
     required this.avatarPath,
@@ -252,7 +255,8 @@ class _ProfileMapSurface extends StatelessWidget {
   }
 }
 
-class _ProfileMapLocationChip extends StatelessWidget {
+@immutable
+final class _ProfileMapLocationChip extends StatelessWidget {
   const _ProfileMapLocationChip({
     required this.location,
     required this.showDistance,

@@ -24,7 +24,8 @@ Future<UserProfileAction?> showUserProfileActionsSheet(
   );
 }
 
-class UserProfileActionsSheet extends StatelessWidget {
+@immutable
+final class UserProfileActionsSheet extends StatelessWidget {
   const UserProfileActionsSheet({
     this.isBlocked = false,
     this.isRestricted = false,
@@ -116,7 +117,8 @@ class UserProfileActionsSheet extends StatelessWidget {
   }
 }
 
-class _ActionItem extends StatelessWidget {
+@immutable
+final class _ActionItem extends StatelessWidget {
   const _ActionItem({
     required this.label,
     this.onTap,

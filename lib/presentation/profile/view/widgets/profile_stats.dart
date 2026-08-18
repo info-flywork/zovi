@@ -1,6 +1,7 @@
 part of '../profile_view.dart';
 
-class ProfileStats extends StatelessWidget {
+@immutable
+final class ProfileStats extends StatelessWidget {
   const ProfileStats({
     required this.user,
     this.onCheckInTap,

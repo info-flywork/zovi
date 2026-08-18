@@ -9,7 +9,8 @@ import 'package:zovi/core/utils/extensions/future_extensions.dart';
 import 'package:zovi/core/widgets/app_icon.dart';
 import 'package:zovi/domain/user/user_repository.dart';
 
-class AddProfileLinkView extends StatefulWidget {
+@immutable
+final class AddProfileLinkView extends StatefulWidget {
   const AddProfileLinkView({this.existingLinks = const [], super.key});
 
   /// Links already on the profile — the new one is appended and the whole
@@ -20,7 +21,7 @@ class AddProfileLinkView extends StatefulWidget {
   State<AddProfileLinkView> createState() => _AddProfileLinkViewState();
 }
 
-class _AddProfileLinkViewState extends State<AddProfileLinkView> {
+final class _AddProfileLinkViewState extends State<AddProfileLinkView> {
   final _urlController = TextEditingController();
   final _titleController = TextEditingController();
   var _saving = false;
@@ -148,7 +149,8 @@ class _AddProfileLinkViewState extends State<AddProfileLinkView> {
   }
 }
 
-class _AddLinkHeader extends StatelessWidget {
+@immutable
+final class _AddLinkHeader extends StatelessWidget {
   const _AddLinkHeader({
     required this.onBack,
     required this.onDone,

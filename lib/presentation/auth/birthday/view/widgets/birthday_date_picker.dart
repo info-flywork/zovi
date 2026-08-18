@@ -1,6 +1,7 @@
 part of '../birthday_view.dart';
 
-class BirthdayDatePicker extends StatefulWidget {
+@immutable
+final class BirthdayDatePicker extends StatefulWidget {
   const BirthdayDatePicker({
     required this.birthDate,
     required this.onDateChanged,
@@ -18,7 +19,7 @@ class BirthdayDatePicker extends StatefulWidget {
   State<BirthdayDatePicker> createState() => _BirthdayDatePickerState();
 }
 
-class _BirthdayDatePickerState extends State<BirthdayDatePicker> {
+final class _BirthdayDatePickerState extends State<BirthdayDatePicker> {
   late int _day;
   late int _month;
   late int _year;
@@ -166,7 +167,8 @@ class _BirthdayDatePickerState extends State<BirthdayDatePicker> {
   }
 }
 
-class _PickerColumn extends StatelessWidget {
+@immutable
+final class _PickerColumn extends StatelessWidget {
   const _PickerColumn({
     super.key,
     required this.controller,

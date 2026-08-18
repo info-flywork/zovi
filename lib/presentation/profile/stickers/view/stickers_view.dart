@@ -11,14 +11,15 @@ import 'package:zovi/core/widgets/app_icon.dart';
 import 'package:zovi/core/widgets/stamp_image.dart';
 import 'package:zovi/domain/auth/auth_repository.dart';
 
-class StickersView extends StatefulWidget {
+@immutable
+final class StickersView extends StatefulWidget {
   const StickersView({super.key});
 
   @override
   State<StickersView> createState() => _StickersViewState();
 }
 
-class _StickersViewState extends State<StickersView> {
+final class _StickersViewState extends State<StickersView> {
   static const _previewCount = 10;
   static const _myCreationsId = 'my_creations';
   static const _zoviStampsId = 'zovi_stamps';
@@ -406,7 +407,8 @@ class _StickersViewState extends State<StickersView> {
   }
 }
 
-class _StampKey {
+@immutable
+final class _StampKey {
   const _StampKey(this.sectionId, this.index);
 
   final String sectionId;
@@ -423,7 +425,8 @@ class _StampKey {
   int get hashCode => Object.hash(sectionId, index);
 }
 
-class _StickersHeader extends StatelessWidget {
+@immutable
+final class _StickersHeader extends StatelessWidget {
   const _StickersHeader({
     required this.isSelecting,
     required this.selectedCount,
@@ -497,7 +500,8 @@ class _StickersHeader extends StatelessWidget {
   }
 }
 
-class _StickerSection extends StatelessWidget {
+@immutable
+final class _StickerSection extends StatelessWidget {
   const _StickerSection({
     required this.sectionId,
     required this.title,
@@ -644,7 +648,8 @@ class _StickerSection extends StatelessWidget {
   }
 }
 
-class _StampCell extends StatelessWidget {
+@immutable
+final class _StampCell extends StatelessWidget {
   const _StampCell({
     required this.path,
     required this.stampId,
@@ -721,7 +726,8 @@ class _StampCell extends StatelessWidget {
   }
 }
 
-class _StampImage extends StatelessWidget {
+@immutable
+final class _StampImage extends StatelessWidget {
   const _StampImage({required this.path, this.size, this.stampId = ''});
 
   final String path;
@@ -741,7 +747,8 @@ class _StampImage extends StatelessWidget {
   }
 }
 
-class _SectionEmptyState extends StatelessWidget {
+@immutable
+final class _SectionEmptyState extends StatelessWidget {
   const _SectionEmptyState({required this.textKey});
 
   final String textKey;
@@ -776,7 +783,8 @@ class _SectionEmptyState extends StatelessWidget {
   }
 }
 
-class _SectionLoadingState extends StatelessWidget {
+@immutable
+final class _SectionLoadingState extends StatelessWidget {
   const _SectionLoadingState();
 
   @override
@@ -807,7 +815,8 @@ class _SectionLoadingState extends StatelessWidget {
   }
 }
 
-class _DeleteMenu extends StatelessWidget {
+@immutable
+final class _DeleteMenu extends StatelessWidget {
   const _DeleteMenu({required this.onDelete});
 
   final VoidCallback onDelete;
@@ -856,7 +865,8 @@ class _DeleteMenu extends StatelessWidget {
   }
 }
 
-class _DeleteSelectedButton extends StatelessWidget {
+@immutable
+final class _DeleteSelectedButton extends StatelessWidget {
   const _DeleteSelectedButton({required this.enabled, required this.onTap});
 
   final bool enabled;
@@ -902,7 +912,8 @@ class _DeleteSelectedButton extends StatelessWidget {
   }
 }
 
-class _CreateStickerButton extends StatelessWidget {
+@immutable
+final class _CreateStickerButton extends StatelessWidget {
   const _CreateStickerButton({required this.onTap});
 
   final VoidCallback onTap;
@@ -941,7 +952,8 @@ class _CreateStickerButton extends StatelessWidget {
   }
 }
 
-class _StickerItem {
+@immutable
+final class _StickerItem {
   const _StickerItem({
     required this.id,
     required this.path,

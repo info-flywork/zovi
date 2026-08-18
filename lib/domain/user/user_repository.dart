@@ -1167,7 +1167,7 @@ final class NearbyAddPlanPlace extends Equatable {
   ];
 }
 
-class UserRepository {
+final class UserRepository {
   UserRepository(this._authRepository);
 
   final AuthRepository _authRepository;

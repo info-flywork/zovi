@@ -1,6 +1,7 @@
 part of '../home_view.dart';
 
-class HomeMapMarker extends StatelessWidget {
+@immutable
+final class HomeMapMarker extends StatelessWidget {
   const HomeMapMarker({required this.friend, super.key});
 
   final MapFriend friend;
@@ -77,7 +78,8 @@ class HomeMapMarker extends StatelessWidget {
   }
 }
 
-class _StreakBadge extends StatelessWidget {
+@immutable
+final class _StreakBadge extends StatelessWidget {
   const _StreakBadge({required this.streak});
 
   final int streak;

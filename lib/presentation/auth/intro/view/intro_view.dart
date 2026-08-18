@@ -18,14 +18,15 @@ part 'widgets/intro_around_page.dart';
 part 'widgets/intro_pulse_page.dart';
 part 'widgets/intro_stamps_page.dart';
 
-class IntroView extends StatefulWidget {
+@immutable
+final class IntroView extends StatefulWidget {
   const IntroView({super.key});
 
   @override
   State<IntroView> createState() => _IntroViewState();
 }
 
-class _IntroViewState extends State<IntroView> with IntroViewMixin {
+final class _IntroViewState extends State<IntroView> with IntroViewMixin {
   @override
   Widget build(BuildContext context) {
     return Scaffold(

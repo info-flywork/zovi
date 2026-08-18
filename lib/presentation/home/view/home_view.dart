@@ -54,14 +54,15 @@ part 'widgets/home_map_venue_marker.dart';
 part 'widgets/home_map_venue_sheet.dart';
 part 'widgets/home_stories_row.dart';
 
-class HomeView extends StatefulWidget {
+@immutable
+final class HomeView extends StatefulWidget {
   const HomeView({super.key});
 
   @override
   State<HomeView> createState() => _HomeViewState();
 }
 
-class _HomeViewState extends State<HomeView>
+final class _HomeViewState extends State<HomeView>
     with HomeViewMixin, AutomaticKeepAliveClientMixin {
   @override
   bool get wantKeepAlive => true;

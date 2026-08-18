@@ -20,14 +20,15 @@ Future<String?> showDeleteAccountSheet(BuildContext context) async {
   return result;
 }
 
-class DeleteAccountSheet extends StatefulWidget {
+@immutable
+final class DeleteAccountSheet extends StatefulWidget {
   const DeleteAccountSheet({super.key});
 
   @override
   State<DeleteAccountSheet> createState() => _DeleteAccountSheetState();
 }
 
-class _DeleteAccountSheetState extends State<DeleteAccountSheet> {
+final class _DeleteAccountSheetState extends State<DeleteAccountSheet> {
   var _step = 0;
   final _reasonController = TextEditingController();
 

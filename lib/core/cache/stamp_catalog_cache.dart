@@ -1,7 +1,7 @@
 import 'package:zovi/domain/auth/auth_repository.dart';
 
 /// In-memory stamp catalog so reopening the sticker sheet doesn't re-hit `/stamps`.
-class StampCatalogCache {
+final class StampCatalogCache {
   final Map<String, List<StampCatalogItem>> _byLocale = {};
 
   List<StampCatalogItem>? peek(String locale) {

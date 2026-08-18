@@ -40,14 +40,15 @@ part 'widgets/profile_stamps.dart';
 part 'widgets/profile_stats.dart';
 part 'widgets/profile_tabs.dart';
 
-class ProfileView extends StatefulWidget {
+@immutable
+final class ProfileView extends StatefulWidget {
   const ProfileView({super.key});
 
   @override
   State<ProfileView> createState() => _ProfileViewState();
 }
 
-class _ProfileViewState extends State<ProfileView>
+final class _ProfileViewState extends State<ProfileView>
     with TickerProviderStateMixin, WidgetsBindingObserver, ProfileViewMixin {
   @override
   void initState() {

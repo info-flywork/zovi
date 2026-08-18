@@ -5,7 +5,8 @@ import 'package:zovi/core/theme/app_colors.dart';
 import 'package:zovi/core/utils/constants/asset_paths.dart';
 import 'package:zovi/core/widgets/app_icon.dart';
 
-class ProfileAvatar extends StatelessWidget {
+@immutable
+final class ProfileAvatar extends StatelessWidget {
   const ProfileAvatar({
     required this.path,
     required this.size,
@@ -129,7 +130,8 @@ class ProfileAvatar extends StatelessWidget {
   }
 }
 
-class OverlappingProfileAvatars extends StatelessWidget {
+@immutable
+final class OverlappingProfileAvatars extends StatelessWidget {
   const OverlappingProfileAvatars({
     required this.avatars,
     this.size = 34,

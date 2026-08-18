@@ -20,7 +20,8 @@ part 'mixin/create_profile_view_mixin.dart';
 part 'widgets/create_profile_loaded_body.dart';
 part 'widgets/profile_text_field.dart';
 
-class CreateProfileView extends StatefulWidget {
+@immutable
+final class CreateProfileView extends StatefulWidget {
   const CreateProfileView({required this.signupFlow, super.key});
 
   final SignupFlow signupFlow;
@@ -29,7 +30,7 @@ class CreateProfileView extends StatefulWidget {
   State<CreateProfileView> createState() => _CreateProfileViewState();
 }
 
-class _CreateProfileViewState extends State<CreateProfileView>
+final class _CreateProfileViewState extends State<CreateProfileView>
     with CreateProfileViewMixin {
   @override
   Widget build(BuildContext context) {

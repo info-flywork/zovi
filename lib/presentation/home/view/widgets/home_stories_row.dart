@@ -1,6 +1,7 @@
 part of '../home_view.dart';
 
-class HomeStoriesRow extends StatelessWidget {
+@immutable
+final class HomeStoriesRow extends StatelessWidget {
   const HomeStoriesRow({
     required this.stories,
     required this.onStoryTap,

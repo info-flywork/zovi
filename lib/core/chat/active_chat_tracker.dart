@@ -1,6 +1,6 @@
 /// Tracks which DM the user is currently viewing so chat pushes/banners
 /// can stay quiet for that thread.
-class ActiveChatTracker {
+final class ActiveChatTracker {
   ActiveChatTracker._();
   static final ActiveChatTracker instance = ActiveChatTracker._();
 

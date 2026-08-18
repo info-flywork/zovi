@@ -156,7 +156,7 @@ String? storyIdFromReplyPreview(String? preview) {
   return null;
 }
 
-class ChatRepository {
+final class ChatRepository {
   ChatRepository(this._network);
 
   final NetworkManager _network;

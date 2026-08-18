@@ -1,6 +1,7 @@
 part of '../profile_view.dart';
 
-class ProfileCheckins extends StatelessWidget {
+@immutable
+final class ProfileCheckins extends StatelessWidget {
   const ProfileCheckins({required this.checkIns, super.key});
 
   final List<CheckInItem> checkIns;
@@ -68,7 +69,8 @@ class ProfileCheckins extends StatelessWidget {
   }
 }
 
-class _CheckInThumb extends StatelessWidget {
+@immutable
+final class _CheckInThumb extends StatelessWidget {
   const _CheckInThumb({required this.item});
 
   final CheckInItem item;
@@ -102,7 +104,8 @@ class _CheckInThumb extends StatelessWidget {
   }
 }
 
-class _EmptyCheckinsState extends StatelessWidget {
+@immutable
+final class _EmptyCheckinsState extends StatelessWidget {
   const _EmptyCheckinsState({required this.text});
 
   final String text;

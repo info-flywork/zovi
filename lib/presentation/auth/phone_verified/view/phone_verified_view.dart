@@ -10,7 +10,8 @@ import 'package:zovi/presentation/auth/model/signup_flow.dart';
 
 part 'widgets/phone_verified_body.dart';
 
-class PhoneVerifiedView extends StatelessWidget {
+@immutable
+final class PhoneVerifiedView extends StatelessWidget {
   const PhoneVerifiedView({super.key});
 
   @override

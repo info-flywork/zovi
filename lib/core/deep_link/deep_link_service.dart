@@ -9,7 +9,7 @@ import 'package:zovi/domain/auth/auth_repository.dart';
 
 /// Handles Universal / App Links for profile share URLs:
 /// `https://zovi.fly-work.com/u/{handle}`
-class DeepLinkService {
+final class DeepLinkService {
   DeepLinkService(this._authRepository);
 
   final AuthRepository _authRepository;

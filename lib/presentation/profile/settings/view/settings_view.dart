@@ -17,14 +17,15 @@ import 'package:zovi/presentation/profile/settings/view/widgets/blocked_users_sh
 import 'package:zovi/presentation/profile/settings/view/widgets/language_sheet.dart';
 import 'package:zovi/presentation/profile/settings/view/widgets/logout_sheet.dart';
 
-class SettingsView extends StatefulWidget {
+@immutable
+final class SettingsView extends StatefulWidget {
   const SettingsView({super.key});
 
   @override
   State<SettingsView> createState() => _SettingsViewState();
 }
 
-class _SettingsViewState extends State<SettingsView>
+final class _SettingsViewState extends State<SettingsView>
     with WidgetsBindingObserver {
   bool _notificationsEnabled = false;
   bool _locationEnabled = false;
@@ -365,7 +366,8 @@ class _SettingsViewState extends State<SettingsView>
   }
 }
 
-class _SettingsHeader extends StatelessWidget {
+@immutable
+final class _SettingsHeader extends StatelessWidget {
   const _SettingsHeader();
 
   @override
@@ -397,7 +399,8 @@ class _SettingsHeader extends StatelessWidget {
   }
 }
 
-class _SectionLabel extends StatelessWidget {
+@immutable
+final class _SectionLabel extends StatelessWidget {
   const _SectionLabel({required this.label});
 
   final String label;
@@ -417,7 +420,8 @@ class _SectionLabel extends StatelessWidget {
   }
 }
 
-class _SettingsNavRow extends StatelessWidget {
+@immutable
+final class _SettingsNavRow extends StatelessWidget {
   const _SettingsNavRow({
     required this.icon,
     required this.label,
@@ -474,7 +478,8 @@ class _SettingsNavRow extends StatelessWidget {
   }
 }
 
-class _SettingsSwitchRow extends StatelessWidget {
+@immutable
+final class _SettingsSwitchRow extends StatelessWidget {
   const _SettingsSwitchRow({
     required this.icon,
     required this.label,

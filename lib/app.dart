@@ -8,14 +8,15 @@ import 'package:zovi/core/utils/enum/route_paths.dart';
 import 'package:zovi/domain/auth/auth_repository.dart';
 import 'package:zovi/domain/user/user_repository.dart';
 
-class ZoviApp extends StatefulWidget {
+@immutable
+final class ZoviApp extends StatefulWidget {
   const ZoviApp({super.key});
 
   @override
   State<ZoviApp> createState() => _ZoviAppState();
 }
 
-class _ZoviAppState extends State<ZoviApp> with WidgetsBindingObserver {
+final class _ZoviAppState extends State<ZoviApp> with WidgetsBindingObserver {
   static const _authRoutes = {
     '/',
     '/intro',

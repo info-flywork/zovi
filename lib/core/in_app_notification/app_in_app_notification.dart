@@ -9,7 +9,7 @@ import 'package:zovi/core/utils/enum/route_paths.dart';
 import 'package:zovi/core/utils/navigation/open_chat_detail.dart';
 import 'package:zovi/core/utils/navigation/open_story_by_id.dart';
 
-class AppInAppNotification {
+final class AppInAppNotification {
   AppInAppNotification._();
   static final AppInAppNotification instance = AppInAppNotification._();
 
@@ -117,7 +117,8 @@ class AppInAppNotification {
   }
 }
 
-class _InAppNotificationHost extends StatefulWidget {
+@immutable
+final class _InAppNotificationHost extends StatefulWidget {
   const _InAppNotificationHost({
     required this.data,
     required this.alignment,
@@ -136,7 +137,7 @@ class _InAppNotificationHost extends StatefulWidget {
   State<_InAppNotificationHost> createState() => _InAppNotificationHostState();
 }
 
-class _InAppNotificationHostState extends State<_InAppNotificationHost>
+final class _InAppNotificationHostState extends State<_InAppNotificationHost>
     with SingleTickerProviderStateMixin {
   late final AnimationController _controller = AnimationController(
     vsync: this,

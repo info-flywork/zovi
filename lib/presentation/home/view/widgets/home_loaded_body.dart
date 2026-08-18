@@ -1,6 +1,7 @@
 part of '../home_view.dart';
 
-class HomeLoadedBody extends StatelessWidget {
+@immutable
+final class HomeLoadedBody extends StatelessWidget {
   const HomeLoadedBody({
     required this.stories,
     required this.mapFriends,

@@ -15,7 +15,7 @@ import 'package:zovi/domain/auth/auth_repository.dart';
 /// the production environment, and the OS can throttle them at any time.
 /// Polling the inbox keeps the banner working in both cases; ids seen here and
 /// ids claimed by an incoming push share one set, so nothing shows twice.
-class NotificationInboxWatcher with WidgetsBindingObserver {
+final class NotificationInboxWatcher with WidgetsBindingObserver {
   NotificationInboxWatcher(this._authRepository);
 
   static const _interval = Duration(seconds: 10);
