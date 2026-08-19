@@ -882,7 +882,7 @@ final class AuthRepository {
     return items;
   }
 
-  Future<UserStickerItem> generateSticker({
+  Future<GenerateStickerResult> generateSticker({
     required String imagePath,
     required String style,
     required String name,
@@ -908,7 +908,10 @@ final class AuthRepository {
     unawaited(
       _stampImageCache.prefetch(stampId: sticker.id, url: sticker.imageUrl),
     );
-    return sticker;
+    return GenerateStickerResult(
+      sticker: sticker,
+      coinsBalance: (result?['coinsBalance'] as num?)?.toInt(),
+    );
   }
 
   Future<PublishedStory> publishStory({
@@ -1814,6 +1817,45 @@ final class AuthRepository {
     ];
   }
 
+  Future<List<ProfileViewerUser>> fetchProfileViewers({
+    int limit = 50,
+    int offset = 0,
+  }) async {
+    final result = await _network.send<Map<String, dynamic>>(
+      path: '/users/me/profile-viewers',
+      method: RequestType.get,
+      queryParameters: {
+        'limit': '$limit',
+        'offset': '$offset',
+      },
+      parserModel: (json) => json,
+    );
+    final raw = result?['users'];
+    if (raw is! List) return const [];
+    return [
+      for (final item in raw)
+        if (item is Map)
+          ProfileViewerUser.fromJson(Map<String, dynamic>.from(item)),
+    ];
+  }
+
+  Future<Map<String, dynamic>?> revealProfileViewer(String viewerUserId) async {
+    return _network.send<Map<String, dynamic>>(
+      path: '/users/me/profile-viewers/reveal',
+      method: RequestType.post,
+      data: {'viewerUserId': viewerUserId},
+      parserModel: (json) => json,
+    );
+  }
+
+  Future<Map<String, dynamic>?> revealAllProfileViewers() async {
+    return _network.send<Map<String, dynamic>>(
+      path: '/users/me/profile-viewers/reveal-all',
+      method: RequestType.post,
+      parserModel: (json) => json,
+    );
+  }
+
   Future<List<AppNotificationItem>> fetchNotifications({
     int limit = 50,
     int offset = 0,
@@ -2014,6 +2056,17 @@ final class PulseLikeSnapshot {
   final String id;
   final int likeCount;
   final bool likedByMe;
+}
+
+@immutable
+final class GenerateStickerResult {
+  const GenerateStickerResult({
+    required this.sticker,
+    this.coinsBalance,
+  });
+
+  final UserStickerItem sticker;
+  final int? coinsBalance;
 }
 
 @immutable
@@ -2355,6 +2408,49 @@ final class ConnectionUser {
   final String username;
   final String fullName;
   final String avatarUrl;
+}
+
+@immutable
+final class ProfileViewerUser {
+  const ProfileViewerUser({
+    required this.userId,
+    required this.username,
+    required this.fullName,
+    required this.avatarUrl,
+    required this.viewCount,
+    this.lastViewedAt,
+    this.revealed = false,
+  });
+
+  factory ProfileViewerUser.fromJson(Map<String, dynamic> json) {
+    return ProfileViewerUser(
+      userId: (json['userId'] as String?)?.trim() ?? '',
+      username: (json['username'] as String?)?.trim() ?? '',
+      fullName: (json['fullName'] as String?)?.trim() ?? '',
+      avatarUrl: (json['avatarUrl'] as String?)?.trim() ?? '',
+      viewCount: (json['viewCount'] as num?)?.toInt() ?? 0,
+      lastViewedAt: DateTime.tryParse('${json['lastViewedAt'] ?? ''}')?.toLocal(),
+      revealed: json['revealed'] == true,
+    );
+  }
+
+  final String userId;
+  final String username;
+  final String fullName;
+  final String avatarUrl;
+  final int viewCount;
+  final DateTime? lastViewedAt;
+  final bool revealed;
+
+  ProfileViewerUser copyWith({bool? revealed}) => ProfileViewerUser(
+        userId: userId,
+        username: username,
+        fullName: fullName,
+        avatarUrl: avatarUrl,
+        viewCount: viewCount,
+        lastViewedAt: lastViewedAt,
+        revealed: revealed ?? this.revealed,
+      );
 }
 
 @immutable

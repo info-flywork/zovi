@@ -36,10 +36,10 @@ final class ProfileAvatar extends StatelessWidget {
       path.startsWith('http://') || path.startsWith('https://');
 
   bool get _isFilePath => path.startsWith('/') || path.startsWith('file:');
+  bool get _isAssetPath => path.startsWith('assets/');
 
   /// Gerçek kullanıcı fotoğrafı (CDN / galeri). Asset placeholder değil.
-  bool get _hasPhoto =>
-      path.isNotEmpty && (_isNetwork || _isFilePath);
+  bool get _hasPhoto => path.isNotEmpty && (_isNetwork || _isFilePath || _isAssetPath);
 
   Widget get _placeholder {
     return ColoredBox(
@@ -73,6 +73,20 @@ final class ProfileAvatar extends StatelessWidget {
         fit: BoxFit.cover,
         errorBuilder: (_, _, _) => _placeholder,
       );
+    } else if (_isAssetPath) {
+      final lower = path.toLowerCase();
+      if (lower.endsWith('.svg')) {
+        child = ColoredBox(
+          color: AppColors.surfaceGray,
+          child: Center(child: AppIcon(path, size: size * 0.56)),
+        );
+      } else {
+        child = Image.asset(
+          path,
+          fit: BoxFit.cover,
+          errorBuilder: (_, _, _) => _placeholder,
+        );
+      }
     } else {
       child = _placeholder;
     }

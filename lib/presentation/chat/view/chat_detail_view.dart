@@ -135,7 +135,7 @@ final class _ChatDetailViewState extends State<ChatDetailView> {
       _hydrateFromCache(cachedId);
       _fillMissingSenderMeta();
     }
-    _showShimmer = _messages.isEmpty;
+    _showShimmer = false;
     if (_messages.isNotEmpty) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
@@ -162,14 +162,12 @@ final class _ChatDetailViewState extends State<ChatDetailView> {
   void _applyGroupMetaFromTribe(Tribe? tribe, {bool notify = true}) {
     if (!widget.args.isGroup || tribe == null) return;
     var changed = false;
-    if (tribe.avatars.isNotEmpty) {
-      final nextAvatar = tribe.avatars.first.trim();
-      if (nextAvatar.isNotEmpty && nextAvatar != _avatarPath) {
-        _avatarPath = nextAvatar;
-        changed = true;
-      }
+    final nextAvatar = tribe.displayAvatarPath.trim();
+    if (nextAvatar.isNotEmpty && nextAvatar != _avatarPath) {
+      _avatarPath = nextAvatar;
+      changed = true;
     }
-    final nextName = tribe.name.trim();
+    final nextName = tribe.localizedName.trim();
     if (nextName.isNotEmpty && nextName != _headerName) {
       _headerName = nextName;
       changed = true;
@@ -314,19 +312,11 @@ final class _ChatDetailViewState extends State<ChatDetailView> {
       );
 
       final hadCache = _hydrateFromCache(conversationId);
-      if (hadCache) {
-        if (mounted) {
-          setState(() => _showShimmer = false);
-          _scrollToBottom();
-        }
-        // Soft refresh: only newer messages when cursor exists.
-        await _pullMessages(silent: true);
-      } else {
-        if (mounted && !_showShimmer) {
-          setState(() => _showShimmer = true);
-        }
-        await _pullMessages();
+      if (hadCache && mounted && _messages.isNotEmpty) {
+        setState(() {});
+        _scrollToBottom();
       }
+      await _pullMessages(silent: true);
       unawaited(_repo.markRead(conversationId));
     } catch (_) {
       if (!mounted) return;
@@ -390,18 +380,11 @@ final class _ChatDetailViewState extends State<ChatDetailView> {
 
       final hadCache = _hydrateFromCache(conversationId);
       final cacheOk = hadCache && !_groupCacheMissingSenders();
-      if (cacheOk) {
-        if (mounted) {
-          setState(() => _showShimmer = false);
-          _scrollToBottom();
-        }
-        await _pullMessages(silent: true);
-      } else {
-        if (mounted && !_showShimmer) {
-          setState(() => _showShimmer = true);
-        }
-        await _pullMessages();
+      if (cacheOk && mounted && _messages.isNotEmpty) {
+        setState(() {});
+        _scrollToBottom();
       }
+      await _pullMessages(silent: true);
       unawaited(_repo.markRead(conversationId));
     } catch (_) {
       if (!mounted) return;
@@ -419,10 +402,10 @@ final class _ChatDetailViewState extends State<ChatDetailView> {
     }
   }
 
-  /// Returns true when cache painted at least one message.
+  /// Returns true when this thread was fetched before (even if empty).
   bool _hydrateFromCache(String conversationId) {
     final cached = _messagesCache.peek(conversationId);
-    if (cached == null || cached.isEmpty) return false;
+    if (cached == null) return false;
 
     final myId = (_myUserId ?? getIt<AuthRepository>().backendUserId ?? '')
         .trim();

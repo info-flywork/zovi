@@ -132,6 +132,11 @@ abstract final class AssetPaths {
   static const String iconStampCamera = 'assets/icons/stamp_camera.svg';
   static const String iconStampExportArrow = 'assets/icons/stamp_export-arrow.svg';
   static const String iconStampGallery = 'assets/icons/stamp_gallery.svg';
+  static const String iconTribeNonamePhoto = 'assets/icons/tribe_noname_foto.svg';
+
+  static String tribeCover(String slug) =>
+      'assets/images/tribes/${slug.trim()}.jpg';
+  static const String iconReturningVisitor = 'assets/icons/returning-visitor.svg';
 
   static const String flagEnglish = 'assets/flags/english.svg';
   static const String flagGerman = 'assets/flags/german.svg';

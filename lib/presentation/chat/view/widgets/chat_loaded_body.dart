@@ -27,13 +27,18 @@ final class _ChatPreview {
         conversationId: c.id,
       );
       if (tribe != null) {
-        if (avatarPath.isEmpty && tribe.avatars.isNotEmpty) {
-          avatarPath = tribe.avatars.first;
+        if (avatarPath.isEmpty && tribe.photoUrl.isEmpty) {
+          avatarPath = tribe.displayAvatarPath;
+        } else if (tribe.photoUrl.isNotEmpty) {
+          avatarPath = tribe.photoUrl;
         }
         if (memberCount <= 0 && tribe.memberCount > 0) {
           memberCount = tribe.memberCount;
         }
       }
+    }
+    if (c.peer.isGroup && avatarPath.isEmpty) {
+      avatarPath = AssetPaths.iconTribeNonamePhoto;
     }
     return _ChatPreview(
       conversationId: c.id,
@@ -95,7 +100,7 @@ final class _ChatLoadedBodyState extends State<ChatLoadedBody>
   late List<_ChatPreview> _visibleChats;
   var _listKey = GlobalKey<AnimatedListState>();
   var _query = '';
-  var _loading = true;
+  var _loading = false;
   String? _openedSwipeUsername;
   Timer? _poll;
 
@@ -103,12 +108,41 @@ final class _ChatLoadedBodyState extends State<ChatLoadedBody>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _visibleChats = [];
-    unawaited(_refresh());
+    _hydrateFromCache();
+    unawaited(_refresh(silent: true));
     _poll = Timer.periodic(
       _pollInterval,
       (_) => unawaited(_refresh(silent: true)),
     );
+  }
+
+  void _hydrateFromCache() {
+    final inbox = _repo.peekConversations(folder: 'inbox');
+    final requests = _repo.peekConversations(folder: 'request');
+    if (inbox == null && requests == null) {
+      _visibleChats = [];
+      _loading = false;
+      return;
+    }
+    _chats
+      ..clear()
+      ..addAll((inbox ?? const []).map(_ChatPreview.fromConversation));
+    _requests = [
+      for (final c in requests ?? const <ChatConversation>[])
+        ChatRequestItem(
+          conversationId: c.id,
+          userId: c.peer.userId,
+          name: c.peer.name.trim().isNotEmpty
+              ? c.peer.name.trim()
+              : c.peer.username,
+          username: c.peer.username,
+          avatarPath: c.peer.avatarUrl,
+          preview: c.lastMessagePreview,
+          isUnread: c.isUnread,
+        ),
+    ];
+    _visibleChats = _filter(_query);
+    _loading = false;
   }
 
   @override

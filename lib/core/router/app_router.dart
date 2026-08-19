@@ -72,6 +72,7 @@ import 'package:zovi/presentation/profile/stickers/view/create_sticker_success_v
 import 'package:zovi/presentation/profile/stickers/view/create_sticker_view.dart';
 import 'package:zovi/presentation/profile/stickers/view/stickers_view.dart';
 import 'package:zovi/presentation/profile/view/profile_view.dart';
+import 'package:zovi/presentation/profile/view/profile_viewers_view.dart';
 import 'package:zovi/presentation/stories/bloc/stories_bloc.dart';
 import 'package:zovi/presentation/stories/model/story_detail_route_args.dart';
 import 'package:zovi/presentation/stories/view/stories_view.dart';
@@ -329,6 +330,11 @@ abstract final class AppRouter {
             ],
           ),
         ],
+      ),
+      GoRoute(
+        path: RoutePaths.profileViewers.path,
+        name: RoutePaths.profileViewers.name,
+        builder: (context, state) => const ProfileViewersView(),
       ),
       GoRoute(
         path: RoutePaths.storyDetail.path,

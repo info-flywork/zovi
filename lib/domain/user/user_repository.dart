@@ -1571,6 +1571,17 @@ final class UserRepository {
     return result;
   }
 
+  Future<void> revealProfileViewer(String viewerUserId) async {
+    final result = await _authRepository.revealProfileViewer(viewerUserId);
+    _applyCoinsBalance(result?['coinsBalance']);
+  }
+
+  Future<int> revealAllProfileViewers() async {
+    final result = await _authRepository.revealAllProfileViewers();
+    _applyCoinsBalance(result?['coinsBalance']);
+    return (result?['revealedCount'] as num?)?.toInt() ?? 0;
+  }
+
   void _applyCoinsBalance(Object? raw) {
     final coins = (raw as num?)?.toInt();
     if (coins == null || coins == _currentUser.coins) return;

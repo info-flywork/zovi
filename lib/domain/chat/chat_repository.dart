@@ -186,6 +186,8 @@ final class ChatRepository {
   /// POST /chat/conversations atmasın diye.
   final Map<String, ChatConversation> _dmByPeerId = {};
   final Map<String, Future<ChatConversation>> _openDmInFlight = {};
+  List<ChatConversation>? _inboxCache;
+  List<ChatConversation>? _requestCache;
 
   ChatConversation? peekDm(String peerUserId) {
     final peer = peerUserId.trim();
@@ -206,9 +208,15 @@ final class ChatRepository {
     _dmByPeerId.removeWhere((_, c) => c.id == id);
   }
 
+  List<ChatConversation>? peekConversations({required String folder}) {
+    return folder == 'request' ? _requestCache : _inboxCache;
+  }
+
   void clearDmCache() {
     _dmByPeerId.clear();
     _openDmInFlight.clear();
+    _inboxCache = null;
+    _requestCache = null;
   }
 
   Future<List<ChatConversation>> listConversations({
@@ -230,6 +238,11 @@ final class ChatRepository {
     ];
     for (final c in list) {
       rememberConversation(c);
+    }
+    if (folder == 'request') {
+      _requestCache = list;
+    } else {
+      _inboxCache = list;
     }
     return list;
   }

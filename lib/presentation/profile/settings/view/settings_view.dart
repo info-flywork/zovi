@@ -297,6 +297,11 @@ final class _SettingsViewState extends State<SettingsView>
                     label: 'settings_personal_info'.tr(),
                     onTap: () => context.push(RoutePaths.personalInfo.path),
                   ),
+                  _SettingsNavRow(
+                    icon: AssetPaths.iconReturningVisitor,
+                    label: 'profile_viewers_title'.tr(),
+                    onTap: () => context.push(RoutePaths.profileViewers.path),
+                  ),
                   //                  _SettingsNavRow(
                   //                  icon: AssetPaths.iconKey,
                   //                label: 'settings_change_password'.tr(),

@@ -44,16 +44,14 @@ ChatDetailRouteArgs chatDetailArgsFromNotification({
   final name = tribeName.isNotEmpty
       ? tribeName
       : (payloadName.isNotEmpty ? payloadName : actor);
-  final groupAvatar = (tribe != null && tribe.avatars.isNotEmpty)
-      ? tribe.avatars.first.trim()
-      : '';
+  final groupAvatar = tribe?.displayAvatarPath ?? '';
 
   return ChatDetailRouteArgs(
     name: name.isNotEmpty ? name : 'tribe',
     username: name.isNotEmpty ? name : 'tribe',
     avatarPath: groupAvatar.isNotEmpty
         ? groupAvatar
-        : (avatar.isNotEmpty ? avatar : AssetPaths.avatarYou),
+        : (avatar.isNotEmpty ? avatar : AssetPaths.iconTribeNonamePhoto),
     conversationId: cid,
     isGroup: true,
     memberCount: (tribe != null && tribe.memberCount > 0)

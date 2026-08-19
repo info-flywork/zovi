@@ -37,4 +37,10 @@ final class TribeDetailCache {
   }
 
   void clear() => _byId.clear();
+
+  void remove(String tribeId) {
+    final id = tribeId.trim();
+    if (id.isEmpty) return;
+    _byId.remove(id);
+  }
 }

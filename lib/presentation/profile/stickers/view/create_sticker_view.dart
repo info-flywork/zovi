@@ -14,6 +14,8 @@ import 'package:zovi/core/utils/enum/route_paths.dart';
 import 'package:zovi/core/utils/extensions/future_extensions.dart';
 import 'package:zovi/core/widgets/app_icon.dart';
 import 'package:zovi/domain/auth/auth_repository.dart';
+import 'package:zovi/domain/user/user_repository.dart';
+import 'package:zovi/presentation/profile/stickers/view/widgets/create_sticker_confirm_sheet.dart';
 
 enum _StickerStyle {
   modern('🎨', 'sticker_style_modern'),
@@ -44,6 +46,7 @@ final class _CreateStickerViewState extends State<CreateStickerView> {
 
   final _imagePicker = ImagePicker();
   final AuthRepository _authRepository = getIt<AuthRepository>();
+  final UserRepository _userRepository = getIt<UserRepository>();
   final _nameController = TextEditingController();
   final _descriptionController = TextEditingController();
 
@@ -88,13 +91,7 @@ final class _CreateStickerViewState extends State<CreateStickerView> {
     return _imagePicker.pickImage(source: source, imageQuality: 85);
   }
 
-  void _onContinue() {
-    _submitCreateSticker();
-  }
-
-  Future<void> _submitCreateSticker() async {
-    if (_isSubmitting) return;
-
+  Future<void> _onContinue() async {
     final imagePath = _imagePath;
     final name = _nameController.text.trim();
     final description = _descriptionController.text.trim();
@@ -124,16 +121,44 @@ final class _CreateStickerViewState extends State<CreateStickerView> {
       return;
     }
 
+    final coinBalance = _userRepository.currentUserListenable.value?.coins ?? 0;
+    final action = await showCreateStickerConfirmSheet(
+      context,
+      coinBalance: coinBalance,
+    );
+    if (!mounted || action == null) return;
+    if (action == CreateStickerConfirmAction.buyCoins) return;
+
+    await _submitCreateSticker();
+  }
+
+  Future<void> _submitCreateSticker() async {
+    if (_isSubmitting) return;
+
+    final path = _imagePath;
+    final name = _nameController.text.trim();
+    final description = _descriptionController.text.trim();
+    if (path == null || path.isEmpty) return;
+
     setState(() => _isSubmitting = true);
     try {
-      await _authRepository
+      final result = await _authRepository
           .generateSticker(
-            imagePath: imagePath,
+            imagePath: path,
             style: _selectedStyle.name,
             name: name,
             description: description,
           )
           .withLoading(context);
+      final coinsBalance = result.coinsBalance;
+      if (coinsBalance != null) {
+        final current = _userRepository.currentUserListenable.value;
+        if (current != null && current.coins != coinsBalance) {
+          _userRepository.currentUserListenable.value = current.copyWith(
+            coins: coinsBalance,
+          );
+        }
+      }
       if (!mounted) return;
       final completed = await context.push<bool>(
         RoutePaths.createStickerSuccess.path,
@@ -595,30 +620,27 @@ final class _ContinueButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SafeArea(
-      top: false,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-        child: GestureDetector(
-          onTap: onTap,
-          behavior: HitTestBehavior.opaque,
-          child: Container(
-            width: double.infinity,
-            height: 54,
-            decoration: BoxDecoration(
-              color: AppColors.deepRoast,
-              borderRadius: BorderRadius.circular(999),
-            ),
-            alignment: Alignment.center,
-            child: Text(
-              'continue'.tr(),
-              style: const TextStyle(
-                fontSize: 17,
-                fontWeight: FontWeight.w600,
-                height: 1,
-                letterSpacing: -0.34,
-                color: AppColors.white,
-              ),
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+      child: GestureDetector(
+        onTap: onTap,
+        behavior: HitTestBehavior.opaque,
+        child: Container(
+          width: double.infinity,
+          height: 54,
+          decoration: BoxDecoration(
+            color: AppColors.deepRoast,
+            borderRadius: BorderRadius.circular(999),
+          ),
+          alignment: Alignment.center,
+          child: Text(
+            'continue'.tr(),
+            style: const TextStyle(
+              fontSize: 17,
+              fontWeight: FontWeight.w600,
+              height: 1,
+              letterSpacing: -0.34,
+              color: AppColors.white,
             ),
           ),
         ),

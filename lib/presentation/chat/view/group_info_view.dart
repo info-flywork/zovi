@@ -4,19 +4,24 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:zovi/core/di/injection.dart';
 import 'package:zovi/core/snackbar/app_snackbar.dart';
 import 'package:zovi/core/theme/app_colors.dart';
 import 'package:zovi/core/utils/constants/asset_paths.dart';
 import 'package:zovi/core/utils/enum/route_paths.dart';
+import 'package:zovi/core/utils/extensions/future_extensions.dart';
 import 'package:zovi/core/utils/navigation/open_user_profile.dart';
 import 'package:zovi/core/widgets/app_button.dart';
 import 'package:zovi/core/widgets/app_icon.dart';
 import 'package:zovi/core/widgets/profile_avatar.dart';
+import 'package:zovi/domain/auth/auth_repository.dart';
+import 'package:zovi/domain/chat/chat_repository.dart';
 import 'package:zovi/domain/tribe/tribe_repository.dart';
 import 'package:zovi/presentation/chat/model/chat_detail_route_args.dart';
 import 'package:zovi/presentation/chat/model/group_info_route_args.dart';
+import 'package:zovi/presentation/home/view/widgets/check_in_add_photo_sheet.dart';
 import 'package:zovi/presentation/profile/settings/view/widgets/blocked_users_sheet.dart';
 
 const _leaveRed = Color(0xFFE30A17);
@@ -34,9 +39,16 @@ final class GroupInfoView extends StatefulWidget {
 
 final class _GroupInfoViewState extends State<GroupInfoView> {
   final TribeRepository _tribes = getIt<TribeRepository>();
+  final ChatRepository _chat = getIt<ChatRepository>();
+  final AuthRepository _auth = getIt<AuthRepository>();
+  final ImagePicker _picker = ImagePicker();
   var _notificationsOn = true;
   var _leaving = false;
+  var _deleting = false;
+  var _updatingPhoto = false;
   var _loadingMembers = true;
+  var _isOwner = false;
+  late String _avatarPath = AssetPaths.iconTribeNonamePhoto;
   late int _memberCount = widget.args.memberCount;
   List<BlockedUser> _blockedUsers = const [];
   List<_GroupMember> _members = const [];
@@ -54,6 +66,12 @@ final class _GroupInfoViewState extends State<GroupInfoView> {
     final cached = _tribes.peekTribeDetail(tribeId);
     if (cached == null) return;
     if (cached.memberCount > 0) _memberCount = cached.memberCount;
+    if (cached.photoUrl.trim().isNotEmpty) {
+      _avatarPath = cached.photoUrl.trim();
+    } else {
+      _avatarPath = cached.displayAvatarPath;
+    }
+    _isOwner = _resolveIsOwner(cached);
     if (cached.members.isNotEmpty) {
       _members = _mapMembers(cached);
       _loadingMembers = false;
@@ -61,18 +79,18 @@ final class _GroupInfoViewState extends State<GroupInfoView> {
   }
 
   List<_GroupMember> _mapMembers(Tribe detail) => [
-        for (final m in detail.members)
-          _GroupMember(
-            userId: m.userId,
-            name: m.isMe ? null : (m.name.isNotEmpty ? m.name : m.username),
-            nameKey: m.isMe ? 'group_info_you' : null,
-            fullName: m.name.isNotEmpty ? m.name : m.username,
-            username: m.username,
-            avatarPath: m.avatarUrl,
-            streak: m.streakCount,
-            isMe: m.isMe,
-          ),
-      ];
+    for (final m in detail.members)
+      _GroupMember(
+        userId: m.userId,
+        name: m.isMe ? null : (m.name.isNotEmpty ? m.name : m.username),
+        nameKey: m.isMe ? 'group_info_you' : null,
+        fullName: m.name.isNotEmpty ? m.name : m.username,
+        username: m.username,
+        avatarPath: m.avatarUrl,
+        streak: m.streakCount,
+        isMe: m.isMe,
+      ),
+  ];
 
   Future<void> _loadMembers() async {
     final tribeId = widget.args.tribeId.trim();
@@ -89,6 +107,10 @@ final class _GroupInfoViewState extends State<GroupInfoView> {
       }
       setState(() {
         _memberCount = detail.memberCount;
+        _avatarPath = detail.photoUrl.trim().isNotEmpty
+            ? detail.photoUrl.trim()
+            : detail.displayAvatarPath;
+        _isOwner = _resolveIsOwner(detail);
         _members = _mapMembers(detail);
         _loadingMembers = false;
       });
@@ -131,9 +153,101 @@ final class _GroupInfoViewState extends State<GroupInfoView> {
     }
   }
 
+  Future<void> _deleteGroup() async {
+    if (!_isOwner || _deleting) return;
+    final confirmed = await showDeleteGroupSheet(context);
+    if (!confirmed || !mounted) return;
+    final tribeId = widget.args.tribeId.trim();
+    if (tribeId.isEmpty) return;
+
+    setState(() => _deleting = true);
+    try {
+      final deleted = await _tribes.deleteTribe(tribeId);
+      if (!mounted) return;
+      if (!deleted) {
+        AppSnackbar.instance.show(
+          context,
+          'group_info_delete_failed'.tr(),
+          isError: true,
+        );
+        setState(() => _deleting = false);
+        return;
+      }
+      context.go(RoutePaths.tribe.path);
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _deleting = false);
+      AppSnackbar.instance.show(
+        context,
+        'group_info_delete_failed'.tr(),
+        isError: true,
+      );
+    }
+  }
+
+  bool _resolveIsOwner(Tribe detail) {
+    if (detail.isOwner) return true;
+    final me = _auth.backendUserId?.trim() ?? '';
+    if (me.isEmpty) return false;
+    if (detail.ownerUserId.isNotEmpty) return detail.ownerUserId == me;
+    if (!detail.isUserCreated && !detail.areaKey.startsWith('custom-')) {
+      return false;
+    }
+    return detail.members.any((member) => member.isMe);
+  }
+
   void _openMember(_GroupMember member) {
     if (member.isMe) return;
     _showMemberProfileSheet(context, member: member);
+  }
+
+  Future<void> _changePhoto() async {
+    if (!_isOwner || _updatingPhoto) return;
+    final tribeId = widget.args.tribeId.trim();
+    if (tribeId.isEmpty) return;
+    try {
+      final source = await showCheckInAddPhotoSheet(
+        context,
+        initial: CheckInPhotoSource.gallery,
+      );
+      if (!mounted || source == null) return;
+      final imageSource = switch (source) {
+        CheckInPhotoSource.camera => ImageSource.camera,
+        CheckInPhotoSource.gallery => ImageSource.gallery,
+      };
+      final picked = await _picker.pickImage(
+        source: imageSource,
+        maxWidth: 1600,
+        maxHeight: 1600,
+        imageQuality: 85,
+      );
+      if (!mounted || picked == null) return;
+      setState(() => _updatingPhoto = true);
+      final mediaUrl = await _chat
+          .uploadMedia(picked.path)
+          .withLoading(context);
+      final updated = await _tribes
+          .updateTribePhoto(tribeId: tribeId, photoUrl: mediaUrl)
+          .withLoading(context);
+      if (!mounted) return;
+      if (updated != null) {
+        setState(() {
+          _avatarPath = updated.photoUrl.trim().isNotEmpty
+              ? updated.photoUrl.trim()
+              : updated.displayAvatarPath;
+          _isOwner = _resolveIsOwner(updated);
+        });
+      }
+    } catch (_) {
+      if (!mounted) return;
+      AppSnackbar.instance.show(
+        context,
+        'group_info_photo_update_failed'.tr(),
+        isError: true,
+      );
+    } finally {
+      if (mounted) setState(() => _updatingPhoto = false);
+    }
   }
 
   @override
@@ -196,21 +310,40 @@ final class _GroupInfoViewState extends State<GroupInfoView> {
                         shape: BoxShape.circle,
                       ),
                       child: ClipOval(
-                        child: ProfileAvatar(
-                          path: widget.args.avatarPath,
-                          size: 110,
-                        ),
+                        child: ProfileAvatar(path: _avatarPath, size: 110),
                       ),
                     ),
                   ),
                 ],
               ),
               const SizedBox(height: 74),
+              if (_isOwner) ...[
+                const SizedBox(height: 8),
+                GestureDetector(
+                  onTap: _updatingPhoto ? null : _changePhoto,
+                  behavior: HitTestBehavior.opaque,
+                  child: Opacity(
+                    opacity: _updatingPhoto ? 0.6 : 1,
+                    child: Text(
+                      'change_photo'.tr(),
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        height: 16 / 12,
+                        letterSpacing: -0.24,
+                        color: AppColors.zoviOrange,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+              const SizedBox(height: 16),
               Text(
                 widget.args.name,
                 textAlign: TextAlign.center,
                 style: const TextStyle(
-                  fontSize: 20,
+                  fontSize: 24,
                   fontWeight: FontWeight.w600,
                   height: 1,
                   letterSpacing: -0.4,
@@ -351,6 +484,26 @@ final class _GroupInfoViewState extends State<GroupInfoView> {
                     ),
                   ),
                 ),
+                if (_isOwner) ...[
+                  const SizedBox(height: 16),
+                  GestureDetector(
+                    onTap: _deleting ? null : _deleteGroup,
+                    behavior: HitTestBehavior.opaque,
+                    child: Opacity(
+                      opacity: _deleting ? 0.45 : 1,
+                      child: Text(
+                        'group_info_delete'.tr(),
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
+                          height: 1,
+                          letterSpacing: -0.32,
+                          color: _leaveRed,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
                 const SizedBox(height: kBottomNavigationBarHeight),
               ],
             ),
@@ -531,9 +684,7 @@ final class _MemberRow extends StatelessWidget {
         ),
         child: Row(
           children: [
-            ClipOval(
-              child: ProfileAvatar(path: member.avatarPath, size: 40),
-            ),
+            ClipOval(child: ProfileAvatar(path: member.avatarPath, size: 40)),
             const SizedBox(width: 10),
             Expanded(
               child: Text(
@@ -605,6 +756,18 @@ Future<bool> showLeaveGroupSheet(BuildContext context) async {
       borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
     ),
     builder: (context) => const _LeaveGroupSheet(),
+  );
+  return result ?? false;
+}
+
+Future<bool> showDeleteGroupSheet(BuildContext context) async {
+  final result = await showModalBottomSheet<bool>(
+    context: context,
+    backgroundColor: AppColors.white,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+    ),
+    builder: (context) => const _DeleteGroupSheet(),
   );
   return result ?? false;
 }
@@ -683,6 +846,80 @@ final class _LeaveGroupSheet extends StatelessWidget {
   }
 }
 
+@immutable
+final class _DeleteGroupSheet extends StatelessWidget {
+  const _DeleteGroupSheet();
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 46,
+              height: 4,
+              decoration: BoxDecoration(
+                color: const Color(0xFFD9D9D9),
+                borderRadius: BorderRadius.circular(9999),
+              ),
+            ),
+            const SizedBox(height: 24),
+            Text(
+              'group_info_delete'.tr(),
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.w600,
+                height: 1,
+                letterSpacing: -0.4,
+                color: _leaveRed,
+              ),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              'group_info_delete_subtitle'.tr(),
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w400,
+                height: 20 / 16,
+                letterSpacing: -0.32,
+                color: AppColors.deepRoast.withValues(alpha: 0.65),
+              ),
+            ),
+            const SizedBox(height: 24),
+            AppButton(
+              label: 'cancel'.tr(),
+              onPressed: () => Navigator.of(context).pop(false),
+            ),
+            const SizedBox(height: 14),
+            GestureDetector(
+              onTap: () => Navigator.of(context).pop(true),
+              behavior: HitTestBehavior.opaque,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 6),
+                child: Text(
+                  'group_info_delete_confirm'.tr(),
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    height: 20 / 16,
+                    color: AppColors.deepRoast,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 Future<void> _showMemberProfileSheet(
   BuildContext context, {
   required _GroupMember member,
@@ -694,10 +931,8 @@ Future<void> _showMemberProfileSheet(
     shape: const RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
     ),
-    builder: (sheetContext) => _MemberProfileSheet(
-      member: member,
-      parentContext: context,
-    ),
+    builder: (sheetContext) =>
+        _MemberProfileSheet(member: member, parentContext: context),
   );
 }
 
@@ -728,9 +963,7 @@ final class _MemberProfileSheet extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 24),
-            ClipOval(
-              child: ProfileAvatar(path: member.avatarPath, size: 100),
-            ),
+            ClipOval(child: ProfileAvatar(path: member.avatarPath, size: 100)),
             const SizedBox(height: 14),
             Text(
               member.profileName,
@@ -769,10 +1002,7 @@ final class _MemberProfileSheet extends StatelessWidget {
             GestureDetector(
               onTap: () async {
                 Navigator.of(context).pop();
-                await openUserProfile(
-                  parentContext,
-                  member.profileKey,
-                );
+                await openUserProfile(parentContext, member.profileKey);
               },
               behavior: HitTestBehavior.opaque,
               child: Padding(

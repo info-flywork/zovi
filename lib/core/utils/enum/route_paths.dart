@@ -20,6 +20,7 @@ enum RoutePaths {
   chatDetail('/chat/detail'),
   chatRequests('/chat/requests'),
   profile('/profile'),
+  profileViewers('/profile/viewers'),
   profileConnections('/profile/connections'),
   userProfile('/profile/user'),
   publicProfile('/u/:username'),

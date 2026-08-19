@@ -10,8 +10,14 @@ final class ChatMessagesCache {
     final id = conversationId.trim();
     if (id.isEmpty) return null;
     final entry = _entries[id];
-    if (entry == null || entry.messages.isEmpty) return null;
+    if (entry == null) return null;
     return List<ChatMessage>.unmodifiable(entry.messages);
+  }
+
+  bool contains(String conversationId) {
+    final id = conversationId.trim();
+    if (id.isEmpty) return false;
+    return _entries.containsKey(id);
   }
 
   DateTime? newestAt(String conversationId) {
