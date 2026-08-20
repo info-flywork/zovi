@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:zovi/core/billing/open_coin_paywall.dart';
 import 'package:zovi/core/di/injection.dart';
 import 'package:zovi/core/snackbar/app_snackbar.dart';
 import 'package:zovi/core/theme/app_colors.dart';
@@ -127,7 +128,10 @@ final class _CreateStickerViewState extends State<CreateStickerView> {
       coinBalance: coinBalance,
     );
     if (!mounted || action == null) return;
-    if (action == CreateStickerConfirmAction.buyCoins) return;
+    if (action == CreateStickerConfirmAction.buyCoins) {
+      await openZoviCoinPaywall(context);
+      return;
+    }
 
     await _submitCreateSticker();
   }

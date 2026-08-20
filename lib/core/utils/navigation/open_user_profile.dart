@@ -8,28 +8,50 @@ import 'package:zovi/presentation/profile/user_profile/model/user_profile_route_
 
 /// Pushes the public profile immediately (no await on network).
 /// [seed] fills avatar/name from story/chat so the first frame isn't empty.
+/// Pass [userId] when the username is hidden (e.g. anonymous map pins).
 /// Completes when the profile route is popped, so callers (e.g. the story
 /// viewer) can keep their media paused for as long as the profile is on top.
 Future<void> openUserProfile(
   BuildContext context,
   String usernameOrName, {
   PublicUserProfile? seed,
+  String? userId,
 }) async {
   final value = usernameOrName.trim();
-  if (value.isEmpty) return;
+  final resolvedUserId = userId?.trim() ?? seed?.userId.trim() ?? '';
+  if (value.isEmpty && resolvedUserId.isEmpty) return;
   if (value.toLowerCase() == 'you') return;
 
   final handle = value.startsWith('@') ? value.substring(1) : value;
   final repo = getIt<UserRepository>();
   final myHandle = repo.cachedCurrentUser?.usernameHandle.trim().toLowerCase() ?? '';
-  if (myHandle.isNotEmpty && myHandle == handle.toLowerCase()) return;
+  if (handle.isNotEmpty &&
+      myHandle.isNotEmpty &&
+      myHandle == handle.toLowerCase()) {
+    return;
+  }
   final myId = getIt<AuthRepository>().backendUserId?.trim() ?? '';
-  final seedId = seed?.userId.trim() ?? '';
+  final seedId = seed?.userId.trim() ?? resolvedUserId;
   if (myId.isNotEmpty && seedId.isNotEmpty && myId == seedId) return;
-  final peeked = repo.peekPublicUserProfile(handle);
+
+  final lookupById = resolvedUserId.isNotEmpty &&
+      (handle.isEmpty ||
+          handle.toLowerCase() == 'anonim' ||
+          handle.toLowerCase() == 'anonymous' ||
+          handle.toLowerCase() == 'user');
+
+  final peeked = lookupById
+      ? repo.peekPublicUserProfileByUserId(resolvedUserId)
+      : (handle.isNotEmpty ? repo.peekPublicUserProfile(handle) : null);
   final initial = peeked ??
       seed ??
-      PublicUserProfile.skeleton(username: handle);
+      (lookupById
+          ? PublicUserProfile.skeleton(
+              username: 'user',
+              name: value.isNotEmpty ? value : 'Anonim',
+              userId: resolvedUserId,
+            )
+          : PublicUserProfile.skeleton(username: handle));
 
   if (!context.mounted) return;
   await context.push(

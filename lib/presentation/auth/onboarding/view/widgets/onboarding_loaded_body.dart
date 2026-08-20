@@ -23,6 +23,180 @@ final class OnboardingLoadedBody extends StatelessWidget {
   final Future<void> Function() onGoogle;
   final Future<void> Function() onApple;
 
+  Future<void> _openUrl(String url) async {
+    final uri = Uri.parse(url);
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isIos = Theme.of(context).platform == TargetPlatform.iOS;
+    final appleButton = SocialLoginButton(
+      label: 'sign_in_apple'.tr(),
+      iconPath: AssetPaths.iconAppleWhite,
+      onTap: isLoading
+          ? null
+          : () {
+              onApple();
+            },
+      backgroundColor: AppColors.black,
+      foregroundColor: AppColors.white,
+    );
+    final googleButton = SocialLoginButton(
+      label: 'sign_in_google'.tr(),
+      iconPath: AssetPaths.iconGoogle,
+      onTap: isLoading
+          ? null
+          : () {
+              onGoogle();
+            },
+      backgroundColor: AppColors.white,
+      foregroundColor: AppColors.black,
+      borderColor: const Color(0xFFD0D0D0),
+    );
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(24, 12, 24, 16),
+      child: Column(
+        children: [
+          Expanded(
+            child: Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(32),
+                    child: Image.asset(
+                      AssetPaths.logoApp,
+                      width: 132,
+                      height: 132,
+                      fit: BoxFit.cover,
+                    ),
+                  ),
+                  const SizedBox(height: 28),
+                  Text(
+                    'get_started_title'.tr(),
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.w700,
+                      height: 1,
+                      color: AppColors.black,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Text(
+                    'get_started_subtitle'.tr(),
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w400,
+                      height: 1.2,
+                      color: AppColors.black,
+                    ),
+                  ),
+                  const SizedBox(height: 40),
+                  if (isIos) ...[
+                    appleButton,
+                    const SizedBox(height: 16),
+                    googleButton,
+                  ] else ...[
+                    googleButton,
+                    const SizedBox(height: 16),
+                    appleButton,
+                  ],
+                ],
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 28),
+          Text.rich(
+            TextSpan(
+              style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w400,
+                height: 1.35,
+                color: AppColors.black,
+              ),
+              children: [
+                TextSpan(
+                  text: 'legal_signup_prefix'.tr(namedArgs: {'app': 'Zovi'}),
+                ),
+                _legalLink(
+                  'legal_terms_of_service'.tr(),
+                  StringConstants.termsUrl,
+                ),
+                TextSpan(text: 'legal_signup_mid'.tr()),
+                _legalLink(
+                  'legal_privacy_policy'.tr(),
+                  StringConstants.privacyUrl,
+                ),
+                TextSpan(text: 'legal_signup_and'.tr()),
+                _legalLink(
+                  'legal_cookies_policy'.tr(),
+                  StringConstants.cookiesUrl,
+                ),
+              ],
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
+  }
+
+  InlineSpan _legalLink(String label, String url) {
+    return WidgetSpan(
+      alignment: PlaceholderAlignment.baseline,
+      baseline: TextBaseline.alphabetic,
+      child: GestureDetector(
+        onTap: () => _openUrl(url),
+        child: Text(
+          label,
+          style: const TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w500,
+            height: 1,
+            color: AppColors.black,
+            decoration: TextDecoration.underline,
+            decorationColor: AppColors.black,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/*
+/// Önceki onboarding (telefon + sosyal). Telefon girişi geri gelince bu gövdeyi
+/// OnboardingLoadedBody olarak geri al.
+
+@immutable
+final class OnboardingLoadedBody extends StatelessWidget {
+  const OnboardingLoadedBody({
+    required this.phone,
+    required this.selectedCountry,
+    required this.isLoading,
+    required this.onPhoneChanged,
+    required this.onCountryTap,
+    required this.onSendCode,
+    required this.onGoogle,
+    required this.onApple,
+    super.key,
+  });
+
+  final String phone;
+  final Country selectedCountry;
+  final bool isLoading;
+  final ValueChanged<String> onPhoneChanged;
+  final Future<void> Function(Country selectedCountry) onCountryTap;
+  final VoidCallback onSendCode;
+  final Future<void> Function() onGoogle;
+  final Future<void> Function() onApple;
+
   @override
   Widget build(BuildContext context) {
     final phoneFormat = PhoneFormats.forCountry(selectedCountry.isoCode);
@@ -184,3 +358,4 @@ final class OnboardingLoadedBody extends StatelessWidget {
     );
   }
 }
+*/

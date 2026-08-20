@@ -91,6 +91,12 @@ final class _UserProfileViewState extends State<UserProfileView>
   Future<void> _bootstrap() async {
     final repo = getIt<UserRepository>();
     final username = _user.usernameHandle;
+    final userId = _user.userId.trim();
+    final fetchByUserId = userId.isNotEmpty &&
+        (username.isEmpty ||
+            username.toLowerCase() == 'anonim' ||
+            username.toLowerCase() == 'anonymous' ||
+            username.toLowerCase() == 'user');
 
     // Cached/hydrated seed — load friend sections immediately in parallel.
     if (_user.isHydrated && _user.canSeeFriendContent) {
@@ -98,7 +104,9 @@ final class _UserProfileViewState extends State<UserProfileView>
     }
 
     try {
-      final fetched = await repo.getPublicUserProfile(username);
+      final fetched = fetchByUserId
+          ? await repo.getPublicUserProfileByUserId(userId)
+          : await repo.getPublicUserProfile(username);
       if (!mounted) return;
       // A tap that landed while this was in flight wins over the stale payload.
       final profile = _followTouched
@@ -124,7 +132,7 @@ final class _UserProfileViewState extends State<UserProfileView>
           _friendContentLoading = false;
         });
       } else if (profile.canSeeFriendContent && !wasFriend) {
-        unawaited(_loadFriendContent(username));
+        unawaited(_loadFriendContent(profile.usernameHandle));
       } else if (!profile.canSeeFriendContent) {
         setState(() {
           _plans = const [];

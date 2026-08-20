@@ -26,7 +26,6 @@ import 'package:zovi/presentation/auth/onboarding/bloc/onboarding_bloc.dart';
 import 'package:zovi/presentation/auth/onboarding/bloc/onboarding_event.dart';
 import 'package:zovi/presentation/auth/onboarding/bloc/onboarding_state.dart';
 import 'package:zovi/presentation/auth/otp/model/otp_route_args.dart';
-import 'package:zovi/presentation/auth/widgets/auth_progress_bar.dart';
 
 part 'mixin/onboarding_view_mixin.dart';
 part 'widgets/onboarding_loaded_body.dart';

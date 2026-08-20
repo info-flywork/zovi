@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
+import 'package:zovi/core/chat/active_chat_tracker.dart';
 import 'package:zovi/core/in_app_notification/app_in_app_notification.dart';
 import 'package:zovi/core/in_app_notification/in_app_notification_data.dart';
 import 'package:zovi/core/notifications/chat_notification_watcher.dart';
@@ -223,6 +224,14 @@ final class NotificationInboxWatcher with WidgetsBindingObserver {
       messagePreview: preview,
     );
     if (_chatBannerKeys.contains(chatKey)) return true;
+
+    // Already inside this thread — swallow, no banner.
+    if (ActiveChatTracker.instance.isViewing(
+      conversationId: conversationId,
+      peerUserId: item.actorId,
+    )) {
+      return true;
+    }
 
     final aggCount = item.aggCount ?? 1;
     final isAgg = aggCount >= 2;

@@ -3,6 +3,7 @@ import 'dart:ui';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:zovi/core/billing/open_coin_paywall.dart';
 import 'package:zovi/core/di/injection.dart';
 import 'package:zovi/core/theme/app_colors.dart';
 import 'package:zovi/core/utils/constants/asset_paths.dart';
@@ -12,6 +13,7 @@ import 'package:zovi/core/widgets/app_loading.dart';
 import 'package:zovi/core/widgets/profile_avatar.dart';
 import 'package:zovi/domain/auth/auth_repository.dart';
 import 'package:zovi/domain/user/user_repository.dart';
+import 'package:zovi/presentation/profile/stickers/view/widgets/create_sticker_confirm_sheet.dart';
 
 const _kRevealCoinCost = 5;
 
@@ -24,20 +26,30 @@ final class ProfileViewersView extends StatefulWidget {
 }
 
 final class _ProfileViewersViewState extends State<ProfileViewersView> {
-  final _auth = getIt<AuthRepository>();
   final _userRepo = getIt<UserRepository>();
-  bool _loading = true;
-  List<ProfileViewerUser> _users = const [];
+  late bool _loading;
+  late List<ProfileViewerUser> _users;
 
   @override
   void initState() {
     super.initState();
-    _load();
+    final cached = _userRepo.peekProfileViewers();
+    if (cached != null) {
+      _users = cached;
+      _loading = false;
+    } else {
+      _users = const [];
+      _loading = true;
+    }
+    _load(forceRefresh: !_userRepo.isProfileViewersCacheFresh);
   }
 
-  Future<void> _load() async {
+  Future<void> _load({bool forceRefresh = false}) async {
     try {
-      final users = await _auth.fetchProfileViewers(limit: 200);
+      final users = await _userRepo.fetchProfileViewers(
+        limit: 200,
+        forceRefresh: forceRefresh,
+      );
       if (!mounted) return;
       setState(() {
         _users = users;
@@ -51,12 +63,44 @@ final class _ProfileViewersViewState extends State<ProfileViewersView> {
 
   int get _unrevealedCount => _users.where((u) => !u.revealed).length;
 
-  Future<void> _revealOne(ProfileViewerUser user) async {
+  Future<bool> _confirmRevealSpend({
+    required int coinCost,
+    required bool revealAll,
+  }) async {
     final coins = _userRepo.cachedCurrentUser?.coins ?? 0;
-    if (coins < _kRevealCoinCost) {
-      _showNotEnoughCoins();
-      return;
+    final action = await showCreateStickerConfirmSheet(
+      context,
+      coinBalance: coins,
+      coinCost: coinCost,
+      titleText: revealAll
+          ? 'profile_viewers_sheet_title_all'.tr()
+          : 'profile_viewers_sheet_title_one'.tr(),
+      subtitleText: revealAll
+          ? 'profile_viewers_sheet_subtitle_all'.tr(
+              namedArgs: {'count': '$coinCost'},
+            )
+          : 'profile_viewers_sheet_subtitle_one'.tr(
+              namedArgs: {'count': '$coinCost'},
+            ),
+      costLabelText: 'profile_viewers_sheet_cost_label'.tr(),
+      confirmLabelText: 'profile_viewers_sheet_confirm'.tr(
+        namedArgs: {'count': '$coinCost'},
+      ),
+    );
+    if (!mounted || action == null) return false;
+    if (action == CreateStickerConfirmAction.buyCoins) {
+      await openZoviCoinPaywall(context);
+      return false;
     }
+    return true;
+  }
+
+  Future<void> _revealOne(ProfileViewerUser user) async {
+    final ok = await _confirmRevealSpend(
+      coinCost: _kRevealCoinCost,
+      revealAll: false,
+    );
+    if (!ok || !mounted) return;
     try {
       await _userRepo.revealProfileViewer(user.userId);
       if (!mounted) return;
@@ -73,11 +117,11 @@ final class _ProfileViewersViewState extends State<ProfileViewersView> {
     final count = _unrevealedCount;
     if (count == 0) return;
     final totalCost = count * _kRevealCoinCost;
-    final coins = _userRepo.cachedCurrentUser?.coins ?? 0;
-    if (coins < totalCost) {
-      _showNotEnoughCoins();
-      return;
-    }
+    final ok = await _confirmRevealSpend(
+      coinCost: totalCost,
+      revealAll: true,
+    );
+    if (!ok || !mounted) return;
     try {
       await _userRepo.revealAllProfileViewers();
       if (!mounted) return;
@@ -85,15 +129,6 @@ final class _ProfileViewersViewState extends State<ProfileViewersView> {
         _users = [for (final u in _users) u.copyWith(revealed: true)];
       });
     } catch (_) {}
-  }
-
-  void _showNotEnoughCoins() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('profile_viewers_not_enough_coins'.tr()),
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
   }
 
   Future<void> _openProfile(ProfileViewerUser user) {
@@ -119,7 +154,9 @@ final class _ProfileViewersViewState extends State<ProfileViewersView> {
   @override
   Widget build(BuildContext context) {
     final top = MediaQuery.paddingOf(context).top;
+    final bottom = MediaQuery.paddingOf(context).bottom;
     final groups = _buildGroups();
+    final showRevealAll = !_loading && _unrevealedCount > 0;
 
     return Scaffold(
       backgroundColor: AppColors.white,
@@ -142,12 +179,25 @@ final class _ProfileViewersViewState extends State<ProfileViewersView> {
                         ),
                       )
                     : ListView.builder(
-                        padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+                        padding: EdgeInsets.fromLTRB(
+                          16,
+                          8,
+                          16,
+                          showRevealAll ? 16 : 24,
+                        ),
                         itemCount: groups.length,
                         itemBuilder: (context, index) =>
                             _buildGroupSection(groups[index]),
                       ),
           ),
+          if (showRevealAll)
+            Padding(
+              padding: EdgeInsets.fromLTRB(16, 8, 16, bottom + 16),
+              child: _RevealAllButton(
+                coinCost: _unrevealedCount * _kRevealCoinCost,
+                onTap: _revealAll,
+              ),
+            ),
         ],
       ),
     );
@@ -155,7 +205,7 @@ final class _ProfileViewersViewState extends State<ProfileViewersView> {
 
   Widget _buildAppBar() {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(8, 4, 16, 4),
+      padding: const EdgeInsets.fromLTRB(8, 4, 8, 4),
       child: SizedBox(
         height: 44,
         child: Row(
@@ -181,37 +231,7 @@ final class _ProfileViewersViewState extends State<ProfileViewersView> {
                 ),
               ),
             ),
-            if (_unrevealedCount > 0)
-              GestureDetector(
-                onTap: _revealAll,
-                child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: AppColors.zoviOrange,
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Image.asset(AssetPaths.zoviCoin, width: 16, height: 16),
-                      const SizedBox(width: 4),
-                      Text(
-                        'profile_viewers_reveal_all'.tr(
-                          args: ['${_unrevealedCount * _kRevealCoinCost}'],
-                        ),
-                        style: const TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.white,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              )
-            else
-              const SizedBox(width: 44),
+            const SizedBox(width: 44),
           ],
         ),
       ),
@@ -374,6 +394,48 @@ class _ViewerGroup {
   const _ViewerGroup(this.title, this.users);
   final String title;
   final List<ProfileViewerUser> users;
+}
+
+@immutable
+final class _RevealAllButton extends StatelessWidget {
+  const _RevealAllButton({
+    required this.coinCost,
+    required this.onTap,
+  });
+
+  final int coinCost;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: double.infinity,
+      height: 54,
+      child: Material(
+        color: AppColors.zoviOrange,
+        borderRadius: BorderRadius.circular(27),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(27),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Image.asset(AssetPaths.zoviCoin, width: 20, height: 20),
+              const SizedBox(width: 8),
+              Text(
+                'profile_viewers_reveal_all'.tr(args: ['$coinCost']),
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.white,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 class _BlurredAvatar extends StatelessWidget {

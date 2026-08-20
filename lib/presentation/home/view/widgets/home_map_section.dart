@@ -42,13 +42,18 @@ final class _HomeMapSectionState extends State<HomeMapSection>
   bool _hasRealLocation = false;
   bool _filterMenuOpen = false;
   bool _filterTransitioning = false;
-  _MapFilter _selectedFilter = _MapFilter.friends;
+  _MapFilter _selectedFilter = _MapFilter.nearby;
   bool _venueZoomHintDismissed = false;
   List<MapFriend> _nearbyAnons = const [];
   List<MapVenue> _venues = const [];
+  static const _peopleReloadDistanceMeters = 220.0;
+  static const _peopleReloadZoomDelta = 0.4;
+  LatLng? _lastPeopleFetchCenter;
+  double? _lastPeopleFetchZoom;
   LatLng? _lastVenueFetchCenter;
   double? _lastVenueFetchZoom;
   Timer? _venuesDebounce;
+  Timer? _peopleDebounce;
   bool _venuesLoading = false;
   MapFriend? _selectedFriend;
   MapVenue? _selectedVenue;
@@ -186,13 +191,92 @@ final class _HomeMapSectionState extends State<HomeMapSection>
     });
   }
 
-  Future<void> _loadNearbyAnons() async {
+  double _radiusKmForZoom(double zoom) {
+    final km = 50 * math.pow(2, 14.5 - zoom);
+    return km.clamp(50.0, 20000.0).toDouble();
+  }
+
+  MapFriend _withLiveDistance(MapFriend person) {
+    if (!_hasRealLocation || (person.lat == 0 && person.lng == 0)) {
+      return person;
+    }
+    final meters = _distance
+        .as(
+          LengthUnit.Meter,
+          _userLocation,
+          LatLng(person.lat, person.lng),
+        )
+        .round();
+    return person.copyWith(distanceMeters: meters);
+  }
+
+  Future<void> _loadNearbyAnons({LatLng? center, double? radiusKm}) async {
     final items = await getIt<UserRepository>().getMapNearbyAnons(
-      lat: _hasRealLocation ? _userLocation.latitude : null,
-      lng: _hasRealLocation ? _userLocation.longitude : null,
+      lat: center?.latitude ??
+          (_hasRealLocation ? _userLocation.latitude : null),
+      lng: center?.longitude ??
+          (_hasRealLocation ? _userLocation.longitude : null),
+      radiusKm: radiusKm ?? 50,
     );
     if (!mounted) return;
-    setState(() => _nearbyAnons = items);
+    final visible = [
+      for (final item in items)
+        if (item.isAnonymous || item.avatarPath.trim().isNotEmpty)
+          _withLiveDistance(item),
+    ];
+    final same = visible.length == _nearbyAnons.length &&
+        [
+          for (var i = 0; i < visible.length; i++)
+            visible[i].userId == _nearbyAnons[i].userId &&
+                visible[i].isAnonymous == _nearbyAnons[i].isAnonymous &&
+                visible[i].hasCheckIn == _nearbyAnons[i].hasCheckIn &&
+                (visible[i].checkIn?.stampImagePath ?? '') ==
+                    (_nearbyAnons[i].checkIn?.stampImagePath ?? ''),
+        ].every((ok) => ok);
+    if (same) return;
+    setState(() => _nearbyAnons = visible);
+  }
+
+  void _schedulePeopleRefresh({bool force = false}) {
+    if (!_mapReady) return;
+    _peopleDebounce?.cancel();
+    _peopleDebounce = Timer(const Duration(milliseconds: 280), () {
+      if (!mounted) return;
+      unawaited(_refreshPeopleAtCamera(force: force));
+    });
+  }
+
+  Future<void> _refreshPeopleAtCamera({bool force = false}) async {
+    if (!_mapReady) return;
+    final cam = _mapController.camera;
+    if (!force) {
+      final movedEnough = _lastPeopleFetchCenter == null
+          ? true
+          : _distance.as(
+                  LengthUnit.Meter,
+                  _lastPeopleFetchCenter!,
+                  cam.center,
+                ) >=
+                _peopleReloadDistanceMeters;
+      final zoomChangedEnough = _lastPeopleFetchZoom == null
+          ? true
+          : (cam.zoom - _lastPeopleFetchZoom!).abs() >= _peopleReloadZoomDelta;
+      if (!movedEnough && !zoomChangedEnough) return;
+    }
+    _lastPeopleFetchCenter = cam.center;
+    _lastPeopleFetchZoom = cam.zoom;
+    final radiusKm = _radiusKmForZoom(cam.zoom);
+    if (_selectedFilter == _MapFilter.nearby) {
+      await _loadNearbyAnons(center: cam.center, radiusKm: radiusKm);
+      return;
+    }
+    if (_selectedFilter == _MapFilter.friends) {
+      await getIt<UserRepository>().getMapFriends(
+        lat: cam.center.latitude,
+        lng: cam.center.longitude,
+        radiusKm: radiusKm,
+      );
+    }
   }
 
   Future<void> _loadVenues({
@@ -426,6 +510,7 @@ final class _HomeMapSectionState extends State<HomeMapSection>
     _markersController.dispose();
     _cameraAnimation?.dispose();
     _venuesDebounce?.cancel();
+    _peopleDebounce?.cancel();
     _mapController.dispose();
     super.dispose();
   }
@@ -467,8 +552,8 @@ final class _HomeMapSectionState extends State<HomeMapSection>
       if (filter == _MapFilter.venues) {
         _scheduleVenueRefresh(force: true);
       }
-      if (filter == _MapFilter.nearby) {
-        unawaited(_loadNearbyAnons());
+      if (filter == _MapFilter.nearby || filter == _MapFilter.friends) {
+        unawaited(_refreshPeopleAtCamera(force: true));
       }
       _friendSheetController.value = 0;
       unawaited(_pulseCameraForFilter());
@@ -506,6 +591,37 @@ final class _HomeMapSectionState extends State<HomeMapSection>
     if (_filterMenuOpen) {
       _closeFilterMenu();
     }
+
+    // Anonim pin: sadece harita balonunu aç/kapat, alt sheet gösterme.
+    if (friend.isAnonymous) {
+      final alreadySelected =
+          _selectedFriend?.userId.isNotEmpty == true &&
+          _selectedFriend!.userId == friend.userId;
+      final next = alreadySelected ? null : friend;
+      final hasSheet =
+          _friendSheetFriend != null || _lastCheckInSheet != null;
+
+      void apply() {
+        _selectedVenue = null;
+        _friendSheetFriend = null;
+        _lastCheckInSheet = null;
+        _selectedFriend = next;
+      }
+
+      if (hasSheet && _friendSheetController.value > 0) {
+        _sheetPresentGeneration++;
+        FocusManager.instance.primaryFocus?.unfocus();
+        unawaited(() async {
+          await _friendSheetController.reverse();
+          if (!mounted) return;
+          setState(apply);
+        }());
+      } else {
+        setState(apply);
+      }
+      return;
+    }
+
     // Aynı arkadaş zaten açıksa yeniden animasyonlama.
     if (_friendSheetFriend == friend &&
         _lastCheckInSheet == null &&
@@ -567,12 +683,16 @@ final class _HomeMapSectionState extends State<HomeMapSection>
   }
 
   Future<void> _closeFriendSheet() async {
-    if (_friendSheetFriend == null && _lastCheckInSheet == null) return;
+    final hasSheet = _friendSheetFriend != null || _lastCheckInSheet != null;
+    final hasAnonSelection =
+        _selectedFriend != null && _selectedFriend!.isAnonymous;
+    if (!hasSheet && !hasAnonSelection) return;
     _sheetPresentGeneration++;
     FocusManager.instance.primaryFocus?.unfocus();
     if (_selectedFriend != null) {
       setState(() => _selectedFriend = null);
     }
+    if (!hasSheet) return;
     await _friendSheetController.reverse();
     if (!mounted) return;
     if (_friendSheetFriend != null || _lastCheckInSheet != null) {
@@ -660,7 +780,7 @@ final class _HomeMapSectionState extends State<HomeMapSection>
         locationLabel: _cityLabel.isEmpty ? null : _cityLabel,
       ),
     );
-    unawaited(_loadNearbyAnons());
+    unawaited(_refreshPeopleAtCamera(force: true));
     _scheduleVenueRefresh(force: true);
   }
 
@@ -672,6 +792,39 @@ final class _HomeMapSectionState extends State<HomeMapSection>
       _userLocation.latitude + friend.y * 0.02,
       _userLocation.longitude + friend.x * 0.02,
     );
+  }
+
+  /// Prefer card below the question mark; open above when something sits in
+  /// the below footprint (self pin or another nearby person).
+  bool _anonCardShouldOpenAbove(MapFriend person) {
+    if (!_mapReady) return false;
+    final camera = _mapController.camera;
+    final zoom = camera.zoom;
+    final origin = camera.projectAtZoom(_friendPoint(person), zoom);
+
+    const cardH = HomeMapAnonMarker.cardSlot;
+    const cardHalfW = 90.0;
+    const questionHalf = HomeMapAnonMarker.questionSize / 2;
+
+    bool blocksBelow(Offset other, double radius) {
+      final dx = (other.dx - origin.dx).abs();
+      final dy = other.dy - origin.dy;
+      // Only care about markers sitting under the question mark.
+      if (dy < questionHalf * 0.4) return false;
+      if (dy > questionHalf + cardH + 24) return false;
+      if (dx > cardHalfW + radius) return false;
+      return true;
+    }
+
+    final selfPx = camera.projectAtZoom(_userLocation, zoom);
+    if (blocksBelow(selfPx, 36)) return true;
+
+    for (final other in _nearbyAnons) {
+      if (other.userId == person.userId) continue;
+      final px = camera.projectAtZoom(_friendPoint(other), zoom);
+      if (blocksBelow(px, 28)) return true;
+    }
+    return false;
   }
 
   double _clusterThresholdMeters(double zoom) {
@@ -803,6 +956,52 @@ final class _HomeMapSectionState extends State<HomeMapSection>
     return markers;
   }
 
+  Marker _nearbyPersonMarker(MapFriend person) {
+    if (person.isAnonymous) {
+      final expanded =
+          _selectedFriend?.userId.isNotEmpty == true &&
+          _selectedFriend!.userId == person.userId;
+      final openAbove = expanded && _anonCardShouldOpenAbove(person);
+      return Marker(
+        point: _friendPoint(person),
+        width: HomeMapAnonMarker.width,
+        height: HomeMapAnonMarker.height,
+        alignment: Alignment.center,
+        child: HomeMapAnonMarker(
+          key: ValueKey('anon-${person.userId}'),
+          user: person,
+          viewerLocation: _userLocation,
+          expanded: expanded,
+          openAbove: openAbove,
+          onTap: () => _onFriendTap(person),
+        ),
+      );
+    }
+
+    final friendHasPhoto = HomeMapCheckInMarker.hasDistinctCheckInPhoto(
+      photoPaths: person.checkIn?.photoPaths ?? const [],
+      avatarPath: person.avatarPath,
+    );
+    return Marker(
+      point: _friendPoint(person),
+      width: person.hasCheckIn
+          ? HomeMapCheckInMarker.widthFor(hasPhoto: friendHasPhoto)
+          : 96,
+      height: person.hasCheckIn ? HomeMapCheckInMarker.height : 100,
+      alignment: person.hasCheckIn ? Alignment.center : Alignment.topCenter,
+      child: KeyedSubtree(
+        key: ValueKey('near-${person.userId}'),
+        child: GestureDetector(
+          onTap: () => _onFriendTap(person),
+          behavior: HitTestBehavior.opaque,
+          child: person.hasCheckIn
+              ? HomeMapCheckInMarker.fromFriend(person)
+              : HomeMapMarker(friend: person),
+        ),
+      ),
+    );
+  }
+
   Marker _markerForPin(_MapPinItem pin, LatLng point) {
     if (pin.isSelf) {
       return Marker(
@@ -874,8 +1073,9 @@ final class _HomeMapSectionState extends State<HomeMapSection>
     }
 
     final friend = pin.friend!;
-    final friendHasPhoto = HomeMapCheckInMarker.hasPhotos(
-      friend.checkIn?.photoPaths ?? const [],
+    final friendHasPhoto = HomeMapCheckInMarker.hasDistinctCheckInPhoto(
+      photoPaths: friend.checkIn?.photoPaths ?? const [],
+      avatarPath: friend.avatarPath,
     );
     return Marker(
       point: point,
@@ -1136,7 +1336,7 @@ final class _HomeMapSectionState extends State<HomeMapSection>
           locationLabel: _cityLabel.isEmpty ? null : _cityLabel,
         );
       }));
-      unawaited(_loadNearbyAnons());
+      unawaited(_refreshPeopleAtCamera(force: true));
       _scheduleVenueRefresh(force: true);
     } catch (_) {
       if (mounted) {
@@ -1233,6 +1433,7 @@ final class _HomeMapSectionState extends State<HomeMapSection>
               _mapZoom = _mapController.camera.zoom;
               _moveCamera(_userLocation, _defaultZoom);
               _scheduleVenueRefresh(force: true);
+              _schedulePeopleRefresh();
             },
             onMapEvent: (event) {
               if (event is MapEventMoveEnd ||
@@ -1249,6 +1450,7 @@ final class _HomeMapSectionState extends State<HomeMapSection>
                   });
                 }
                 _scheduleVenueRefresh();
+                _schedulePeopleRefresh();
               }
             },
             onTap: (_, _) => _onMapBackgroundTap(),
@@ -1275,31 +1477,7 @@ final class _HomeMapSectionState extends State<HomeMapSection>
                   ..._buildFriendLayerMarkers(),
                 if (_selectedFilter == _MapFilter.nearby)
                   for (final person in _nearbyAnons)
-                    Marker(
-                      point: _friendPoint(person),
-                      width: person.hasCheckIn
-                          ? HomeMapCheckInMarker.widthFor(
-                              hasPhoto: HomeMapCheckInMarker.hasPhotos(
-                                person.checkIn?.photoPaths ?? const [],
-                              ),
-                            )
-                          : 96,
-                      height: person.hasCheckIn
-                          ? HomeMapCheckInMarker.height
-                          : 100,
-                      alignment: person.hasCheckIn
-                          ? Alignment.center
-                          : Alignment.topCenter,
-                      child: _animatedMarker(
-                        GestureDetector(
-                          onTap: () => _onFriendTap(person),
-                          behavior: HitTestBehavior.opaque,
-                          child: person.hasCheckIn
-                              ? HomeMapCheckInMarker.fromFriend(person)
-                              : HomeMapMarker(friend: person),
-                        ),
-                      ),
-                    ),
+                    _nearbyPersonMarker(person),
                 if (_selectedFilter == _MapFilter.venues)
                   ...(_shouldHideVenuesByZoom ? const <Marker>[] : _buildVenueMarkers()),
                 if (_selectedFilter != _MapFilter.friends)
@@ -1474,14 +1652,25 @@ final class _HomeMapSectionState extends State<HomeMapSection>
                           viewerLocation: _userLocation,
                           onClose: () => unawaited(_closeFriendSheet()),
                           onSend: (text) => unawaited(_sendFriendMessage(text)),
-                          onOpenProfile: () => unawaited(
-                            openUserProfile(
-                              context,
-                              _friendSheetFriend!.username.isNotEmpty
-                                  ? _friendSheetFriend!.username
-                                  : _friendSheetFriend!.name,
-                            ),
-                          ),
+                          onOpenProfile: () {
+                            final friend = _friendSheetFriend!;
+                            unawaited(
+                              openUserProfile(
+                                context,
+                                friend.username.isNotEmpty
+                                    ? friend.username
+                                    : friend.name,
+                                userId: friend.userId,
+                                seed: friend.isAnonymous
+                                    ? PublicUserProfile.skeleton(
+                                        username: 'user',
+                                        name: friend.name,
+                                        userId: friend.userId,
+                                      )
+                                    : null,
+                              ),
+                            );
+                          },
                         )
                       : HomeMapLastCheckInSheet(
                           checkIn: _lastCheckInSheet!,

@@ -14,6 +14,7 @@ import 'package:shimmer/shimmer.dart';
 import 'package:zovi/core/cache/chat_messages_cache.dart';
 import 'package:zovi/core/chat/active_chat_tracker.dart';
 import 'package:zovi/core/di/injection.dart';
+import 'package:zovi/core/in_app_notification/app_in_app_notification.dart';
 import 'package:zovi/core/snackbar/app_snackbar.dart';
 import 'package:zovi/core/theme/app_colors.dart';
 import 'package:zovi/core/utils/constants/asset_paths.dart';
@@ -65,6 +66,9 @@ final class _ChatDetailViewState extends State<ChatDetailView> {
   DateTime? _recordingSegmentStartedAt;
   Timer? _recordingTimer;
   Timer? _poll;
+  Timer? _typingPoll;
+  DateTime? _lastTypingPulseAt;
+  List<ChatTypingUser> _typers = const [];
   StreamSubscription<Amplitude>? _amplitudeSub;
   String? _recordingPath;
   final List<double> _waveLevels = List<double>.generate(28, (_) => 0.12);
@@ -86,6 +90,8 @@ final class _ChatDetailViewState extends State<ChatDetailView> {
   var _sending = false;
   var _requestActionBusy = false;
   _ChatMessage? _replyingTo;
+  String? _mentionQuery;
+  int? _mentionAtIndex;
 
   @override
   void initState() {
@@ -135,7 +141,9 @@ final class _ChatDetailViewState extends State<ChatDetailView> {
       _hydrateFromCache(cachedId);
       _fillMissingSenderMeta();
     }
-    _showShimmer = false;
+    // Cold open with known messages → shimmer until the first fetch paints.
+    // Cached threads skip shimmer so reopen stays instant.
+    _showShimmer = _messages.isEmpty && _likelyHasMessages();
     if (_messages.isNotEmpty) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
@@ -148,6 +156,8 @@ final class _ChatDetailViewState extends State<ChatDetailView> {
       conversationId: _conversationId,
       peerUserId: widget.args.isGroup ? null : _peerUserId,
     );
+    // Already in this thread — never keep a chat banner on screen.
+    unawaited(AppInAppNotification.instance.hide(immediate: true));
     if (widget.args.isGroup) {
       unawaited(_bootstrapGroup());
     } else {
@@ -156,6 +166,10 @@ final class _ChatDetailViewState extends State<ChatDetailView> {
     _poll = Timer.periodic(
       const Duration(seconds: 3),
       (_) => unawaited(_pullMessages(silent: true)),
+    );
+    _typingPoll = Timer.periodic(
+      const Duration(milliseconds: 1600),
+      (_) => unawaited(_pullTyping()),
     );
   }
 
@@ -246,7 +260,8 @@ final class _ChatDetailViewState extends State<ChatDetailView> {
     if (!widget.args.isGroup) return false;
     for (final message in _messages) {
       if (message.isMine) continue;
-      final hasLabel = (message.senderName?.trim().isNotEmpty ?? false) ||
+      final hasLabel =
+          (message.senderName?.trim().isNotEmpty ?? false) ||
           (message.senderUsername?.trim().isNotEmpty ?? false);
       if (!hasLabel) return true;
     }
@@ -258,6 +273,7 @@ final class _ChatDetailViewState extends State<ChatDetailView> {
     ActiveChatTracker.instance.leave(conversationId: _conversationId);
     _persistMessagesToCache();
     _poll?.cancel();
+    _typingPoll?.cancel();
     _recordingTimer?.cancel();
     unawaited(_amplitudeSub?.cancel());
     _controller
@@ -310,11 +326,14 @@ final class _ChatDetailViewState extends State<ChatDetailView> {
         conversationId: conversationId,
         peerUserId: _peerUserId,
       );
+      unawaited(AppInAppNotification.instance.hide(immediate: true));
 
       final hadCache = _hydrateFromCache(conversationId);
       if (hadCache && mounted && _messages.isNotEmpty) {
         setState(() {});
         _scrollToBottom();
+      } else if (_messages.isEmpty && _likelyHasMessages() && mounted) {
+        setState(() => _showShimmer = true);
       }
       await _pullMessages(silent: true);
       unawaited(_repo.markRead(conversationId));
@@ -353,22 +372,16 @@ final class _ChatDetailViewState extends State<ChatDetailView> {
         _applyGroupMetaFromTribe(detail);
       }
 
-      if ((conversationId == null || conversationId.isEmpty) &&
-          tribeId.isNotEmpty) {
+      // Always refresh so @mention has the full roster (cache can be stale /
+      // list-board rows without members).
+      if (tribeId.isNotEmpty) {
         detail = await tribes.refreshTribeDetail(tribeId);
         if (!mounted) return;
         final resolved = detail?.conversationId.trim() ?? '';
         if (resolved.isNotEmpty) conversationId = resolved;
-        if (detail != null && mounted) {
+        if (detail != null) {
           _applyGroupMetaFromTribe(detail);
         }
-      } else if (tribeId.isNotEmpty) {
-        unawaited(
-          tribes.refreshTribeDetail(tribeId).then((fresh) {
-            if (!mounted || fresh == null) return;
-            _applyGroupMetaFromTribe(fresh);
-          }),
-        );
       }
 
       if (conversationId == null || conversationId.isEmpty) {
@@ -377,12 +390,15 @@ final class _ChatDetailViewState extends State<ChatDetailView> {
       }
       _conversationId = conversationId;
       ActiveChatTracker.instance.enter(conversationId: conversationId);
+      unawaited(AppInAppNotification.instance.hide(immediate: true));
 
       final hadCache = _hydrateFromCache(conversationId);
       final cacheOk = hadCache && !_groupCacheMissingSenders();
       if (cacheOk && mounted && _messages.isNotEmpty) {
         setState(() {});
         _scrollToBottom();
+      } else if (_messages.isEmpty && _likelyHasMessages() && mounted) {
+        setState(() => _showShimmer = true);
       }
       await _pullMessages(silent: true);
       unawaited(_repo.markRead(conversationId));
@@ -402,6 +418,33 @@ final class _ChatDetailViewState extends State<ChatDetailView> {
     }
   }
 
+  /// True when this thread almost certainly has history (inbox preview / tribe /
+  /// known conversation id) but we have nothing painted yet.
+  bool _likelyHasMessages() {
+    if (_messages.isNotEmpty) return true;
+    final id = (_conversationId ?? '').trim();
+    // Already fetched once and stored empty — don't flash shimmer again.
+    if (id.isNotEmpty && _messagesCache.contains(id)) {
+      final cached = _messagesCache.peek(id);
+      return cached != null && cached.isNotEmpty;
+    }
+    if (id.isNotEmpty) {
+      for (final folder in ['inbox', 'request']) {
+        final list = _repo.peekConversations(folder: folder);
+        if (list == null) continue;
+        for (final c in list) {
+          if (c.id != id) continue;
+          return c.lastMessagePreview.trim().isNotEmpty ||
+              c.lastMessageAt != null;
+        }
+      }
+      // Conversation id known (e.g. tribe) but not in inbox cache yet.
+      return true;
+    }
+    // Brand-new DM (no conversation yet) → empty composer, no shimmer.
+    return false;
+  }
+
   /// Returns true when this thread was fetched before (even if empty).
   bool _hydrateFromCache(String conversationId) {
     final cached = _messagesCache.peek(conversationId);
@@ -418,7 +461,7 @@ final class _ChatDetailViewState extends State<ChatDetailView> {
     _listKey = GlobalKey<AnimatedListState>();
     _newestRemoteAt = _messagesCache.newestAt(conversationId);
     _updateNewestCursor(mapped);
-    _showShimmer = false;
+    if (_messages.isNotEmpty) _showShimmer = false;
     return true;
   }
 
@@ -475,7 +518,9 @@ final class _ChatDetailViewState extends State<ChatDetailView> {
                       ? apiUsername
                       : (memberName.isNotEmpty
                             ? memberName
-                            : (widget.args.isGroup ? null : widget.args.name)))),
+                            : (widget.args.isGroup
+                                  ? null
+                                  : widget.args.name)))),
       senderUsername: mine
           ? null
           : (apiUsername.isNotEmpty
@@ -661,7 +706,8 @@ final class _ChatDetailViewState extends State<ChatDetailView> {
             body: m.isVoice
                 ? '${m.voiceDuration?.inMilliseconds ?? 0}'
                 : (m.text ?? ''),
-            mediaUrl: m.storyReplyMediaUrl ??
+            mediaUrl:
+                m.storyReplyMediaUrl ??
                 m.stampPath ??
                 m.imagePath ??
                 m.voicePath ??
@@ -719,9 +765,9 @@ final class _ChatDetailViewState extends State<ChatDetailView> {
               isGroup: widget.args.isGroup,
               peerName: widget.args.name,
               peerUserId: _peerUserId ?? widget.args.userId,
-              myUserId: _myUserId ??
-                  getIt<AuthRepository>().backendUserId ??
-                  '',
+              myUserId:
+                  _myUserId ?? getIt<AuthRepository>().backendUserId ?? '',
+              mentionHandles: _mentionHandles,
             ),
           ),
         ),
@@ -748,8 +794,175 @@ final class _ChatDetailViewState extends State<ChatDetailView> {
 
   void _onTextChanged() {
     final next = _controller.text.trim().isNotEmpty;
-    if (next == _hasText) return;
-    setState(() => _hasText = next);
+    final mentionChanged = _syncMentionQuery(notify: false);
+    if (next != _hasText || mentionChanged) {
+      setState(() => _hasText = next);
+    }
+    if (next) {
+      unawaited(_pulseTyping());
+    }
+  }
+
+  /// Returns true when mention overlay state changed.
+  bool _syncMentionQuery({bool notify = true}) {
+    final text = _controller.text;
+    final cursor = _controller.selection.baseOffset;
+    String? nextQuery;
+    int? nextAt;
+
+    if (cursor >= 0 && cursor <= text.length) {
+      final before = text.substring(0, cursor);
+      final match = RegExp(r'(?:^|[\s])@([^\s@]*)$').firstMatch(before);
+      if (match != null) {
+        final atPos = match.start + (match.group(0)!.startsWith('@') ? 0 : 1);
+        nextAt = atPos;
+        nextQuery = match.group(1) ?? '';
+      }
+    }
+
+    final opened = nextQuery != null && _mentionQuery == null;
+    final changed = nextQuery != _mentionQuery || nextAt != _mentionAtIndex;
+    _mentionQuery = nextQuery;
+    _mentionAtIndex = nextAt;
+    if (opened) unawaited(_ensureMentionRoster());
+    if (changed && notify && mounted) setState(() {});
+    return changed;
+  }
+
+  Future<void> _ensureMentionRoster() async {
+    if (!widget.args.isGroup) return;
+    final tribeId = widget.args.tribeId.trim();
+    if (tribeId.isEmpty) return;
+    final expected = _memberCount > 0 ? _memberCount : 0;
+    // Self excluded from mention list → expect memberCount - 1.
+    if (expected > 0 && _tribeMembers.length >= expected) return;
+    if (_tribeMembers.length >= 12) return;
+    try {
+      final fresh = await getIt<TribeRepository>().refreshTribeDetail(tribeId);
+      if (!mounted || fresh == null) return;
+      _applyGroupMetaFromTribe(fresh);
+    } catch (_) {}
+  }
+
+  List<_MentionCandidate> get _mentionCandidates {
+    final q = (_mentionQuery ?? '').toLowerCase();
+    final typedHandles = <String>{
+      for (final m in RegExp(r'@([^\s@]+)').allMatches(_controller.text))
+        (m.group(1) ?? '').toLowerCase(),
+    };
+    // Current incomplete token shouldn't hide itself from the list.
+    final active = (_mentionQuery ?? '').toLowerCase();
+    if (active.isNotEmpty) typedHandles.remove(active);
+
+    final raw = <_MentionCandidate>[];
+    if (widget.args.isGroup) {
+      for (final m in _tribeMembers) {
+        if (m.isMe) continue;
+        final candidate = _MentionCandidate(
+          userId: m.userId,
+          name: m.name,
+          username: m.username,
+          avatarUrl: m.avatarUrl,
+        );
+        if (typedHandles.contains(candidate.handle.toLowerCase())) continue;
+        raw.add(candidate);
+      }
+    } else {
+      final peerId = (_peerUserId ?? widget.args.userId).trim();
+      if (peerId.isNotEmpty) {
+        raw.add(
+          _MentionCandidate(
+            userId: peerId,
+            name: widget.args.name,
+            username: widget.args.username,
+            avatarUrl: _avatarPath,
+          ),
+        );
+      }
+    }
+    if (q.isEmpty) return raw;
+    return [
+      for (final c in raw)
+        if (c.name.toLowerCase().contains(q) ||
+            c.username.toLowerCase().contains(q) ||
+            c.handle.toLowerCase().contains(q))
+          c,
+    ];
+  }
+
+  Set<String> get _mentionHandles {
+    final handles = <String>{};
+    void addHandle(String raw) {
+      final h = raw.trim().toLowerCase();
+      if (h.isNotEmpty) handles.add(h);
+    }
+
+    for (final m in _tribeMembers) {
+      addHandle(m.username);
+      final parts = m.name.trim().split(RegExp(r'\s+'));
+      if (parts.isNotEmpty) addHandle(parts.first);
+    }
+    if (!widget.args.isGroup) {
+      addHandle(widget.args.username);
+      final parts = widget.args.name.trim().split(RegExp(r'\s+'));
+      if (parts.isNotEmpty) addHandle(parts.first);
+    }
+    return handles;
+  }
+
+  void _insertMention(_MentionCandidate candidate) {
+    final text = _controller.text;
+    final cursor = _controller.selection.baseOffset;
+    final at = _mentionAtIndex;
+    if (at == null || cursor < at || cursor > text.length) return;
+
+    final handle = candidate.handle;
+    final before = text.substring(0, at);
+    final after = text.substring(cursor);
+    final insertion = '@$handle ';
+    final next = '$before$insertion$after';
+    final nextCursor = before.length + insertion.length;
+    _controller.value = TextEditingValue(
+      text: next,
+      selection: TextSelection.collapsed(offset: nextCursor),
+    );
+    setState(() {
+      _hasText = next.trim().isNotEmpty;
+      _mentionQuery = null;
+      _mentionAtIndex = null;
+    });
+    _focusNode.requestFocus();
+  }
+
+  Future<void> _pulseTyping() async {
+    final id = (_conversationId ?? '').trim();
+    if (id.isEmpty) return;
+    final now = DateTime.now();
+    final last = _lastTypingPulseAt;
+    if (last != null && now.difference(last) < const Duration(seconds: 2)) {
+      return;
+    }
+    _lastTypingPulseAt = now;
+    try {
+      await _repo.pulseTyping(id);
+    } catch (_) {}
+  }
+
+  Future<void> _pullTyping() async {
+    final id = (_conversationId ?? '').trim();
+    if (id.isEmpty || !mounted) return;
+    try {
+      final typers = await _repo.listTyping(id);
+      if (!mounted) return;
+      final same =
+          typers.length == _typers.length &&
+          [
+            for (var i = 0; i < typers.length; i++)
+              typers[i].userId == _typers[i].userId,
+          ].every((ok) => ok);
+      if (same) return;
+      setState(() => _typers = typers);
+    } catch (_) {}
   }
 
   void _scrollToBottom({bool forceJump = false}) {
@@ -804,15 +1017,10 @@ final class _ChatDetailViewState extends State<ChatDetailView> {
       for (final m in items)
         if ((m.id ?? '').isNotEmpty) m.id!: m,
     };
-    return [
-      for (final m in items) _withReplyMeta(m, byId),
-    ];
+    return [for (final m in items) _withReplyMeta(m, byId)];
   }
 
-  _ChatMessage _withReplyMeta(
-    _ChatMessage m,
-    Map<String, _ChatMessage> byId,
-  ) {
+  _ChatMessage _withReplyMeta(_ChatMessage m, Map<String, _ChatMessage> byId) {
     final original = byId[m.replyToId];
     if (original == null) return m;
     return m.copyWith(
@@ -944,8 +1152,9 @@ final class _ChatDetailViewState extends State<ChatDetailView> {
 
     final reply = _replyingTo;
     final replyPreview = reply == null ? null : _previewForReply(reply);
-    final replySenderName =
-        reply == null || reply.isMine ? null : reply.displayName;
+    final replySenderName = reply == null || reply.isMine
+        ? null
+        : reply.displayName;
     final optimistic = _ChatMessage(
       id: 'local-${DateTime.now().microsecondsSinceEpoch}',
       text: text,
@@ -961,6 +1170,8 @@ final class _ChatDetailViewState extends State<ChatDetailView> {
     setState(() {
       _hasText = false;
       _replyingTo = null;
+      _mentionQuery = null;
+      _mentionAtIndex = null;
     });
     _focusNode.requestFocus();
 
@@ -1467,9 +1678,11 @@ final class _ChatDetailViewState extends State<ChatDetailView> {
                                 isGroup: widget.args.isGroup,
                                 peerName: widget.args.name,
                                 peerUserId: _peerUserId ?? widget.args.userId,
-                                myUserId: _myUserId ??
+                                myUserId:
+                                    _myUserId ??
                                     getIt<AuthRepository>().backendUserId ??
                                     '',
+                                mentionHandles: _mentionHandles,
                               ),
                             ),
                           ),
@@ -1477,11 +1690,24 @@ final class _ChatDetailViewState extends State<ChatDetailView> {
                       },
                     ),
             ),
+            if (_typers.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 6),
+                child: _ChatTypingIndicator(typers: _typers),
+              ),
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
+                  if (_mentionQuery != null &&
+                      _mentionCandidates.isNotEmpty) ...[
+                    _MentionSuggestions(
+                      candidates: _mentionCandidates,
+                      onSelect: _insertMention,
+                    ),
+                    const SizedBox(height: 8),
+                  ],
                   if (_replyingTo != null) ...[
                     _ReplyComposerBar(
                       message: _replyingTo!,
@@ -1990,8 +2216,7 @@ final class _QuotedReplyBlock extends StatelessWidget {
     final textColor = isMineBubble
         ? AppColors.white.withValues(alpha: 0.85)
         : AppColors.textSecondary;
-    final resolvedStamp =
-        (stampPath?.trim().isNotEmpty ?? false)
+    final resolvedStamp = (stampPath?.trim().isNotEmpty ?? false)
         ? stampPath!.trim()
         : stampPathFromReplyPreview(preview);
     final hasStamp = resolvedStamp != null && resolvedStamp.isNotEmpty;
@@ -2350,6 +2575,7 @@ final class _MessageBubble extends StatelessWidget {
     this.peerName = '',
     this.peerUserId = '',
     this.myUserId = '',
+    this.mentionHandles = const {},
   });
 
   final _ChatMessage message;
@@ -2359,6 +2585,7 @@ final class _MessageBubble extends StatelessWidget {
   final String peerName;
   final String peerUserId;
   final String myUserId;
+  final Set<String> mentionHandles;
 
   String _quotedReplyLabel() {
     if (message.replyToIsMine == true) return 'chat_reply_you'.tr();
@@ -2390,9 +2617,7 @@ final class _MessageBubble extends StatelessWidget {
     if (storyId == null || storyId.isEmpty) return;
     final ownerId = message.isMine ? peerUserId.trim() : myUserId.trim();
     if (ownerId.isEmpty) return;
-    unawaited(
-      openStoryById(context, storyId: storyId, ownerUserId: ownerId),
-    );
+    unawaited(openStoryById(context, storyId: storyId, ownerUserId: ownerId));
   }
 
   Widget _wrapIncoming({required BuildContext context, required Widget child}) {
@@ -2592,8 +2817,13 @@ final class _MessageBubble extends StatelessWidget {
                   ),
                   const SizedBox(height: 8),
                 ],
-                Text(
-                  message.text!,
+                Text.rich(
+                  _mentionTextSpan(
+                    message.text!,
+                    baseColor: AppColors.white,
+                    mentionColor: AppColors.white,
+                    mentionWeight: FontWeight.w700,
+                  ),
                   style: const TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w400,
@@ -2648,8 +2878,13 @@ final class _MessageBubble extends StatelessWidget {
                   ),
                   const SizedBox(height: 8),
                 ],
-                Text(
-                  message.text!,
+                Text.rich(
+                  _mentionTextSpan(
+                    message.text!,
+                    baseColor: AppColors.deepRoast,
+                    mentionColor: AppColors.zoviOrange,
+                    mentionWeight: FontWeight.w700,
+                  ),
                   style: const TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w400,
@@ -2666,6 +2901,54 @@ final class _MessageBubble extends StatelessWidget {
     );
 
     return _wrapIncoming(context: context, child: bubble);
+  }
+
+  TextSpan _mentionTextSpan(
+    String text, {
+    required Color baseColor,
+    required Color mentionColor,
+    required FontWeight mentionWeight,
+  }) {
+    final pattern = RegExp(r'@([^\s@]+)');
+    final spans = <TextSpan>[];
+    var start = 0;
+    for (final match in pattern.allMatches(text)) {
+      if (match.start > start) {
+        spans.add(
+          TextSpan(
+            text: text.substring(start, match.start),
+            style: TextStyle(color: baseColor),
+          ),
+        );
+      }
+      final handle = match.group(1)?.toLowerCase() ?? '';
+      final isMention = mentionHandles.contains(handle);
+      spans.add(
+        TextSpan(
+          text: match.group(0),
+          style: TextStyle(
+            color: isMention ? mentionColor : baseColor,
+            fontWeight: isMention ? mentionWeight : FontWeight.w400,
+          ),
+        ),
+      );
+      start = match.end;
+    }
+    if (start < text.length) {
+      spans.add(
+        TextSpan(
+          text: text.substring(start),
+          style: TextStyle(color: baseColor),
+        ),
+      );
+    }
+    if (spans.isEmpty) {
+      return TextSpan(
+        text: text,
+        style: TextStyle(color: baseColor),
+      );
+    }
+    return TextSpan(children: spans);
   }
 }
 
@@ -2990,7 +3273,7 @@ final class _ChatInputBarState extends State<_ChatInputBar>
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 56,
+      height: 60,
       padding: const EdgeInsets.all(6),
       decoration: BoxDecoration(
         color: AppColors.chatBubbleIncoming,
@@ -3002,7 +3285,6 @@ final class _ChatInputBarState extends State<_ChatInputBar>
           final t = _t.value;
           final rightWidth =
               _accessoriesWidth + (_sendWidth - _accessoriesWidth) * t;
-
           return Row(
             children: [
               ClipRect(
@@ -3153,6 +3435,269 @@ final class _ChatCircleAction extends StatelessWidget {
       ),
       alignment: Alignment.center,
       child: AppIcon(icon, size: 24),
+    );
+  }
+}
+
+@immutable
+final class _ChatTypingIndicator extends StatelessWidget {
+  const _ChatTypingIndicator({required this.typers});
+
+  final List<ChatTypingUser> typers;
+
+  String _label() {
+    if (typers.isEmpty) return '';
+    if (typers.length == 1) {
+      return 'chat_typing_one'.tr(
+        namedArgs: {'name': typers.first.displayName},
+      );
+    }
+    if (typers.length == 2) {
+      return 'chat_typing_two'.tr(
+        namedArgs: {
+          'name1': typers[0].displayName,
+          'name2': typers[1].displayName,
+        },
+      );
+    }
+    return 'chat_typing_many'.tr(namedArgs: {'count': '${typers.length}'});
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final shown = typers.take(3).toList(growable: false);
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        SizedBox(
+          width: 36 + (shown.length > 1 ? (shown.length - 1) * 14.0 : 0),
+          height: 32,
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              for (var i = 0; i < shown.length; i++)
+                Positioned(
+                  left: i * 14.0,
+                  child: ProfileAvatar(path: shown[i].avatarUrl, size: 28),
+                ),
+            ],
+          ),
+        ),
+        const SizedBox(width: 8),
+        Flexible(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const _TypingDotsBubble(),
+              const SizedBox(height: 2),
+              Text(
+                _label(),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w500,
+                  color: AppColors.deepRoast.withValues(alpha: 0.45),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+@immutable
+final class _TypingDotsBubble extends StatefulWidget {
+  const _TypingDotsBubble();
+
+  @override
+  State<_TypingDotsBubble> createState() => _TypingDotsBubbleState();
+}
+
+final class _TypingDotsBubbleState extends State<_TypingDotsBubble>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1100),
+  )..repeat();
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: AppColors.deepRoast.withValues(alpha: 0.06),
+        borderRadius: const BorderRadius.only(
+          topLeft: Radius.circular(16),
+          topRight: Radius.circular(16),
+          bottomRight: Radius.circular(16),
+          bottomLeft: Radius.circular(4),
+        ),
+      ),
+      child: AnimatedBuilder(
+        animation: _controller,
+        builder: (context, _) {
+          return Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              for (var i = 0; i < 3; i++) ...[
+                if (i > 0) const SizedBox(width: 4),
+                _TypingDot(progress: _controller.value, index: i),
+              ],
+            ],
+          );
+        },
+      ),
+    );
+  }
+}
+
+@immutable
+final class _TypingDot extends StatelessWidget {
+  const _TypingDot({required this.progress, required this.index});
+
+  final double progress;
+  final int index;
+
+  @override
+  Widget build(BuildContext context) {
+    final phase = (progress + index * 0.18) % 1.0;
+    final t = phase < 0.5 ? phase * 2 : (1 - phase) * 2;
+    final scale = 0.7 + (t * 0.55);
+    final opacity = 0.35 + (t * 0.55);
+    return Transform.translate(
+      offset: Offset(0, -2.5 * t),
+      child: Transform.scale(
+        scale: scale,
+        child: Opacity(
+          opacity: opacity,
+          child: Container(
+            width: 7,
+            height: 7,
+            decoration: const BoxDecoration(
+              color: AppColors.deepRoast,
+              shape: BoxShape.circle,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+@immutable
+final class _MentionCandidate {
+  const _MentionCandidate({
+    required this.userId,
+    required this.name,
+    required this.username,
+    required this.avatarUrl,
+  });
+
+  final String userId;
+  final String name;
+  final String username;
+  final String avatarUrl;
+
+  /// Prefer username (no spaces); else first name token.
+  String get handle {
+    final u = username.trim();
+    if (u.isNotEmpty) return u;
+    final parts = name.trim().split(RegExp(r'\s+'));
+    return parts.isNotEmpty ? parts.first : 'user';
+  }
+
+  String get label {
+    final n = name.trim();
+    if (n.isNotEmpty) return n;
+    return username.trim().isNotEmpty ? username.trim() : handle;
+  }
+}
+
+@immutable
+final class _MentionSuggestions extends StatelessWidget {
+  const _MentionSuggestions({required this.candidates, required this.onSelect});
+
+  final List<_MentionCandidate> candidates;
+  final ValueChanged<_MentionCandidate> onSelect;
+
+  @override
+  Widget build(BuildContext context) {
+    final items = candidates;
+    return Material(
+      color: AppColors.white,
+      elevation: 6,
+      shadowColor: AppColors.black.withValues(alpha: 0.12),
+      borderRadius: BorderRadius.circular(16),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxHeight: 280),
+        child: ListView.separated(
+          shrinkWrap: true,
+          padding: const EdgeInsets.symmetric(vertical: 6),
+          itemCount: items.length,
+          separatorBuilder: (_, _) => Divider(
+            height: 1,
+            color: AppColors.borderGray.withValues(alpha: 0.7),
+          ),
+          itemBuilder: (context, index) {
+            final c = items[index];
+            return InkWell(
+              onTap: () => onSelect(c),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 10,
+                ),
+                child: Row(
+                  children: [
+                    ProfileAvatar(path: c.avatarUrl, size: 36),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            c.label,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.deepRoast,
+                            ),
+                          ),
+                          if (c.username.trim().isNotEmpty)
+                            Text(
+                              '@${c.username.trim()}',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w400,
+                                color: AppColors.deepRoast.withValues(
+                                  alpha: 0.5,
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        ),
+      ),
     );
   }
 }

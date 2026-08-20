@@ -1,5 +1,6 @@
 package com.flywork.zovi
 
-import io.flutter.embedding.android.FlutterActivity
+import io.flutter.embedding.android.FlutterFragmentActivity
 
-class MainActivity : FlutterActivity()
+/// RevenueCat paywalls require [FlutterFragmentActivity] on Android.
+class MainActivity : FlutterFragmentActivity()

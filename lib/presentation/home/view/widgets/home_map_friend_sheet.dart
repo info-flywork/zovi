@@ -164,16 +164,16 @@ final class _HomeMapFriendSheetState extends State<HomeMapFriendSheet> {
                                   showGradientRing: true,
                                   ringWidth: 3,
                                 ),
-                          Positioned(
-                            right: -2,
-                            bottom: -2,
-                            child: Image.asset(
-                              checkIn.stampImagePath,
-                              width: _stampSize,
-                              height: _stampSize,
-                              fit: BoxFit.contain,
+                          if (checkIn.stampImagePath.trim().isNotEmpty)
+                            Positioned(
+                              right: -2,
+                              bottom: -2,
+                              child: StampImage(
+                                path: checkIn.stampImagePath,
+                                width: _stampSize,
+                                height: _stampSize,
+                              ),
                             ),
-                          ),
                         ],
                       ),
                     )

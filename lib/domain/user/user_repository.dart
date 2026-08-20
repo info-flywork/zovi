@@ -626,6 +626,7 @@ final class MapFriend extends Equatable {
     this.locationLabel,
     this.etaMinutes,
     this.checkIn,
+    this.isAnonymous = false,
     this.x = 0,
     this.y = 0,
   });
@@ -653,7 +654,10 @@ final class MapFriend extends Equatable {
       ];
       final place = (map['placeName'] as String?)?.trim() ?? '';
       final title = (map['titleLabel'] as String?)?.trim();
-      final stampSlug = (map['stampSlug'] as String?)?.trim();
+      final stampSlug = (map['stampSlug'] as String?)?.trim() ?? '';
+      final stampUrl = (map['stampUrl'] as String?)?.trim() ??
+          (map['stampImageUrl'] as String?)?.trim() ??
+          '';
       final checkedAt = DateTime.tryParse(
         '${map['checkedAt'] ?? ''}',
       )?.toLocal();
@@ -666,9 +670,11 @@ final class MapFriend extends Equatable {
         checkIn = FriendMapCheckIn(
           placeName: place,
           photoPaths: photos,
-          stampImagePath: stampSlug == 'founder'
+          stampImagePath: stampUrl.isNotEmpty
+              ? stampUrl
+              : stampSlug == 'founder'
               ? AssetPaths.stamp16
-              : AssetPaths.stamp1,
+              : '',
           checkedAt: checkedAt,
           titleLabel: (title != null && title.isNotEmpty) ? title : null,
         );
@@ -688,7 +694,8 @@ final class MapFriend extends Equatable {
       etaMinutes: distance == null
           ? null
           : (distance / 80).round().clamp(1, 180),
-      checkIn: checkIn,
+      checkIn: isAnon ? null : checkIn,
+      isAnonymous: isAnon,
     );
   }
 
@@ -704,6 +711,7 @@ final class MapFriend extends Equatable {
   final String? locationLabel;
   final int? etaMinutes;
   final FriendMapCheckIn? checkIn;
+  final bool isAnonymous;
 
   /// Legacy relative offsets — unused when [lat]/[lng] are set.
   final double x;
@@ -739,6 +747,7 @@ final class MapFriend extends Equatable {
     String? locationLabel,
     int? etaMinutes,
     FriendMapCheckIn? checkIn,
+    bool? isAnonymous,
     bool clearCheckIn = false,
   }) {
     return MapFriend(
@@ -756,6 +765,7 @@ final class MapFriend extends Equatable {
       locationLabel: locationLabel ?? this.locationLabel,
       etaMinutes: etaMinutes ?? this.etaMinutes,
       checkIn: clearCheckIn ? null : (checkIn ?? this.checkIn),
+      isAnonymous: isAnonymous ?? this.isAnonymous,
     );
   }
 
@@ -775,6 +785,7 @@ final class MapFriend extends Equatable {
     locationLabel,
     etaMinutes,
     checkIn,
+    isAnonymous,
   ];
 }
 
@@ -1319,12 +1330,19 @@ final class UserRepository {
   var _myPulsesFetched = false;
   final _friendSectionsCache = <String, FriendProfileSections>{};
   List<Map<String, dynamic>>? _friendshipStreaksCache;
+  List<ProfileViewerUser>? _profileViewersCache;
+  DateTime? _profileViewersFetchedAt;
+  Future<List<ProfileViewerUser>>? _profileViewersInFlight;
+  static const _profileViewersTtl = Duration(minutes: 2);
 
   void _clearProfileSectionCaches() {
     _cachedMyPulses = const [];
     _myPulsesFetched = false;
     _friendSectionsCache.clear();
     _friendshipStreaksCache = null;
+    _profileViewersCache = null;
+    _profileViewersFetchedAt = null;
+    _profileViewersInFlight = null;
   }
 
   List<PulseItem> peekMyPulses() => _cachedMyPulses;
@@ -1574,12 +1592,72 @@ final class UserRepository {
   Future<void> revealProfileViewer(String viewerUserId) async {
     final result = await _authRepository.revealProfileViewer(viewerUserId);
     _applyCoinsBalance(result?['coinsBalance']);
+    final cached = _profileViewersCache;
+    if (cached != null) {
+      _profileViewersCache = [
+        for (final u in cached)
+          if (u.userId == viewerUserId) u.copyWith(revealed: true) else u,
+      ];
+    }
   }
 
   Future<int> revealAllProfileViewers() async {
     final result = await _authRepository.revealAllProfileViewers();
     _applyCoinsBalance(result?['coinsBalance']);
+    final cached = _profileViewersCache;
+    if (cached != null) {
+      _profileViewersCache = [
+        for (final u in cached) u.copyWith(revealed: true),
+      ];
+    }
     return (result?['revealedCount'] as num?)?.toInt() ?? 0;
+  }
+
+  List<ProfileViewerUser>? peekProfileViewers() {
+    final cached = _profileViewersCache;
+    if (cached == null) return null;
+    return List<ProfileViewerUser>.from(cached);
+  }
+
+  bool get isProfileViewersCacheFresh {
+    final at = _profileViewersFetchedAt;
+    final cached = _profileViewersCache;
+    if (at == null || cached == null) return false;
+    return DateTime.now().difference(at) < _profileViewersTtl;
+  }
+
+  Future<List<ProfileViewerUser>> fetchProfileViewers({
+    int limit = 200,
+    bool forceRefresh = false,
+  }) async {
+    if (!forceRefresh && isProfileViewersCacheFresh) {
+      return List<ProfileViewerUser>.from(_profileViewersCache!);
+    }
+
+    final inFlight = _profileViewersInFlight;
+    if (inFlight != null) return inFlight;
+
+    final future = () async {
+      final users = await _authRepository.fetchProfileViewers(limit: limit);
+      _profileViewersCache = users;
+      _profileViewersFetchedAt = DateTime.now();
+      return List<ProfileViewerUser>.from(users);
+    }();
+
+    _profileViewersInFlight = future;
+    try {
+      return await future;
+    } finally {
+      if (identical(_profileViewersInFlight, future)) {
+        _profileViewersInFlight = null;
+      }
+    }
+  }
+
+  void invalidateProfileViewersCache() {
+    _profileViewersCache = null;
+    _profileViewersFetchedAt = null;
+    _profileViewersInFlight = null;
   }
 
   void _applyCoinsBalance(Object? raw) {
@@ -1588,6 +1666,9 @@ final class UserRepository {
     _currentUser = _currentUser.copyWith(coins: coins);
     currentUserListenable.value = _currentUser;
   }
+
+  /// Public helper for billing / paywall flows.
+  void applyCoinsBalance(int coins) => _applyCoinsBalance(coins);
 
   Future<List<Map<String, dynamic>>> fetchFriendshipStreaks({
     int limit = 50,
@@ -1891,11 +1972,40 @@ final class UserRepository {
     return _publicProfileCache[key];
   }
 
+  PublicUserProfile? peekPublicUserProfileByUserId(String userId) {
+    final key = _profileKeyByUserId(userId);
+    if (key.isEmpty) return null;
+    return _publicProfileCache[key];
+  }
+
   Future<PublicUserProfile> getPublicUserProfile(String username) async {
     final handle = username.startsWith('@') ? username.substring(1) : username;
     final key = handle.toLowerCase().trim();
 
     final payload = await _authRepository.fetchPublicProfileByUsername(key);
+    return _publicProfileFromPayload(payload, cacheKey: key);
+  }
+
+  Future<PublicUserProfile> getPublicUserProfileByUserId(String userId) async {
+    final id = userId.trim();
+    if (id.isEmpty) {
+      throw StateError('User not found');
+    }
+    final payload = await _authRepository.fetchPublicProfileByUserId(id);
+    final profileRaw = payload['profile'];
+    final username = profileRaw is Map
+        ? ((profileRaw['username'] as String?)?.trim() ?? '')
+        : '';
+    final cacheKey = username.isNotEmpty
+        ? username.toLowerCase()
+        : _profileKeyByUserId(id);
+    return _publicProfileFromPayload(payload, cacheKey: cacheKey);
+  }
+
+  PublicUserProfile _publicProfileFromPayload(
+    Map<String, dynamic> payload, {
+    required String cacheKey,
+  }) {
     final profileRaw = payload['profile'];
     if (profileRaw is! Map) {
       throw StateError('User not found');
@@ -1916,7 +2026,10 @@ final class UserRepository {
       profile: Map<String, dynamic>.from(profileRaw),
       links: links,
     );
-    _publicProfileCache[key] = profile;
+    _publicProfileCache[cacheKey] = profile;
+    if (profile.userId.isNotEmpty) {
+      _publicProfileCache[_profileKeyByUserId(profile.userId)] = profile;
+    }
     return profile;
   }
 
@@ -2696,7 +2809,11 @@ final class UserRepository {
     _storyFeedFetchedAt = DateTime.now();
   }
 
-  Future<List<MapFriend>> getMapFriends({double? lat, double? lng}) async {
+  Future<List<MapFriend>> getMapFriends({
+    double? lat,
+    double? lng,
+    double radiusKm = 50,
+  }) async {
     try {
       var queryLat = lat;
       var queryLng = lng;
@@ -2714,6 +2831,8 @@ final class UserRepository {
         lat: queryLat,
         lng: queryLng,
         filter: 'friends',
+        radiusKm: radiusKm,
+        limit: 250,
       );
       final friends = [for (final item in raw) MapFriend.fromMapPresence(item)];
       mapFriendsListenable.value = friends;
@@ -2795,7 +2914,11 @@ final class UserRepository {
     return updatedFriend;
   }
 
-  Future<List<MapFriend>> getMapNearbyAnons({double? lat, double? lng}) async {
+  Future<List<MapFriend>> getMapNearbyAnons({
+    double? lat,
+    double? lng,
+    double radiusKm = 50,
+  }) async {
     try {
       var queryLat = lat;
       var queryLng = lng;
@@ -2810,6 +2933,8 @@ final class UserRepository {
         lat: queryLat,
         lng: queryLng,
         filter: 'anon',
+        radiusKm: radiusKm,
+        limit: 250,
       );
       return [for (final item in raw) MapFriend.fromMapPresence(item)];
     } catch (e) {
@@ -3142,6 +3267,12 @@ final class UserRepository {
     if (forUsername == null || forUsername.trim().isEmpty) return '';
     final value = forUsername.trim();
     return (value.startsWith('@') ? value.substring(1) : value).toLowerCase();
+  }
+
+  String _profileKeyByUserId(String? userId) {
+    final id = userId?.trim() ?? '';
+    if (id.isEmpty) return '';
+    return 'id:$id';
   }
 
   bool _isCurrentProfileRequest(String? forUsername) {

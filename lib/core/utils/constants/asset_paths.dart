@@ -55,6 +55,7 @@ abstract final class AssetPaths {
   static const String iconHeartCircleFilled = 'assets/icons/heart-circle.svg';
   static const String iconGoogle = 'assets/icons/google.svg';
   static const String iconApple = 'assets/icons/apple.svg';
+  static const String iconAppleWhite = 'assets/icons/white_apple.svg';
   static const String iconUser = 'assets/icons/user.svg';
   static const String iconAt = 'assets/icons/@.svg';
   static const String iconBirth = 'assets/icons/birth.svg';

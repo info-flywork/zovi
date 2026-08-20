@@ -5,6 +5,7 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shimmer/shimmer.dart';
+import 'package:zovi/core/billing/open_coin_paywall.dart';
 import 'package:zovi/core/di/injection.dart';
 import 'package:zovi/core/snackbar/app_snackbar.dart';
 import 'package:zovi/core/theme/app_colors.dart';
@@ -138,7 +139,10 @@ final class _TribeViewState extends State<TribeView> {
       buyCoinsLabelText: 'sticker_create_sheet_buy_coins'.tr(),
     );
     if (!mounted || action == null) return;
-    if (action == CreateStickerConfirmAction.buyCoins) return;
+    if (action == CreateStickerConfirmAction.buyCoins) {
+      await openZoviCoinPaywall(context);
+      return;
+    }
 
     final groupName = await showCreateGroupNameSheet(context);
     if (!mounted || groupName == null || groupName.trim().isEmpty) return;
@@ -718,7 +722,7 @@ final class _FeaturedTribeCarouselState extends State<_FeaturedTribeCarousel> {
     const gap = 10.0;
     final itemExtent = cardWidth + gap;
     return SizedBox(
-      height: 230,
+      height: 250,
       child: NotificationListener<ScrollNotification>(
         onNotification: (notification) {
           if (notification.metrics.axis != Axis.horizontal) return false;

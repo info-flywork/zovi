@@ -13,6 +13,8 @@ final class ProfilePulses extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final visiblePulses = pulses.where((pulse) => !pulse.isVideo).toList();
+
     if (isLoading) {
       return const Padding(
         padding: EdgeInsets.fromLTRB(16, 16, 16, 0),
@@ -20,7 +22,7 @@ final class ProfilePulses extends StatelessWidget {
       );
     }
 
-    if (pulses.isEmpty) {
+    if (visiblePulses.isEmpty) {
       return Padding(
         padding: const EdgeInsets.fromLTRB(16, 24, 16, 0),
         child: _EmptyTabState(
@@ -42,7 +44,7 @@ final class ProfilePulses extends StatelessWidget {
             spacing: spacing,
             runSpacing: spacing,
             children: [
-              for (final pulse in pulses)
+              for (final pulse in visiblePulses)
                 SizedBox(
                   width: itemWidth,
                   height: itemHeight,

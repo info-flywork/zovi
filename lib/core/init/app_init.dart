@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:firebase_core/firebase_core.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:zovi/core/billing/revenuecat_service.dart';
 import 'package:zovi/core/deep_link/deep_link_service.dart';
 import 'package:zovi/core/di/injection.dart';
 import 'package:zovi/core/network/dio_client.dart';
@@ -25,6 +26,23 @@ abstract final class AppInit {
     final push = getIt<PushNotificationService>();
     await push.start();
     getIt<AuthRepository>().attachPushService(push);
+
+    final billing = getIt<RevenueCatService>();
+    await billing.configure(
+      appUserId: getIt<AuthRepository>().backendUserId,
+    );
+    billing.attachConfirmPurchase(
+      ({
+        required String productId,
+        required String transactionId,
+        String? store,
+      }) => getIt<AuthRepository>().confirmIapPurchase(
+        productId: productId,
+        transactionId: transactionId,
+        store: store,
+      ),
+    );
+    getIt<AuthRepository>().attachBillingService(billing);
 
     final inbox = getIt<NotificationInboxWatcher>()..start();
     push.attachSeenSink(inbox.markSeen);

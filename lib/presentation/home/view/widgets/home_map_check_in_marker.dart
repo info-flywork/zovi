@@ -31,7 +31,7 @@ final class HomeMapCheckInMarker extends StatelessWidget {
   HomeMapCheckInMarker.fromFriend(MapFriend friend, {super.key})
     : avatarPath = friend.avatarPath,
       photoPaths = friend.checkIn?.photoPaths ?? const [],
-      stampImagePath = friend.checkIn?.stampImagePath ?? AssetPaths.stamp1,
+      stampImagePath = friend.checkIn?.stampImagePath ?? '',
       photoIndexListenable = getIt<UserRepository>()
           .friendCheckInPhotoIndexListenable(
             friend.userId.isNotEmpty ? friend.userId : friend.name,
@@ -57,13 +57,32 @@ final class HomeMapCheckInMarker extends StatelessWidget {
   static bool hasPhotos(List<String> paths) =>
       paths.any((path) => path.trim().isNotEmpty);
 
+  static bool hasDistinctCheckInPhoto({
+    required List<String> photoPaths,
+    required String avatarPath,
+  }) {
+    final photos = [
+      for (final path in photoPaths)
+        if (path.trim().isNotEmpty) path.trim(),
+    ];
+    if (photos.isEmpty) return false;
+    final avatar = avatarPath.trim();
+    if (avatar.isNotEmpty && photos.every((path) => path == avatar)) {
+      return false;
+    }
+    return true;
+  }
+
   static double widthFor({required bool hasPhoto}) =>
       hasPhoto ? avatarLeft + avatarSize + 8 : avatarSize + 8;
 
   static double get width => widthFor(hasPhoto: true);
   static double get height => avatarSize + 12;
 
-  bool get _hasPhoto => hasPhotos(photoPaths);
+  bool get _hasPhoto => HomeMapCheckInMarker.hasDistinctCheckInPhoto(
+    photoPaths: photoPaths,
+    avatarPath: avatarPath,
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -96,15 +115,16 @@ final class HomeMapCheckInMarker extends StatelessWidget {
               size: avatarSize,
             ),
           ),
-          Positioned(
-            left: avatarX + stampOffsetX,
-            top: stampOffsetY,
-            child: StampImage(
-              path: stampImagePath,
-              width: stampSize,
-              height: stampSize,
+          if (stampImagePath.trim().isNotEmpty)
+            Positioned(
+              left: avatarX + stampOffsetX,
+              top: stampOffsetY,
+              child: StampImage(
+                path: stampImagePath,
+                width: stampSize,
+                height: stampSize,
+              ),
             ),
-          ),
         ],
       ),
     );
@@ -150,7 +170,10 @@ final class HomeMapTitleMarker extends StatelessWidget {
   static double get width => widthFor(hasPhoto: true);
   static double get height => avatarSize + pillHeight - pillOverlap;
 
-  bool get _hasPhoto => HomeMapCheckInMarker.hasPhotos(photoPaths);
+  bool get _hasPhoto => HomeMapCheckInMarker.hasDistinctCheckInPhoto(
+    photoPaths: photoPaths,
+    avatarPath: avatarPath,
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -297,10 +320,13 @@ final class _CheckInCyclingPhotoState extends State<CheckInCyclingPhoto> {
   var _localIndex = 0;
   Timer? _timer;
 
-  List<String> get _paths => [
-        for (final path in widget.paths)
-          if (path.trim().isNotEmpty) path,
-      ];
+  List<String> get _paths {
+    final seen = <String>{};
+    return [
+      for (final path in widget.paths)
+        if (path.trim().isNotEmpty && seen.add(path.trim())) path.trim(),
+    ];
+  }
 
   bool get _usesSharedIndex => widget.indexListenable != null;
 
@@ -403,12 +429,17 @@ final class _CheckInCyclingPhotoState extends State<CheckInCyclingPhoto> {
               ]
             : null,
       ),
-      child: AnimatedSwitcher(
-        duration: const Duration(milliseconds: 450),
-        switchInCurve: Curves.easeOut,
-        switchOutCurve: Curves.easeIn,
-        child: SizedBox.expand(key: ValueKey(path), child: clipped),
-      ),
+      child: _paths.length < 2
+          ? SizedBox.expand(child: clipped)
+          : AnimatedSwitcher(
+              duration: const Duration(milliseconds: 450),
+              switchInCurve: Curves.easeOut,
+              switchOutCurve: Curves.easeIn,
+              child: SizedBox.expand(
+                key: ValueKey('$index|$path'),
+                child: clipped,
+              ),
+            ),
     );
   }
 }

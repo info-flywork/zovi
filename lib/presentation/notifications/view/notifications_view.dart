@@ -84,8 +84,7 @@ final class _NotificationItem {
       messageKey == 'chat_message_request' ||
       messageKey == 'notifications_chat_messages_batch';
 
-  bool get isChatBatch =>
-      isChatMessage && (count != null && count! >= 2);
+  bool get isChatBatch => isChatMessage && (count != null && count! >= 2);
 
   _NotificationItem copyWith({
     String? messageKey,
@@ -197,8 +196,7 @@ final class _NotificationsViewState extends State<NotificationsView> {
       // otherwise it would vanish instantly once the server stops sending it.
       for (var i = 0; i < _items.length; i++) {
         final item = _items[i];
-        if (_removing.contains(item.id) &&
-            !next.any((e) => e.id == item.id)) {
+        if (_removing.contains(item.id) && !next.any((e) => e.id == item.id)) {
           next.insert(i.clamp(0, next.length), item);
         }
       }
@@ -236,24 +234,26 @@ final class _NotificationsViewState extends State<NotificationsView> {
         payload['isGroup'] == true ||
         payload['isGroup'] == 'true' ||
         tribeId.isNotEmpty;
-    final isChat =
-        n.type == 'chat_message' || n.type == 'chat_request';
+    final isChat = n.type == 'chat_message' || n.type == 'chat_request';
     final isChatBatch = isChat && (n.aggCount ?? 0) >= 2;
 
     final messageKey = switch (n.type) {
       'follow_request' => 'notifications_follow_request',
       'started_following' => 'notifications_started_following',
       'follow_accepted' => 'notifications_follow_accepted',
-      'story_like' => (n.aggCount ?? 0) >= 2
-          ? 'notifications_people_liked_story'
-          : 'notifications_liked_story',
+      'story_like' =>
+        (n.aggCount ?? 0) >= 2
+            ? 'notifications_people_liked_story'
+            : 'notifications_liked_story',
       'check_in_tagged' => 'notifications_check_in_tagged',
-      'chat_message' => isChatBatch
-          ? 'notifications_chat_messages_batch'
-          : 'chat_message_received',
-      'chat_request' => isChatBatch
-          ? 'notifications_chat_messages_batch'
-          : 'chat_message_request',
+      'chat_message' =>
+        isChatBatch
+            ? 'notifications_chat_messages_batch'
+            : 'chat_message_received',
+      'chat_request' =>
+        isChatBatch
+            ? 'notifications_chat_messages_batch'
+            : 'chat_message_request',
       _ => n.bodyKey ?? 'notifications_started_following',
     };
     final isStoryLike =
@@ -270,8 +270,8 @@ final class _NotificationsViewState extends State<NotificationsView> {
       displayName: isAggStoryLike
           ? null
           : (isChatBatch && isGroupChat && groupName.isNotEmpty
-              ? groupName
-              : n.actorName),
+                ? groupName
+                : n.actorName),
       messageKey: messageKey,
       createdAt: n.createdAt,
       // Single like → actor avatar + heart badge; multi → red heart circle.
@@ -542,7 +542,10 @@ final class _NotificationsViewState extends State<NotificationsView> {
   void _onRowRemoved(String id) {
     if (!mounted) return;
     setState(() {
-      _items = [for (final e in _items) if (e.id != id) e];
+      _items = [
+        for (final e in _items)
+          if (e.id != id) e,
+      ];
       _removing.remove(id);
       _actionStates.remove(id);
     });
@@ -554,6 +557,7 @@ final class _NotificationsViewState extends State<NotificationsView> {
     return Scaffold(
       backgroundColor: AppColors.white,
       body: SafeArea(
+        bottom: false,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -674,9 +678,7 @@ final class _Section extends StatelessWidget {
             removing: removingIds.contains(items[i].id),
             onRemoved: () => onRowRemoved(items[i].id),
             child: Padding(
-              padding: EdgeInsets.only(
-                bottom: i == items.length - 1 ? 0 : 16,
-              ),
+              padding: EdgeInsets.only(bottom: i == items.length - 1 ? 0 : 16),
               child: ChatSwipeDeleteTile(
                 isOpen: openedSwipeId == items[i].id,
                 onOpenChanged: (open) => onOpenChanged(items[i].id, open),
@@ -811,7 +813,8 @@ final class _NotificationTile extends StatelessWidget {
                 width: 44,
                 height: 44,
                 fit: BoxFit.cover,
-                errorBuilder: (_, _, _) => const SizedBox(width: 44, height: 44),
+                errorBuilder: (_, _, _) =>
+                    const SizedBox(width: 44, height: 44),
               ),
             ),
           ),
@@ -896,16 +899,16 @@ final class _NotificationText extends StatelessWidget {
     // Aggregated likes / chat bursts: bold count line.
     if (item.count != null) {
       if (item.isChatBatch) {
-        final groupSuffix = item.isGroupChat &&
-                (item.displayName ?? '').trim().isNotEmpty
+        final groupSuffix =
+            item.isGroupChat && (item.displayName ?? '').trim().isNotEmpty
             ? 'notifications_chat_messages_batch_group_rest'.tr(
                 namedArgs: {'group': item.displayName!.trim()},
               )
             : (item.username.trim().isNotEmpty
-                ? ' — ${item.username.trim()}'
-                : (item.displayName ?? '').trim().isNotEmpty
-                    ? ' — ${item.displayName!.trim()}'
-                    : '');
+                  ? ' — ${item.username.trim()}'
+                  : (item.displayName ?? '').trim().isNotEmpty
+                  ? ' — ${item.displayName!.trim()}'
+                  : '');
         return Text.rich(
           TextSpan(
             children: [
@@ -998,7 +1001,7 @@ final class _ActionButton extends StatelessWidget {
           : onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         decoration: BoxDecoration(
           color: isPrimary
               ? AppColors.zoviOrange

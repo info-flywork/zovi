@@ -79,27 +79,31 @@ final class _ProfileCoinBalance extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text(
-          '$coins',
-          style: const TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.w700,
-            height: 1,
-            letterSpacing: -0.32,
-            color: AppColors.deepRoast,
+    return GestureDetector(
+      onTap: () => openZoviCoinPaywall(context),
+      behavior: HitTestBehavior.opaque,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            '$coins',
+            style: const TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w700,
+              height: 1,
+              letterSpacing: -0.32,
+              color: AppColors.deepRoast,
+            ),
           ),
-        ),
-        const SizedBox(width: 4),
-        Image.asset(
-          AssetPaths.zoviCoin,
-          width: 34,
-          height: 34,
-          fit: BoxFit.contain,
-        ),
-      ],
+          const SizedBox(width: 4),
+          Image.asset(
+            AssetPaths.zoviCoin,
+            width: 34,
+            height: 34,
+            fit: BoxFit.contain,
+          ),
+        ],
+      ),
     );
   }
 }

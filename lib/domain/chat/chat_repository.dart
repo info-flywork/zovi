@@ -429,6 +429,62 @@ final class ChatRepository {
           ChatGalleryMedia.fromJson(Map<String, dynamic>.from(item)),
     ];
   }
+
+  Future<void> pulseTyping(String conversationId) async {
+    final id = conversationId.trim();
+    if (id.isEmpty) return;
+    await _network.send<Map<String, dynamic>>(
+      path: '/chat/conversations/${Uri.encodeComponent(id)}/typing',
+      method: RequestType.post,
+      parserModel: (json) => json,
+    );
+  }
+
+  Future<List<ChatTypingUser>> listTyping(String conversationId) async {
+    final id = conversationId.trim();
+    if (id.isEmpty) return const [];
+    final result = await _network.send<Map<String, dynamic>>(
+      path: '/chat/conversations/${Uri.encodeComponent(id)}/typing',
+      method: RequestType.get,
+      parserModel: (json) => json,
+    );
+    final raw = result?['typers'];
+    if (raw is! List) return const [];
+    return [
+      for (final item in raw)
+        if (item is Map) ChatTypingUser.fromJson(Map<String, dynamic>.from(item)),
+    ];
+  }
+}
+
+@immutable
+final class ChatTypingUser {
+  const ChatTypingUser({
+    required this.userId,
+    required this.name,
+    required this.username,
+    required this.avatarUrl,
+  });
+
+  factory ChatTypingUser.fromJson(Map<String, dynamic> json) {
+    return ChatTypingUser(
+      userId: (json['userId'] as String?)?.trim() ?? '',
+      name: (json['name'] as String?)?.trim() ?? '',
+      username: (json['username'] as String?)?.trim() ?? '',
+      avatarUrl: (json['avatarUrl'] as String?)?.trim() ?? '',
+    );
+  }
+
+  final String userId;
+  final String name;
+  final String username;
+  final String avatarUrl;
+
+  String get displayName {
+    if (name.isNotEmpty) return name;
+    if (username.isNotEmpty) return username;
+    return 'user';
+  }
 }
 
 @immutable

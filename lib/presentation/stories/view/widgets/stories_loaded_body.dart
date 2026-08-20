@@ -103,7 +103,9 @@ final class _StoriesGridState extends State<_StoriesGrid> {
   Widget build(BuildContext context) {
     final cacheSide = GridThumbnailImage.cacheSideFor(context);
     return GridView.builder(
+      clipBehavior: Clip.hardEdge,
       padding: EdgeInsets.only(
+        top: 1,
         bottom: MainWrapper.navBarHeight + MediaQuery.paddingOf(context).bottom,
       ),
       physics: _peeking
@@ -119,18 +121,20 @@ final class _StoriesGridState extends State<_StoriesGrid> {
       ),
       itemBuilder: (context, index) {
         final item = widget.items[index];
-        return _StoryGridItem(
-          key: ValueKey(
-            item.storyId ??
-                '${item.isPulse ? 'p' : 's'}_${item.userId}_${item.imagePath}',
+        return ClipRect(
+          child: _StoryGridItem(
+            key: ValueKey(
+              item.storyId ??
+                  '${item.isPulse ? 'p' : 's'}_${item.userId}_${item.imagePath}',
+            ),
+            item: item,
+            cacheSide: cacheSide,
+            onTap: () => widget.onOpen(widget.items, index),
+            onPeekChanged: (peeking) {
+              if (_peeking == peeking) return;
+              setState(() => _peeking = peeking);
+            },
           ),
-          item: item,
-          cacheSide: cacheSide,
-          onTap: () => widget.onOpen(widget.items, index),
-          onPeekChanged: (peeking) {
-            if (_peeking == peeking) return;
-            setState(() => _peeking = peeking);
-          },
         );
       },
     );
@@ -220,9 +224,11 @@ final class _StoryGridItemState extends State<_StoryGridItem>
       onLongPressStart: (_) => _showPeek(),
       onLongPressEnd: (_) => _hidePeek(),
       onLongPressCancel: _hidePeek,
-      child: _StoryThumb(
-        item: widget.item,
-        cacheSide: widget.cacheSide,
+      child: SizedBox.expand(
+        child: _StoryThumb(
+          item: widget.item,
+          cacheSide: widget.cacheSide,
+        ),
       ),
     );
   }

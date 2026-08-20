@@ -62,6 +62,9 @@ final class ProfileAvatar extends StatelessWidget {
       child = Image.network(
         path,
         fit: BoxFit.cover,
+        cacheWidth: (size * 2).round().clamp(64, 256),
+        filterQuality: FilterQuality.low,
+        gaplessPlayback: true,
         errorBuilder: (_, _, _) => _placeholder,
       );
     } else if (_isFilePath) {

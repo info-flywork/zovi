@@ -8,6 +8,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
+import 'package:zovi/core/billing/revenuecat_service.dart';
 import 'package:zovi/core/cache/music_catalog_cache.dart';
 import 'package:zovi/core/cache/stamp_catalog_cache.dart';
 import 'package:zovi/core/cache/stamp_image_cache.dart';
@@ -292,6 +293,7 @@ final class AuthRepository {
     _phoneResendToken = null;
     _backendUserId = null;
     unawaited(_pushService?.logout() ?? Future<void>.value());
+    unawaited(_billingService?.logout() ?? Future<void>.value());
     clearSessionCaches();
   }
 
@@ -361,6 +363,7 @@ final class AuthRepository {
     // Every auth path lands here, so this is the one place that guarantees
     // the OneSignal external id matches the MySQL user.
     unawaited(_pushService?.login(result.userId) ?? Future<void>.value());
+    unawaited(_billingService?.login(result.userId) ?? Future<void>.value());
     return result;
   }
 
@@ -370,6 +373,14 @@ final class AuthRepository {
   // ignore: use_setters_to_change_properties
   void attachPushService(PushNotificationService service) {
     _pushService = service;
+  }
+
+  RevenueCatService? _billingService;
+
+  /// Injected after DI setup (same pattern as push).
+  // ignore: use_setters_to_change_properties
+  void attachBillingService(RevenueCatService service) {
+    _billingService = service;
   }
 
   String? _backendUserId;
@@ -401,6 +412,20 @@ final class AuthRepository {
     final handle = username.startsWith('@') ? username.substring(1) : username;
     final result = await _network.send<Map<String, dynamic>>(
       path: '/users/by-username/${Uri.encodeComponent(handle.trim())}',
+      method: RequestType.get,
+      parserModel: (json) => json,
+    );
+    if (result == null) {
+      throw StateError('Public profile fetch failed.');
+    }
+    return result;
+  }
+
+  /// Public profile lookup by user id (auth required).
+  Future<Map<String, dynamic>> fetchPublicProfileByUserId(String userId) async {
+    final id = userId.trim();
+    final result = await _network.send<Map<String, dynamic>>(
+      path: '/users/by-id/${Uri.encodeComponent(id)}',
       method: RequestType.get,
       parserModel: (json) => json,
     );
@@ -914,6 +939,26 @@ final class AuthRepository {
     );
   }
 
+  /// Credits Zovi coins for a RevenueCat / store consumable purchase.
+  /// Returns the updated balance (idempotent per [transactionId]).
+  Future<int?> confirmIapPurchase({
+    required String productId,
+    required String transactionId,
+    String? store,
+  }) async {
+    final result = await _network.send<Map<String, dynamic>>(
+      path: '/billing/purchases/confirm',
+      method: RequestType.post,
+      data: {
+        'productId': productId,
+        'transactionId': transactionId,
+        if (store != null && store.isNotEmpty) 'store': store,
+      },
+      parserModel: (json) => json,
+    );
+    return (result?['coinsBalance'] as num?)?.toInt();
+  }
+
   Future<PublishedStory> publishStory({
     required String imagePath,
     required String audience,
@@ -1055,6 +1100,7 @@ final class AuthRepository {
     required double lng,
     String filter = 'friends',
     double radiusKm = 50,
+    int limit = 80,
   }) async {
     final result = await _network.send<Map<String, dynamic>>(
       path: '/map/nearby',
@@ -1064,6 +1110,7 @@ final class AuthRepository {
         'lng': '$lng',
         'filter': filter,
         'radiusKm': '$radiusKm',
+        'limit': '$limit',
       },
       parserModel: (json) => json,
     );
