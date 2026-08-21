@@ -247,24 +247,27 @@ final class _StoryThumb extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final thumb = item.thumbnailPath?.trim() ?? '';
-    if (item.isVideo && thumb.isEmpty) {
+    final isVideo = item.isVideoMedia;
+    if (isVideo && (thumb.isEmpty || isVideoMediaPath(thumb))) {
       return VideoGridThumb(path: item.imagePath);
     }
 
     return Stack(
       fit: StackFit.expand,
       children: [
-        if (item.isNetworkImage)
+        if (item.isNetworkImage && !isVideoMediaPath(item.gridImagePath))
           GridThumbnailImage(
             url: item.gridImagePath,
             cacheSize: cacheSide,
           )
+        else if (isVideo)
+          VideoGridThumb(path: item.imagePath)
         else
           Image.asset(
             item.imagePath,
             fit: BoxFit.cover,
           ),
-        if (item.isReel || item.isVideo)
+        if (item.isReel || isVideo)
           const Positioned(
             top: 8,
             right: 8,

@@ -1,16 +1,22 @@
+import 'dart:async';
+
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:zovi/core/di/injection.dart';
+import 'package:zovi/core/locale/app_locale.dart';
 import 'package:zovi/core/push/push_notification_service.dart';
+import 'package:zovi/core/cache/chat_messages_cache.dart';
 import 'package:zovi/core/theme/app_colors.dart';
 import 'package:zovi/core/utils/constants/asset_paths.dart';
 import 'package:zovi/core/utils/enum/route_paths.dart';
 import 'package:zovi/core/utils/extensions/future_extensions.dart';
 import 'package:zovi/core/widgets/app_icon.dart';
 import 'package:zovi/domain/auth/auth_repository.dart';
+import 'package:zovi/domain/chat/chat_repository.dart';
+import 'package:zovi/domain/tribe/tribe_repository.dart';
 import 'package:zovi/domain/user/user_repository.dart';
 import 'package:zovi/presentation/profile/settings/view/widgets/account_privacy_sheet.dart';
 import 'package:zovi/presentation/profile/settings/view/widgets/blocked_users_sheet.dart';
@@ -134,7 +140,16 @@ final class _SettingsViewState extends State<SettingsView>
     );
     if (selected == null || !mounted) return;
     setState(() => _selectedLanguage = selected);
+    AppLocale.sync(selected.appLocale);
+    getIt<ChatRepository>().clearDmCache();
+    getIt<ChatMessagesCache>().clear();
+    getIt<TribeRepository>().clearDetailCache();
     await context.setLocale(selected.appLocale);
+    unawaited(
+      getIt<AuthRepository>().saveProfile(
+        preferredLanguage: selected.appLocale.languageCode,
+      ),
+    );
   }
 
   String get _privacyLabel {

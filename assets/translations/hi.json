@@ -797,5 +797,8 @@
   "billing_packages_unavailable": "टोकन पैक लोड नहीं हो सके। स्टोर प्रोडक्ट और RevenueCat offering जांचें।",
   "chat_typing_one": "{name} लिख रहे हैं",
   "chat_typing_two": "{name1} और {name2} लिख रहे हैं",
-  "chat_typing_many": "{count} लोग लिख रहे हैं"
+  "chat_typing_many": "{count} लोग लिख रहे हैं",
+  "link_delete_title": "यह लिंक हटाएँ?",
+  "link_delete_subtitle": "यह लिंक तुम्हारे प्रोफ़ाइल से हटा दिया जाएगा।",
+  "link_delete_confirm": "हटाएँ"
 }

@@ -797,5 +797,8 @@
   "billing_packages_unavailable": "无法加载代币礼包。请检查商店产品和 RevenueCat offering。",
   "chat_typing_one": "{name}正在输入",
   "chat_typing_two": "{name1}和{name2}正在输入",
-  "chat_typing_many": "{count}人正在输入"
+  "chat_typing_many": "{count}人正在输入",
+  "link_delete_title": "删除此链接？",
+  "link_delete_subtitle": "此链接将从你的个人资料中移除。",
+  "link_delete_confirm": "删除"
 }

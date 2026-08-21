@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/foundation.dart';
 import 'package:zovi/core/network/network_manager.dart';
 import 'package:zovi/core/utils/enum/request_type.dart';
@@ -11,6 +12,7 @@ final class ChatPeer {
     required this.avatarUrl,
     this.isGroup = false,
     this.tribeId = '',
+    this.nameKey = '',
     this.memberCount = 0,
   });
 
@@ -22,6 +24,7 @@ final class ChatPeer {
       avatarUrl: (json['avatarUrl'] as String?)?.trim() ?? '',
       isGroup: json['isGroup'] == true,
       tribeId: (json['tribeId'] as String?)?.trim() ?? '',
+      nameKey: (json['nameKey'] as String?)?.trim() ?? '',
       memberCount: (json['memberCount'] as num?)?.toInt() ?? 0,
     );
   }
@@ -32,7 +35,18 @@ final class ChatPeer {
   final String avatarUrl;
   final bool isGroup;
   final String tribeId;
+  final String nameKey;
   final int memberCount;
+
+  /// Localized tribe title when [nameKey] is set; otherwise API [name].
+  String get displayName {
+    final key = nameKey.trim();
+    if (key.isNotEmpty) {
+      final translated = key.tr();
+      if (translated != key) return translated;
+    }
+    return name.trim().isNotEmpty ? name.trim() : username.trim();
+  }
 }
 
 @immutable

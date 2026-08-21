@@ -797,5 +797,8 @@
   "billing_packages_unavailable": "토큰 팩을 불러오지 못했어요. 스토어 상품과 RevenueCat offering을 확인하세요.",
   "chat_typing_one": "{name} 님이 입력 중",
   "chat_typing_two": "{name1}님과 {name2}님이 입력 중",
-  "chat_typing_many": "{count}명이 입력 중"
+  "chat_typing_many": "{count}명이 입력 중",
+  "link_delete_title": "이 링크를 삭제할까요?",
+  "link_delete_subtitle": "이 링크가 프로필에서 제거돼.",
+  "link_delete_confirm": "삭제"
 }

@@ -39,7 +39,7 @@ ChatDetailRouteArgs chatDetailArgsFromNotification({
     tribeId: tid,
     conversationId: cid,
   );
-  final tribeName = tribe?.name.trim() ?? '';
+  final tribeName = tribe?.localizedName.trim() ?? '';
   final payloadName = groupName.trim();
   final name = tribeName.isNotEmpty
       ? tribeName
@@ -48,6 +48,7 @@ ChatDetailRouteArgs chatDetailArgsFromNotification({
 
   return ChatDetailRouteArgs(
     name: name.isNotEmpty ? name : 'tribe',
+    nameKey: tribe?.nameKey.trim() ?? '',
     username: name.isNotEmpty ? name : 'tribe',
     avatarPath: groupAvatar.isNotEmpty
         ? groupAvatar

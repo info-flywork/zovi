@@ -515,7 +515,10 @@ final class _CheckInCreateSheetState extends State<CheckInCreateSheet> {
           constraints: BoxConstraints(maxHeight: maxSheetHeight),
           child: Material(
             color: AppColors.white,
-            child: SafeArea(
+            child: GestureDetector(
+              onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
+              behavior: HitTestBehavior.opaque,
+              child: SafeArea(
               top: false,
               bottom: false,
               child: Column(
@@ -663,7 +666,15 @@ final class _CheckInCreateSheetState extends State<CheckInCreateSheet> {
                                     maxLines: null,
                                     expands: true,
                                     textAlignVertical: TextAlignVertical.top,
+                                    textInputAction: TextInputAction.done,
+                                    keyboardType: TextInputType.text,
                                     onChanged: (_) => setState(() {}),
+                                    onEditingComplete: () => FocusManager
+                                        .instance.primaryFocus
+                                        ?.unfocus(),
+                                    onSubmitted: (_) => FocusManager
+                                        .instance.primaryFocus
+                                        ?.unfocus(),
                                     style: const TextStyle(
                                       fontSize: 16,
                                       fontWeight: FontWeight.w500,
@@ -927,6 +938,7 @@ final class _CheckInCreateSheetState extends State<CheckInCreateSheet> {
                   ),
                 ],
               ),
+            ),
             ),
           ),
         ),

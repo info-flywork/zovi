@@ -8,6 +8,7 @@ import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:zovi/core/theme/app_colors.dart';
 import 'package:zovi/core/utils/constants/asset_paths.dart';
+import 'package:zovi/core/utils/media_kind.dart';
 import 'package:zovi/domain/auth/auth_repository.dart';
 
 // Domain keeps map marker positions as normalized x/y (-1..1).
@@ -512,6 +513,10 @@ final class StoryMediaItem extends Equatable {
   final bool isPulse;
   final bool isVideo;
 
+  /// True when flagged as video or the media URL is a video file.
+  bool get isVideoMedia =>
+      isVideo || isVideoMediaPath(imagePath);
+
   bool get isNetworkImage =>
       imagePath.startsWith('http://') || imagePath.startsWith('https://');
 
@@ -658,9 +663,7 @@ final class MapFriend extends Equatable {
       final stampUrl = (map['stampUrl'] as String?)?.trim() ??
           (map['stampImageUrl'] as String?)?.trim() ??
           '';
-      final checkedAt = DateTime.tryParse(
-        '${map['checkedAt'] ?? ''}',
-      )?.toLocal();
+      final checkedAt = _parseCheckInAt(map['checkedAt']);
       final isFresh =
           checkedAt == null ||
           DateTime.now().difference(checkedAt) <= const Duration(hours: 24);
@@ -853,9 +856,7 @@ final class CheckInItem extends Equatable {
   });
 
   factory CheckInItem.fromJson(Map<String, dynamic> json, {int index = 0}) {
-    final checkedAt = DateTime.tryParse(
-      '${json['checkedAt'] ?? ''}',
-    )?.toLocal();
+    final checkedAt = _parseCheckInAt(json['checkedAt']);
     final photos = json['photoUrls'];
     var imagePath = '';
     if (photos is List) {
@@ -918,6 +919,19 @@ String _formatCheckInWhen(DateTime at) {
   if (day == today) return 'Bugün · $time';
   if (day == today.subtract(const Duration(days: 1))) return 'Dün · $time';
   return '${day.day}.${day.month}.${day.year} · $time';
+}
+
+/// Server stores UTC; accept ISO with/without `Z` and MySQL datetime strings.
+DateTime? _parseCheckInAt(Object? raw) {
+  if (raw == null) return null;
+  final s = '$raw'.trim();
+  if (s.isEmpty) return null;
+  var normalized = s.contains('T') ? s : s.replaceFirst(' ', 'T');
+  final hasZone =
+      normalized.endsWith('Z') ||
+      RegExp(r'[+-]\d{2}:?\d{2}$').hasMatch(normalized);
+  if (!hasZone) normalized = '${normalized}Z';
+  return DateTime.tryParse(normalized)?.toLocal();
 }
 
 String _formatCheckInClock(DateTime at) {
@@ -1472,7 +1486,7 @@ final class UserRepository {
             avatarPath: avatar,
             caption: '',
             isReel: story.isVideo,
-            isVideo: story.isVideo,
+            isVideo: story.isVideo || isVideoMediaPath(story.mediaUrl),
             isVerified: false,
             storyId: story.id,
             userId: story.userId,
@@ -1498,7 +1512,7 @@ final class UserRepository {
     _cachedMyStoryItems = List<StoryMediaItem>.unmodifiable(items);
     for (final item in items) {
       final path = item.imagePath;
-      if (item.isVideo) continue;
+      if (item.isVideoMedia) continue;
       if (path.startsWith('http://') || path.startsWith('https://')) {
         NetworkImage(path).resolve(ImageConfiguration.empty);
       }
@@ -1710,9 +1724,7 @@ final class UserRepository {
       final stampSlug = (raw['stampSlug'] as String?)?.trim();
       final stampImageUrl = (raw['stampImageUrl'] as String?)?.trim();
       final title = (raw['titleLabel'] as String?)?.trim();
-      final checkedAt = DateTime.tryParse(
-        '${raw['checkedAt'] ?? ''}',
-      )?.toLocal();
+      final checkedAt = _parseCheckInAt(raw['checkedAt']);
       if (checkedAt != null &&
           DateTime.now().difference(checkedAt) > const Duration(hours: 24)) {
         if (_activeMapCheckIn != null) {
@@ -2542,6 +2554,51 @@ final class UserRepository {
     }
   }
 
+  /// Overlays the latest liked/viewed state from in-memory caches onto [items].
+  /// Callers often hold a snapshot from StoriesBloc that predates a like.
+  List<StoryMediaItem> hydrateStoryLikeState(List<StoryMediaItem> items) {
+    if (items.isEmpty) return items;
+    final byId = <String, StoryMediaItem>{};
+    void index(Iterable<StoryMediaItem> source) {
+      for (final item in source) {
+        final id = item.storyId?.trim() ?? '';
+        if (id.isEmpty) continue;
+        byId[id] = item;
+      }
+    }
+
+    index(_cachedExploreItems);
+    index(_cachedMyStoryItems);
+    for (final entry in _friendStoryItemsByUserId.values) {
+      index(entry);
+    }
+
+    if (byId.isEmpty) return items;
+
+    var changed = false;
+    final next = <StoryMediaItem>[];
+    for (final item in items) {
+      final id = item.storyId?.trim() ?? '';
+      final cached = id.isEmpty ? null : byId[id];
+      if (cached == null ||
+          (cached.likedByMe == item.likedByMe &&
+              cached.likeCount == item.likeCount &&
+              cached.isViewed == item.isViewed)) {
+        next.add(item);
+        continue;
+      }
+      changed = true;
+      next.add(
+        item.copyWith(
+          likedByMe: cached.likedByMe,
+          likeCount: cached.likeCount,
+          isViewed: cached.isViewed,
+        ),
+      );
+    }
+    return changed ? next : items;
+  }
+
   Future<List<StoryMediaItem>> getMyActiveStoryItems({
     bool forceRefresh = false,
   }) async {
@@ -2644,7 +2701,7 @@ final class UserRepository {
             avatarPath: story.authorAvatarUrl ?? '',
             caption: '',
             isReel: story.isVideo,
-            isVideo: story.isVideo,
+            isVideo: story.isVideo || isVideoMediaPath(story.mediaUrl),
             isVerified: false,
             storyId: story.id,
             userId: story.userId,
@@ -2768,8 +2825,8 @@ final class UserRepository {
       if (userId.isEmpty) userId = _sessionUserId ?? '';
     }
     final caption = (raw['caption'] as String?)?.trim() ?? '';
-    final isVideo = (raw['mediaType'] as String?)?.trim().toLowerCase() ==
-        'video';
+    final mediaType = (raw['mediaType'] as String?)?.trim() ?? '';
+    final isVideo = isVideoMedia(mediaType: mediaType, path: mediaUrl);
     final pulseId = (raw['id'] as String?)?.trim() ?? '';
     final thumbnailUrl = (raw['thumbnailUrl'] as String?)?.trim();
     return StoryMediaItem(

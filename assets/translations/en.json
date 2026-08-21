@@ -797,5 +797,8 @@
   "billing_packages_unavailable": "Token packs could not be loaded. Check App Store / Play products and RevenueCat offering.",
   "chat_typing_one": "{name} is typing",
   "chat_typing_two": "{name1} and {name2} are typing",
-  "chat_typing_many": "{count} people are typing"
+  "chat_typing_many": "{count} people are typing",
+  "link_delete_title": "Delete this link?",
+  "link_delete_subtitle": "This link will be removed from your profile.",
+  "link_delete_confirm": "Delete"
 }

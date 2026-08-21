@@ -1,11 +1,11 @@
 abstract final class StringConstants {
   static const String appName = 'zovi';
 
-  /// Live API. Local için:
-  /// `--dart-define=API_BASE_URL=http://127.0.0.1:3000`
+  /// Local API (iOS Simulator → 127.0.0.1). Canlı için:
+  /// `--dart-define=API_BASE_URL=https://zovi.fly-work.com`
   static const String baseUrl = String.fromEnvironment(
     'API_BASE_URL',
-    defaultValue: 'https://zovi.fly-work.com',
+    defaultValue: 'http://127.0.0.1:3056',
   );
 
   static const String termsUrl = 'https://fly-work.com/zovi/terms/';

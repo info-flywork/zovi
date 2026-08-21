@@ -92,11 +92,7 @@ final class _UserProfileViewState extends State<UserProfileView>
     final repo = getIt<UserRepository>();
     final username = _user.usernameHandle;
     final userId = _user.userId.trim();
-    final fetchByUserId = userId.isNotEmpty &&
-        (username.isEmpty ||
-            username.toLowerCase() == 'anonim' ||
-            username.toLowerCase() == 'anonymous' ||
-            username.toLowerCase() == 'user');
+    final fetchByUserId = userId.isNotEmpty;
 
     // Cached/hydrated seed — load friend sections immediately in parallel.
     if (_user.isHydrated && _user.canSeeFriendContent) {

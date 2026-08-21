@@ -34,11 +34,8 @@ Future<void> openUserProfile(
   final seedId = seed?.userId.trim() ?? resolvedUserId;
   if (myId.isNotEmpty && seedId.isNotEmpty && myId == seedId) return;
 
-  final lookupById = resolvedUserId.isNotEmpty &&
-      (handle.isEmpty ||
-          handle.toLowerCase() == 'anonim' ||
-          handle.toLowerCase() == 'anonymous' ||
-          handle.toLowerCase() == 'user');
+  // Prefer by-id when available — long mock usernames truncate on lookup.
+  final lookupById = resolvedUserId.isNotEmpty;
 
   final peeked = lookupById
       ? repo.peekPublicUserProfileByUserId(resolvedUserId)

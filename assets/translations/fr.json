@@ -797,5 +797,8 @@
   "billing_packages_unavailable": "Impossible de charger les packs de jetons. Vérifie les produits Store et l’offering RevenueCat.",
   "chat_typing_one": "{name} écrit",
   "chat_typing_two": "{name1} et {name2} écrivent",
-  "chat_typing_many": "{count} personnes écrivent"
+  "chat_typing_many": "{count} personnes écrivent",
+  "link_delete_title": "Supprimer ce lien ?",
+  "link_delete_subtitle": "Ce lien sera retiré de ton profil.",
+  "link_delete_confirm": "Supprimer"
 }

@@ -98,7 +98,18 @@ final class SplashBloc extends Bloc<SplashEvent, SplashState> {
         );
         return;
       } catch (_) {
-        _userRepository.clearSessionCache();
+        // Ağ / sync hatası oturumu düşürmesin — onboarding bitmişse home'a git.
+        if (await _authRepository.isOnboardingDone()) {
+          try {
+            await _userRepository.warmHomeBootstrap();
+          } catch (_) {}
+          await _navigateWithMinimumSplash(
+            emit,
+            startedAt,
+            RoutePaths.home.path,
+          );
+          return;
+        }
         await _navigateWithMinimumSplash(
           emit,
           startedAt,

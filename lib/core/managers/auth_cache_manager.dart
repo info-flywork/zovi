@@ -5,6 +5,7 @@ final class AuthCacheManager {
 
   final FlutterSecureStorage _storage;
 
+  /// Sliding app session. Each successful auth / resume extends this window.
   static const sessionTtl = Duration(days: 7);
   static const _accessTokenKey = 'access_token';
   static const _sessionExpiresAtKey = 'session_expires_at_ms';
@@ -23,12 +24,20 @@ final class AuthCacheManager {
     await _storage.write(key: _sessionExpiresAtKey, value: '$expiresAt');
   }
 
+  /// `true` only when an explicit expiry timestamp exists and is in the past.
+  /// Missing key = treat as still valid so we don't force logout before
+  /// [touchSession] writes a fresh window.
   Future<bool> isSessionExpired() async {
     final raw = await _storage.read(key: _sessionExpiresAtKey);
     if (raw == null || raw.isEmpty) return false;
     final expiresAt = int.tryParse(raw);
     if (expiresAt == null) return false;
     return DateTime.now().millisecondsSinceEpoch >= expiresAt;
+  }
+
+  Future<bool> hasCachedAccessToken() async {
+    final token = await getAccessToken();
+    return token != null && token.isNotEmpty;
   }
 
   Future<void> clearAll() async {

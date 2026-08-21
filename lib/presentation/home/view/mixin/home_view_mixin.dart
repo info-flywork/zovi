@@ -27,7 +27,10 @@ mixin HomeViewMixin on State<HomeView> {
       }
       await context.push(
         RoutePaths.storyDetail.path,
-        extra: StoryDetailRouteArgs(items: items, initialIndex: 0),
+        extra: StoryDetailRouteArgs(
+          items: repo.hydrateStoryLikeState(items),
+          initialIndex: 0,
+        ),
       );
       if (!mounted) return;
       context.read<HomeBloc>().add(const HomeStoriesRefreshRequested());
@@ -39,7 +42,10 @@ mixin HomeViewMixin on State<HomeView> {
 
     await context.push(
       RoutePaths.storyDetail.path,
-      extra: StoryDetailRouteArgs(items: items, initialIndex: 0),
+      extra: StoryDetailRouteArgs(
+        items: getIt<UserRepository>().hydrateStoryLikeState(items),
+        initialIndex: 0,
+      ),
     );
     if (!mounted) return;
     context.read<HomeBloc>().add(const HomeStoriesRefreshRequested());

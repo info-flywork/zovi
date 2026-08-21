@@ -29,6 +29,7 @@ import 'package:zovi/presentation/profile/connections/model/profile_connections_
 import 'package:zovi/presentation/profile/edit/model/edit_profile_route_args.dart';
 import 'package:zovi/presentation/profile/view/widgets/profile_share_sheet.dart';
 import 'package:zovi/presentation/profile/view/widgets/profile_links_sheet.dart';
+import 'package:zovi/presentation/stories/model/story_detail_route_args.dart';
 
 part 'mixin/profile_view_mixin.dart';
 part 'widgets/profile_checkins.dart';

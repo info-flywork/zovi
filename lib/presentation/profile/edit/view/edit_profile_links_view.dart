@@ -7,6 +7,7 @@ import 'package:zovi/core/theme/app_colors.dart';
 import 'package:zovi/core/utils/constants/asset_paths.dart';
 import 'package:zovi/core/utils/enum/route_paths.dart';
 import 'package:zovi/core/utils/extensions/future_extensions.dart';
+import 'package:zovi/core/widgets/app_confirm_dialog.dart';
 import 'package:zovi/core/widgets/app_icon.dart';
 import 'package:zovi/domain/user/user_repository.dart';
 
@@ -41,6 +42,18 @@ final class _EditProfileLinksViewState extends State<EditProfileLinksView> {
       context,
       'link_added_snackbar'.tr(),
     );
+  }
+
+  Future<void> _removeLink(int index) async {
+    if (index < 0 || index >= _links.length) return;
+    final confirmed = await showAppConfirmDialog(
+      context,
+      title: 'link_delete_title'.tr(),
+      subtitle: 'link_delete_subtitle'.tr(),
+      confirmLabel: 'link_delete_confirm'.tr(),
+    );
+    if (!confirmed || !mounted) return;
+    setState(() => _links = [..._links]..removeAt(index));
   }
 
   Future<void> _onDone() async {
@@ -89,7 +102,11 @@ final class _EditProfileLinksViewState extends State<EditProfileLinksView> {
                 physics: const ClampingScrollPhysics(),
                 children: [
                   _AddLinkRow(onTap: _addLink),
-                  ..._links.map(_LinkItemRow.new),
+                  for (var i = 0; i < _links.length; i++)
+                    _LinkItemRow(
+                      link: _links[i],
+                      onDelete: () => _removeLink(i),
+                    ),
                   Padding(
                     padding: const EdgeInsets.fromLTRB(0, 16, 24, 24),
                     child: Text(
@@ -209,9 +226,10 @@ final class _AddLinkRow extends StatelessWidget {
 
 @immutable
 final class _LinkItemRow extends StatelessWidget {
-  const _LinkItemRow(this.link);
+  const _LinkItemRow({required this.link, required this.onDelete});
 
   final ProfileLink link;
+  final VoidCallback onDelete;
 
   @override
   Widget build(BuildContext context) {
@@ -251,6 +269,19 @@ final class _LinkItemRow extends StatelessWidget {
                   ),
                 ),
               ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          GestureDetector(
+            onTap: onDelete,
+            behavior: HitTestBehavior.opaque,
+            child: const Padding(
+              padding: EdgeInsets.all(4),
+              child: AppIcon(
+                AssetPaths.iconTrash,
+                size: 22,
+                color: AppColors.textSecondary,
+              ),
             ),
           ),
         ],

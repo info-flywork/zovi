@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:dio/dio.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:zovi/core/locale/app_locale.dart';
 import 'package:zovi/core/managers/auth_cache_manager.dart';
 import 'package:zovi/core/utils/constants/string_constants.dart';
 
@@ -65,6 +66,7 @@ abstract final class DioClient {
               options.headers['Authorization'] = 'Bearer $token';
             }
           }
+          options.headers['Accept-Language'] = AppLocale.languageCode;
           handler.next(options);
         },
         onError: (error, handler) async {

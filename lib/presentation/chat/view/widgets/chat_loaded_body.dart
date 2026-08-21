@@ -12,13 +12,14 @@ final class _ChatPreview {
     required this.isUnread,
     required this.isGroup,
     required this.tribeId,
+    this.nameKey = '',
     this.memberCount = 0,
   });
 
   factory _ChatPreview.fromConversation(ChatConversation c) {
-    final name = c.peer.name.trim().isNotEmpty
-        ? c.peer.name.trim()
-        : (c.peer.username.trim().isNotEmpty ? c.peer.username : 'user');
+    var name = c.peer.displayName;
+    if (name.isEmpty) name = 'user';
+    var nameKey = c.peer.nameKey.trim();
     var avatarPath = c.peer.avatarUrl.trim();
     var memberCount = c.peer.memberCount;
     if (c.peer.isGroup && c.peer.tribeId.isNotEmpty) {
@@ -27,6 +28,14 @@ final class _ChatPreview {
         conversationId: c.id,
       );
       if (tribe != null) {
+        if (nameKey.isEmpty && tribe.nameKey.trim().isNotEmpty) {
+          nameKey = tribe.nameKey.trim();
+        }
+        if (nameKey.isNotEmpty) {
+          name = tribe.localizedName;
+        } else if (tribe.localizedName.trim().isNotEmpty) {
+          name = tribe.localizedName.trim();
+        }
         if (avatarPath.isEmpty && tribe.photoUrl.isEmpty) {
           avatarPath = tribe.displayAvatarPath;
         } else if (tribe.photoUrl.isNotEmpty) {
@@ -44,6 +53,7 @@ final class _ChatPreview {
       conversationId: c.id,
       userId: c.peer.userId,
       name: name,
+      nameKey: nameKey,
       username: c.peer.username,
       avatarPath: avatarPath,
       preview: c.lastMessagePreview,
@@ -57,6 +67,7 @@ final class _ChatPreview {
   final String conversationId;
   final String userId;
   final String name;
+  final String nameKey;
   final String username;
   final String avatarPath;
   final String preview;
@@ -65,11 +76,21 @@ final class _ChatPreview {
   final String tribeId;
   final int memberCount;
 
+  String get displayName {
+    final key = nameKey.trim();
+    if (key.isNotEmpty) {
+      final translated = key.tr();
+      if (translated != key) return translated;
+    }
+    return name;
+  }
+
   _ChatPreview copyWith({bool? isUnread, String? preview}) {
     return _ChatPreview(
       conversationId: conversationId,
       userId: userId,
       name: name,
+      nameKey: nameKey,
       username: username,
       avatarPath: avatarPath,
       preview: preview ?? this.preview,
@@ -108,12 +129,33 @@ final class _ChatLoadedBodyState extends State<ChatLoadedBody>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    AppLocale.listenable.addListener(_onLocaleChanged);
     _hydrateFromCache();
     unawaited(_refresh(silent: true));
     _poll = Timer.periodic(
       _pollInterval,
       (_) => unawaited(_refresh(silent: true)),
     );
+  }
+
+  void _onLocaleChanged() {
+    // Group titles use nameKey.tr() — rebuild immediately.
+    setState(() {
+      _chats
+        ..clear()
+        ..addAll(
+          (_repo.peekConversations(folder: 'inbox') ?? const []).map(
+            _ChatPreview.fromConversation,
+          ),
+        );
+      _visibleChats = _filter(_query);
+      _listKey = GlobalKey<AnimatedListState>();
+    });
+    // Mock peer / sender names come from API — drop stale locale caches.
+    _repo.clearDmCache();
+    getIt<ChatMessagesCache>().clear();
+    getIt<TribeRepository>().clearDetailCache();
+    unawaited(_refresh(silent: true));
   }
 
   void _hydrateFromCache() {
@@ -148,6 +190,7 @@ final class _ChatLoadedBodyState extends State<ChatLoadedBody>
   @override
   void dispose() {
     _poll?.cancel();
+    AppLocale.listenable.removeListener(_onLocaleChanged);
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
@@ -200,7 +243,7 @@ final class _ChatLoadedBodyState extends State<ChatLoadedBody>
     return _chats
         .where(
           (c) =>
-              c.name.toLowerCase().contains(q) ||
+              c.displayName.toLowerCase().contains(q) ||
               c.username.toLowerCase().contains(q),
         )
         .toList();
@@ -223,7 +266,8 @@ final class _ChatLoadedBodyState extends State<ChatLoadedBody>
     await context.push(
       RoutePaths.chatDetail.path,
       extra: ChatDetailRouteArgs(
-        name: chat.name,
+        name: chat.displayName,
+        nameKey: chat.nameKey,
         username: chat.username,
         avatarPath: chat.avatarPath,
         userId: chat.userId,
@@ -506,7 +550,7 @@ final class _ChatTile extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  chat.name,
+                  chat.displayName,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(

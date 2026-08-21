@@ -797,5 +797,8 @@
   "billing_packages_unavailable": "Не удалось загрузить пакеты токенов. Проверь продукты магазина и offering RevenueCat.",
   "chat_typing_one": "{name} печатает",
   "chat_typing_two": "{name1} и {name2} печатают",
-  "chat_typing_many": "{count} человек печатают"
+  "chat_typing_many": "{count} человек печатают",
+  "link_delete_title": "Удалить ссылку?",
+  "link_delete_subtitle": "Эта ссылка будет удалена из профиля.",
+  "link_delete_confirm": "Удалить"
 }

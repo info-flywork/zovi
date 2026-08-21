@@ -797,5 +797,8 @@
   "billing_packages_unavailable": "Token-Pakete konnten nicht geladen werden. Prüfe Store-Produkte und RevenueCat Offering.",
   "chat_typing_one": "{name} schreibt",
   "chat_typing_two": "{name1} und {name2} schreiben",
-  "chat_typing_many": "{count} Personen schreiben"
+  "chat_typing_many": "{count} Personen schreiben",
+  "link_delete_title": "Link löschen?",
+  "link_delete_subtitle": "Dieser Link wird von deinem Profil entfernt.",
+  "link_delete_confirm": "Löschen"
 }

@@ -57,7 +57,10 @@ final class StoriesBloc extends Bloc<StoriesEvent, StoriesState> {
     for (var i = 0; i < a.length; i++) {
       if (a[i].storyId != b[i].storyId ||
           a[i].imagePath != b[i].imagePath ||
-          a[i].isVideo != b[i].isVideo) {
+          a[i].isVideo != b[i].isVideo ||
+          a[i].likedByMe != b[i].likedByMe ||
+          a[i].likeCount != b[i].likeCount ||
+          a[i].isViewed != b[i].isViewed) {
         return false;
       }
     }

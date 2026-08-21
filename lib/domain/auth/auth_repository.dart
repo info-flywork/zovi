@@ -107,11 +107,10 @@ final class AuthRepository {
 
   Future<bool> isAuthenticated() async {
     if (await _authCache.isSessionExpired()) return false;
-    // currentUser varsa token'ı burada zorlamaya gerek yok — splash / sync
-    // zaten soft getIdToken ile kaydeder. Çift Firebase round-trip'i önler.
-    if (_firebaseAuth.currentUser != null) return true;
-    final cached = await _authCache.getAccessToken();
-    return cached != null && cached.isNotEmpty;
+    // Cold start: Firebase may restore currentUser a beat after init.
+    final user = await _waitForFirebaseUser();
+    if (user != null) return true;
+    return _authCache.hasCachedAccessToken();
   }
 
   /// Firebase UID of the signed-in user — used to scope local drafts.
@@ -237,6 +236,8 @@ final class AuthRepository {
     await _ensureAccessToken(forceRefresh: false);
 
     if (await isOnboardingDone()) {
+      // Sliding window: her başarılı cold-start oturumu 7 günü baştan sayar.
+      await _authCache.touchSession();
       unawaited(_syncBackendUser().then<void>((_) {}, onError: (_) {}));
       return AuthSession(
         nextStep: 'home',
@@ -311,36 +312,72 @@ final class AuthRepository {
   }
 
   Future<void> _ensureAccessToken({required bool forceRefresh}) async {
-    final token = await _firebaseAuth.currentUser?.getIdToken(forceRefresh);
-    if (token == null || token.isEmpty) {
-      throw const SessionExpiredException();
+    final user = await _waitForFirebaseUser();
+    if (user != null) {
+      try {
+        final token = await user.getIdToken(forceRefresh);
+        if (token != null && token.isNotEmpty) {
+          await _authCache.saveAccessToken(token);
+          await _authCache.touchSession();
+          return;
+        }
+      } catch (_) {
+        // Fall through to cached token if the sliding session is still valid.
+      }
     }
-    await _authCache.saveAccessToken(token);
-    await _authCache.touchSession();
+
+    final cached = await _authCache.getAccessToken();
+    if (cached != null &&
+        cached.isNotEmpty &&
+        !await _authCache.isSessionExpired()) {
+      await _authCache.touchSession();
+      return;
+    }
+
+    throw const SessionExpiredException();
   }
 
   /// Foreground'a dönüş: 7 günlük pencere dolmadıysa yeniler, dolduysa logout.
   /// `true` = oturum duruyor (veya zaten login yok). `false` = login'e at.
   Future<bool> renewSessionOnResume() async {
-    final hasFirebase = _firebaseAuth.currentUser != null;
-    final cached = await _authCache.getAccessToken();
-    final hasToken = cached != null && cached.isNotEmpty;
-    if (!hasFirebase && !hasToken) return true;
+    final user = await _waitForFirebaseUser();
+    final hasToken = await _authCache.hasCachedAccessToken();
+    if (user == null && !hasToken) return true;
 
     if (await _authCache.isSessionExpired()) {
-      await logout();
-      return false;
-    }
-    if (!hasFirebase) {
       await logout();
       return false;
     }
     try {
       await _ensureAccessToken(forceRefresh: false);
       return true;
-    } catch (_) {
+    } on SessionExpiredException {
       await logout();
       return false;
+    } catch (_) {
+      // Geçici Firebase/token hatası — cache + süre geçerliyse oturumu koru.
+      if (hasToken || user != null) {
+        await _authCache.touchSession();
+        return true;
+      }
+      await logout();
+      return false;
+    }
+  }
+
+  /// Firebase Auth disk'ten restore olana kadar kısa bekler (cold start race).
+  Future<User?> _waitForFirebaseUser({
+    Duration timeout = const Duration(seconds: 2),
+  }) async {
+    final existing = _firebaseAuth.currentUser;
+    if (existing != null) return existing;
+    try {
+      // İlk event, restore tamamlandıktan sonraki current user (veya null).
+      return await _firebaseAuth.authStateChanges().first.timeout(timeout);
+    } on TimeoutException {
+      return _firebaseAuth.currentUser;
+    } catch (_) {
+      return _firebaseAuth.currentUser;
     }
   }
 
@@ -533,6 +570,7 @@ final class AuthRepository {
     String? bio,
     String? locationText,
     String? accountPrivacy,
+    String? preferredLanguage,
   }) async {
     try {
       final data = <String, dynamic>{};
@@ -548,6 +586,9 @@ final class AuthRepository {
       if (locationText != null) data['locationText'] = locationText.trim();
       if (accountPrivacy != null && accountPrivacy.trim().isNotEmpty) {
         data['accountPrivacy'] = accountPrivacy.trim().toLowerCase();
+      }
+      if (preferredLanguage != null && preferredLanguage.trim().isNotEmpty) {
+        data['preferredLanguage'] = preferredLanguage.trim().toLowerCase();
       }
       if (data.isEmpty) return null;
 
@@ -1581,7 +1622,13 @@ final class AuthRepository {
     if (raw is! Map) {
       throw StateError('Story like failed.');
     }
-    return PublishedStory.fromJson(Map<String, dynamic>.from(raw));
+    final story = PublishedStory.fromJson(Map<String, dynamic>.from(raw));
+    _storyCatalogCache.patchLike(
+      storyId: story.id,
+      likedByMe: story.likedByMe,
+      likeCount: story.likeCount,
+    );
+    return story;
   }
 
   Future<PublishedStory> unlikeStoryRemote(String storyId) async {
@@ -1598,7 +1645,13 @@ final class AuthRepository {
     if (raw is! Map) {
       throw StateError('Story unlike failed.');
     }
-    return PublishedStory.fromJson(Map<String, dynamic>.from(raw));
+    final story = PublishedStory.fromJson(Map<String, dynamic>.from(raw));
+    _storyCatalogCache.patchLike(
+      storyId: story.id,
+      likedByMe: story.likedByMe,
+      likeCount: story.likeCount,
+    );
+    return story;
   }
 
   Future<void> requestAccountDeletion({String? reason}) async {
@@ -2422,7 +2475,8 @@ final class PublishedStory {
   final String? authorAvatarUrl;
   final String mediaType;
 
-  bool get isVideo => mediaType.toLowerCase() == 'video';
+  bool get isVideo =>
+      isVideoMedia(mediaType: mediaType, path: mediaUrl);
 
   String get displayAuthorName {
     final name = authorName?.trim() ?? '';
@@ -2430,6 +2484,36 @@ final class PublishedStory {
     final username = authorUsername?.trim() ?? '';
     if (username.isNotEmpty) return username;
     return 'User';
+  }
+
+  PublishedStory copyWith({
+    bool? likedByMe,
+    int? likeCount,
+    bool? isViewed,
+  }) {
+    return PublishedStory(
+      id: id,
+      userId: userId,
+      mediaUrl: mediaUrl,
+      thumbnailUrl: thumbnailUrl,
+      audience: audience,
+      musicTrackId: musicTrackId,
+      musicClipStartMs: musicClipStartMs,
+      musicClipDurationMs: musicClipDurationMs,
+      musicAudioUrl: musicAudioUrl,
+      musicTitle: musicTitle,
+      musicArtist: musicArtist,
+      musicCoverUrl: musicCoverUrl,
+      createdAt: createdAt,
+      expiresAt: expiresAt,
+      isViewed: isViewed ?? this.isViewed,
+      likeCount: likeCount ?? this.likeCount,
+      likedByMe: likedByMe ?? this.likedByMe,
+      authorName: authorName,
+      authorUsername: authorUsername,
+      authorAvatarUrl: authorAvatarUrl,
+      mediaType: mediaType,
+    );
   }
 }
 

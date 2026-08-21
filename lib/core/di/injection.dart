@@ -58,7 +58,14 @@ Future<void> configureDependencies() async {
 
   getIt
     ..registerLazySingleton(
-      () => AuthCacheManager(const FlutterSecureStorage()),
+      () => AuthCacheManager(
+        const FlutterSecureStorage(
+          aOptions: AndroidOptions(encryptedSharedPreferences: true),
+          iOptions: IOSOptions(
+            accessibility: KeychainAccessibility.first_unlock,
+          ),
+        ),
+      ),
     )
     ..registerLazySingleton(() => DioClient.create(getIt()))
     ..registerLazySingleton(() => NetworkManager(getIt()))

@@ -88,7 +88,10 @@ final class _MainWrapperState extends State<MainWrapper> {
                 20,
                 0,
                 20,
-                (MediaQuery.viewPaddingOf(context).bottom - 10).clamp(0.0, 40.0),
+                (MediaQuery.viewPaddingOf(context).bottom - 10).clamp(
+                  0.0,
+                  40.0,
+                ),
               ),
               child: DecoratedBox(
                 decoration: BoxDecoration(
@@ -207,6 +210,7 @@ final class _NavItem extends StatelessWidget {
               const SizedBox(height: 4),
               Text(
                 label,
+                maxLines: 1,
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w600,

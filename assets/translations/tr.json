@@ -797,5 +797,8 @@
   "billing_packages_unavailable": "Token paketleri yüklenemedi. App Store / Play ürünleri ve RevenueCat offering’i kontrol et.",
   "chat_typing_one": "{name} yazıyor",
   "chat_typing_two": "{name1} ve {name2} yazıyor",
-  "chat_typing_many": "{count} kişi yazıyor"
+  "chat_typing_many": "{count} kişi yazıyor",
+  "link_delete_title": "Bağlantı silinsin mi?",
+  "link_delete_subtitle": "Bu bağlantı profilinden kaldırılacak.",
+  "link_delete_confirm": "Sil"
 }

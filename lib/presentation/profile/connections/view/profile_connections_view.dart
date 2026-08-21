@@ -237,7 +237,17 @@ final class _ProfileConnectionsViewState extends State<ProfileConnectionsView>
   }
 
   Future<void> _openProfile(ProfileConnectionUser user) async {
-    await openUserProfile(context, user.username);
+    await openUserProfile(
+      context,
+      user.username,
+      userId: user.userId,
+      seed: PublicUserProfile.skeleton(
+        username: user.username,
+        name: user.displayName,
+        avatarPath: user.avatarPath,
+        userId: user.userId,
+      ),
+    );
   }
 
   @override

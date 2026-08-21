@@ -340,7 +340,7 @@ final class _GroupInfoViewState extends State<GroupInfoView> {
               ],
               const SizedBox(height: 16),
               Text(
-                widget.args.name,
+                widget.args.localizedName,
                 textAlign: TextAlign.center,
                 style: const TextStyle(
                   fontSize: 24,

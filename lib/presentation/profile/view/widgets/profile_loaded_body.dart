@@ -27,7 +27,8 @@ final class ProfileLoadedBody extends StatefulWidget {
   State<ProfileLoadedBody> createState() => _ProfileLoadedBodyState();
 }
 
-final class _ProfileLoadedBodyState extends State<ProfileLoadedBody> {
+final class _ProfileLoadedBodyState extends State<ProfileLoadedBody>
+    with WidgetsBindingObserver {
   static const _fallbackCenter = LatLng(34.0522, -118.2437);
 
   final _scrollController = ScrollController();
@@ -37,20 +38,113 @@ final class _ProfileLoadedBodyState extends State<ProfileLoadedBody> {
   String? _liveLocation;
   LatLng _mapPoint = _fallbackCenter;
   var _hasRealLocation = false;
+  var _hasActiveStory = false;
+  var _storyIsViewed = false;
 
   UserProfile get user => widget.user;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _applyStoryRingFromCache();
+    unawaited(_refreshStoryRing());
     _resolveLiveLocation();
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _cancelPendingScroll();
     _scrollController.dispose();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed && mounted) {
+      unawaited(_refreshStoryRing());
+    }
+  }
+
+  void _applyStoryRingFromCache() {
+    final stories = getIt<UserRepository>().peekStories();
+    for (final story in stories) {
+      if (!story.isYou) continue;
+      _hasActiveStory = story.hasStory;
+      _storyIsViewed = story.isViewed;
+      return;
+    }
+  }
+
+  /// Instant UI update from local viewed flags (no network).
+  void _syncStoryRingFromCache() {
+    final stories = getIt<UserRepository>().peekStories();
+    var has = _hasActiveStory;
+    var viewed = _storyIsViewed;
+    var found = false;
+    for (final story in stories) {
+      if (!story.isYou) continue;
+      has = story.hasStory;
+      viewed = story.isViewed;
+      found = true;
+      break;
+    }
+    // Viewer already marked items viewed locally; if peek is empty still flip.
+    if (!found && _hasActiveStory) {
+      viewed = true;
+    }
+    if (!mounted) return;
+    if (has == _hasActiveStory && viewed == _storyIsViewed) return;
+    setState(() {
+      _hasActiveStory = has;
+      _storyIsViewed = viewed;
+    });
+  }
+
+  Future<void> _refreshStoryRing() async {
+    try {
+      final stories = await getIt<UserRepository>().getStories();
+      if (!mounted) return;
+      for (final story in stories) {
+        if (!story.isYou) continue;
+        if (story.hasStory == _hasActiveStory &&
+            story.isViewed == _storyIsViewed) {
+          return;
+        }
+        setState(() {
+          _hasActiveStory = story.hasStory;
+          _storyIsViewed = story.isViewed;
+        });
+        return;
+      }
+      if (!_hasActiveStory && !_storyIsViewed) return;
+      setState(() {
+        _hasActiveStory = false;
+        _storyIsViewed = false;
+      });
+    } catch (_) {}
+  }
+
+  Future<void> _openOwnStory() async {
+    if (!_hasActiveStory) return;
+    final repo = getIt<UserRepository>();
+    var items = repo.peekMyActiveStoryItems();
+    if (items.isEmpty) {
+      items = await repo.getMyActiveStoryItems();
+      if (!mounted) return;
+    } else {
+      unawaited(repo.getMyActiveStoryItems(forceRefresh: true));
+    }
+    if (items.isEmpty) return;
+    await context.push(
+      RoutePaths.storyDetail.path,
+      extra: StoryDetailRouteArgs(items: items, initialIndex: 0),
+    );
+    if (!mounted) return;
+    // Flip ring immediately from local viewed state; network refresh is backup.
+    _syncStoryRingFromCache();
+    unawaited(_refreshStoryRing());
   }
 
   void _cancelPendingScroll() {
@@ -258,6 +352,9 @@ final class _ProfileLoadedBodyState extends State<ProfileLoadedBody> {
           user: user,
           onShareTap: () =>
               ProfileShareSheet.show(context, username: user.username),
+          hasActiveStory: _hasActiveStory,
+          storyIsViewed: _storyIsViewed,
+          onAvatarTap: _openOwnStory,
         ),
         ProfileStats(
           user: user,

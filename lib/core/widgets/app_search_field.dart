@@ -100,9 +100,7 @@ final class _AppSearchFieldState extends State<AppSearchField> {
           Expanded(
             child: TextField(
               controller: _controller,
-              cursorColor: isDark || filledWhite
-                  ? AppColors.zoviOrange
-                  : null,
+              cursorColor: isDark || filledWhite ? AppColors.zoviOrange : null,
               style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w500,

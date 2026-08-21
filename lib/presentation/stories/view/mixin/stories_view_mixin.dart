@@ -24,10 +24,11 @@ mixin StoriesViewMixin on State<StoriesView> {
   }
 
   Future<void> onOpenStory(List<StoryMediaItem> items, int index) async {
+    final hydrated = getIt<UserRepository>().hydrateStoryLikeState(items);
     await context.push(
       RoutePaths.storyDetail.path,
       extra: StoryDetailRouteArgs(
-        items: items,
+        items: hydrated,
         initialIndex: index,
       ),
     );

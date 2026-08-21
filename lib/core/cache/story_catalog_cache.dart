@@ -14,5 +14,26 @@ final class StoryCatalogCache {
     _items = List<PublishedStory>.from(items);
   }
 
+  void patchLike({
+    required String storyId,
+    required bool likedByMe,
+    required int likeCount,
+  }) {
+    final items = _items;
+    final id = storyId.trim();
+    if (items == null || id.isEmpty) return;
+    var changed = false;
+    final next = <PublishedStory>[];
+    for (final story in items) {
+      if (story.id == id) {
+        changed = true;
+        next.add(story.copyWith(likedByMe: likedByMe, likeCount: likeCount));
+      } else {
+        next.add(story);
+      }
+    }
+    if (changed) _items = next;
+  }
+
   void clear() => _items = null;
 }

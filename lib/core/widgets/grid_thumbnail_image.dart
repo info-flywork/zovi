@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:zovi/core/utils/media_kind.dart';
 
 /// Small square grid tile — decode-resized, cache-friendly network image.
 @immutable
@@ -34,6 +35,9 @@ final class GridThumbnailImage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (isVideoMediaPath(url)) {
+      return const ColoredBox(color: Color(0xFFE8E8E8));
+    }
     final side = cacheSize ?? cacheSideFor(context);
     return Image.network(
       sizedUrl(url, side),
@@ -47,9 +51,7 @@ final class GridThumbnailImage extends StatelessWidget {
         final ready = wasSynchronouslyLoaded || frame != null;
         return ColoredBox(
           color: const Color(0xFFE8E8E8),
-          child: ready
-              ? child
-              : null,
+          child: ready ? child : null,
         );
       },
       errorBuilder: (_, _, _) =>

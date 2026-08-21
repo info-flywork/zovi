@@ -22,6 +22,10 @@ import 'package:zovi/core/widgets/profile_avatar.dart';
 import 'package:zovi/domain/auth/auth_repository.dart';
 import 'package:zovi/domain/chat/chat_repository.dart';
 import 'package:zovi/domain/user/user_repository.dart';
+import 'package:zovi/presentation/home/bloc/home_bloc.dart';
+import 'package:zovi/presentation/home/bloc/home_event.dart';
+import 'package:zovi/presentation/stories/bloc/stories_bloc.dart';
+import 'package:zovi/presentation/stories/bloc/stories_event.dart';
 import 'package:zovi/presentation/stories/model/story_detail_route_args.dart';
 
 @immutable
@@ -105,7 +109,10 @@ final class _StoryDetailViewState extends State<StoryDetailView>
   @override
   void initState() {
     super.initState();
-    final source = List<StoryMediaItem>.of(widget.args.items);
+    final repo = getIt<UserRepository>();
+    final source = repo.hydrateStoryLikeState(
+      List<StoryMediaItem>.of(widget.args.items),
+    );
     final sourceIndex = widget.args.initialIndex.clamp(0, source.length - 1);
     final initiallySelected = source[sourceIndex];
     _items = _groupByOwner(source);
@@ -146,7 +153,7 @@ final class _StoryDetailViewState extends State<StoryDetailView>
   Future<void> _syncMusic() async {
     await _stopMusic();
     final item = _current;
-    if (item.isVideo || !item.hasMusic) return;
+    if (item.isVideoMedia || !item.hasMusic) return;
 
     final url = item.musicAudioUrl!.trim();
     final startMs = item.musicClipStartMs ?? 0;
@@ -209,7 +216,7 @@ final class _StoryDetailViewState extends State<StoryDetailView>
   Future<void> _syncVideo() async {
     await _disposeVideo();
     final item = _current;
-    if (!item.isVideo) {
+    if (!item.isVideoMedia) {
       _progressController.duration = _storyDuration;
       return;
     }
@@ -502,6 +509,8 @@ final class _StoryDetailViewState extends State<StoryDetailView>
         likeCount: likeCount,
       );
     });
+    getIt<StoriesBloc>().add(const StoriesRefreshRequested());
+    getIt<HomeBloc>().add(const HomeStoriesRefreshRequested());
   }
 
   Future<void> _openProfile() async {
@@ -529,7 +538,7 @@ final class _StoryDetailViewState extends State<StoryDetailView>
   }
 
   Widget _buildMedia(StoryMediaItem item) {
-    if (item.isVideo) {
+    if (item.isVideoMedia) {
       final controller = _videoController;
       if (controller != null && controller.value.isInitialized) {
         return ColoredBox(

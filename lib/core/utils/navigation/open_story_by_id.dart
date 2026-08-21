@@ -26,11 +26,12 @@ Future<void> openStoryById(
   final items = await repo.getStoryItemsForUser(owner);
   if (!context.mounted || items.isEmpty) return;
 
-  var index = items.indexWhere((e) => (e.storyId ?? '').trim() == id);
+  final hydrated = repo.hydrateStoryLikeState(items);
+  var index = hydrated.indexWhere((e) => (e.storyId ?? '').trim() == id);
   if (index < 0) index = 0;
 
   await context.push(
     RoutePaths.storyDetail.path,
-    extra: StoryDetailRouteArgs(items: items, initialIndex: index),
+    extra: StoryDetailRouteArgs(items: hydrated, initialIndex: index),
   );
 }

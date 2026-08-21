@@ -1,6 +1,7 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:zovi/core/di/injection.dart';
+import 'package:zovi/core/locale/app_locale.dart';
 import 'package:zovi/core/router/app_router.dart';
 import 'package:zovi/core/theme/app_theme.dart';
 import 'package:zovi/core/utils/constants/string_constants.dart';
@@ -33,6 +34,16 @@ final class _ZoviAppState extends State<ZoviApp> with WidgetsBindingObserver {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      AppLocale.sync(context.locale);
+    });
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    AppLocale.sync(context.locale);
   }
 
   @override

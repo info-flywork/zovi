@@ -797,5 +797,8 @@
   "billing_packages_unavailable": "Não foi possível carregar os pacotes de tokens. Verifica os produtos da loja e o offering do RevenueCat.",
   "chat_typing_one": "{name} está digitando",
   "chat_typing_two": "{name1} e {name2} estão digitando",
-  "chat_typing_many": "{count} pessoas estão digitando"
+  "chat_typing_many": "{count} pessoas estão digitando",
+  "link_delete_title": "Eliminar este link?",
+  "link_delete_subtitle": "Este link será removido do teu perfil.",
+  "link_delete_confirm": "Eliminar"
 }

@@ -1,4 +1,6 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/foundation.dart';
+
 @immutable
 final class ChatDetailRouteArgs {
   const ChatDetailRouteArgs({
@@ -12,6 +14,7 @@ final class ChatDetailRouteArgs {
     this.isRequest = false,
     this.memberCount,
     this.tribeId = '',
+    this.nameKey = '',
   });
 
   final String name;
@@ -25,6 +28,16 @@ final class ChatDetailRouteArgs {
   final bool isRequest;
   final int? memberCount;
   final String tribeId;
+  final String nameKey;
 
-  String get headerTitle => isGroup ? name : username;
+  String get localizedName {
+    final key = nameKey.trim();
+    if (key.isNotEmpty) {
+      final translated = key.tr();
+      if (translated != key) return translated;
+    }
+    return name;
+  }
+
+  String get headerTitle => isGroup ? localizedName : username;
 }

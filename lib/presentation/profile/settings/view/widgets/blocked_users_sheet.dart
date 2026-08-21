@@ -112,99 +112,112 @@ final class _BlockedUsersSheetState extends State<BlockedUsersSheet> {
   @override
   Widget build(BuildContext context) {
     final isEmpty = _visibleUsers.isEmpty;
+    final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
 
-    return DraggableScrollableSheet(
-      initialChildSize: 0.4,
-      minChildSize: 0.4,
-      maxChildSize: 0.75,
-      expand: false,
-      builder: (context, scrollController) {
-        return Container(
-          decoration: const BoxDecoration(
-            color: AppColors.white,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-          ),
-          child: Column(
-            children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-                child: Column(
-                  children: [
-                    Container(
-                      width: 46,
-                      height: 4,
-                      decoration: BoxDecoration(
-                        color: AppColors.progressInactive,
-                        borderRadius: BorderRadius.circular(9999),
+    return AnimatedPadding(
+      duration: const Duration(milliseconds: 180),
+      curve: Curves.easeOut,
+      padding: EdgeInsets.only(bottom: bottomInset),
+      child: DraggableScrollableSheet(
+        initialChildSize: 0.4,
+        minChildSize: 0.4,
+        maxChildSize: 0.75,
+        expand: false,
+        builder: (context, scrollController) {
+          return Container(
+            decoration: const BoxDecoration(
+              color: AppColors.white,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+            ),
+            child: Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                  child: Column(
+                    children: [
+                      Container(
+                        width: 46,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: AppColors.progressInactive,
+                          borderRadius: BorderRadius.circular(9999),
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 24),
-                    Text(
-                      'blocked_sheet_title'.tr(),
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w600,
-                        height: 1,
-                        letterSpacing: -0.4,
-                        color: AppColors.black,
+                      const SizedBox(height: 24),
+                      Text(
+                        'blocked_sheet_title'.tr(),
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w600,
+                          height: 1,
+                          letterSpacing: -0.4,
+                          color: AppColors.black,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 10),
-                    Text(
-                      'blocked_sheet_subtitle'.tr(),
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w400,
-                        height: 20 / 16,
-                        letterSpacing: -0.32,
-                        color: AppColors.textSecondary,
+                      const SizedBox(height: 10),
+                      Text(
+                        'blocked_sheet_subtitle'.tr(),
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w400,
+                          height: 20 / 16,
+                          letterSpacing: -0.32,
+                          color: AppColors.textSecondary,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 20),
-                    AppSearchField(
-                      hintText: 'search_hint'.tr(),
-                      onDebouncedChanged: _onSearchChanged,
-                    ),
-                    const SizedBox(height: 12),
-                  ],
+                      const SizedBox(height: 20),
+                      AppSearchField(
+                        hintText: 'search_hint'.tr(),
+                        onDebouncedChanged: _onSearchChanged,
+                      ),
+                      const SizedBox(height: 12),
+                    ],
+                  ),
                 ),
-              ),
-              Expanded(
-                child: isEmpty
-                    ? ListView(
-                        controller: scrollController,
-                        physics: const ClampingScrollPhysics(),
-                        children: [
-                          SizedBox(
-                            height: MediaQuery.sizeOf(context).height * 0.2,
-                            child: _BlockedEmptyState(
-                              hasUsers: _users.isNotEmpty,
+                Expanded(
+                  child: isEmpty
+                      ? ListView(
+                          controller: scrollController,
+                          physics: const ClampingScrollPhysics(),
+                          keyboardDismissBehavior:
+                              ScrollViewKeyboardDismissBehavior.onDrag,
+                          children: [
+                            SizedBox(
+                              height: MediaQuery.sizeOf(context).height * 0.2,
+                              child: _BlockedEmptyState(
+                                hasUsers: _users.isNotEmpty,
+                              ),
                             ),
+                          ],
+                        )
+                      : AnimatedList(
+                          key: _listKey,
+                          controller: scrollController,
+                          physics: const ClampingScrollPhysics(),
+                          padding: EdgeInsets.fromLTRB(
+                            16,
+                            8,
+                            16,
+                            24 + MediaQuery.paddingOf(context).bottom,
                           ),
-                        ],
-                      )
-                    : AnimatedList(
-                        key: _listKey,
-                        controller: scrollController,
-                        physics: const ClampingScrollPhysics(),
-                        padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-                        initialItemCount: _visibleUsers.length,
-                        itemBuilder: (context, index, animation) {
-                          final user = _visibleUsers[index];
-                          return _BlockedUserRemoveTile(
-                            user: user,
-                            animation: animation,
-                            onUnblock: () => _unblock(user),
-                          );
-                        },
-                      ),
-              ),
-            ],
-          ),
-        );
-      },
+                          initialItemCount: _visibleUsers.length,
+                          itemBuilder: (context, index, animation) {
+                            final user = _visibleUsers[index];
+                            return _BlockedUserRemoveTile(
+                              user: user,
+                              animation: animation,
+                              onUnblock: () => _unblock(user),
+                            );
+                          },
+                        ),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
     );
   }
 }

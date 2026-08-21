@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:zovi/core/theme/app_colors.dart';
 import 'package:zovi/core/utils/constants/asset_paths.dart';
 import 'package:zovi/core/widgets/app_icon.dart';
+import 'package:zovi/core/widgets/app_search_field.dart';
 import 'package:zovi/domain/user/user_repository.dart';
 
 /// Same nearby list as Plan Ekle — pick one for check-in.
@@ -25,7 +26,7 @@ Future<NearbyAddPlanPlace?> showCheckInPlacePickerSheet(
 }
 
 @immutable
-final class _CheckInPlacePickerSheet extends StatelessWidget {
+final class _CheckInPlacePickerSheet extends StatefulWidget {
   const _CheckInPlacePickerSheet({
     required this.places,
     required this.selected,
@@ -35,8 +36,31 @@ final class _CheckInPlacePickerSheet extends StatelessWidget {
   final NearbyAddPlanPlace? selected;
 
   @override
+  State<_CheckInPlacePickerSheet> createState() =>
+      _CheckInPlacePickerSheetState();
+}
+
+final class _CheckInPlacePickerSheetState
+    extends State<_CheckInPlacePickerSheet> {
+  var _query = '';
+
+  List<NearbyAddPlanPlace> get _filtered {
+    final q = _query.trim().toLowerCase();
+    if (q.isEmpty) return widget.places;
+    return [
+      for (final place in widget.places)
+        if (place.placeName.toLowerCase().contains(q) ||
+            place.subtitle.toLowerCase().contains(q))
+          place,
+    ];
+  }
+
+  @override
   Widget build(BuildContext context) {
     final maxHeight = MediaQuery.sizeOf(context).height * 0.72;
+    final places = _filtered;
+    final selected = widget.selected;
+
     return SafeArea(
       bottom: false,
       child: SizedBox(
@@ -61,7 +85,7 @@ final class _CheckInPlacePickerSheet extends StatelessWidget {
                   const SizedBox(width: 6),
                   Text(
                     'nearby_places'.tr(),
-                    style: TextStyle(
+                    style: const TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
                       height: 1,
@@ -72,12 +96,24 @@ final class _CheckInPlacePickerSheet extends StatelessWidget {
                 ],
               ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 12),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: AppSearchField(
+                hintText: 'search_places_hint'.tr(),
+                onDebouncedChanged: (value) {
+                  setState(() => _query = value);
+                },
+              ),
+            ),
+            const SizedBox(height: 12),
             Expanded(
               child: places.isEmpty
                   ? Center(
                       child: Text(
-                        'check_in_venue_empty'.tr(),
+                        widget.places.isEmpty
+                            ? 'check_in_venue_empty'.tr()
+                            : 'no_places_found'.tr(),
                         style: const TextStyle(
                           fontSize: 15,
                           fontWeight: FontWeight.w500,
@@ -87,6 +123,8 @@ final class _CheckInPlacePickerSheet extends StatelessWidget {
                     )
                   : ListView.separated(
                       padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+                      keyboardDismissBehavior:
+                          ScrollViewKeyboardDismissBehavior.onDrag,
                       itemCount: places.length,
                       separatorBuilder: (_, _) => const SizedBox(height: 10),
                       itemBuilder: (context, index) {

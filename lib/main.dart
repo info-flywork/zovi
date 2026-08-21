@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:zovi/app.dart';
 import 'package:zovi/core/init/app_init.dart';
+import 'package:zovi/core/locale/app_locale.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -31,7 +32,12 @@ Future<void> main() async {
       fallbackLocale: const Locale('en'),
       useOnlyLangCode: true,
       saveLocale: true,
-      child: const ZoviApp(),
+      child: Builder(
+        builder: (context) {
+          AppLocale.sync(context.locale);
+          return const ZoviApp();
+        },
+      ),
     ),
   );
 }

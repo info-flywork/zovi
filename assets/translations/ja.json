@@ -797,5 +797,8 @@
   "billing_packages_unavailable": "トークンパックを読み込めませんでした。ストア商品とRevenueCatのofferingを確認してください。",
   "chat_typing_one": "{name}が入力中",
   "chat_typing_two": "{name1}と{name2}が入力中",
-  "chat_typing_many": "{count}人が入力中"
+  "chat_typing_many": "{count}人が入力中",
+  "link_delete_title": "このリンクを削除しますか？",
+  "link_delete_subtitle": "このリンクはプロフィールから削除されます。",
+  "link_delete_confirm": "削除"
 }

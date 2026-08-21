@@ -15,6 +15,7 @@ import 'package:zovi/core/cache/chat_messages_cache.dart';
 import 'package:zovi/core/chat/active_chat_tracker.dart';
 import 'package:zovi/core/di/injection.dart';
 import 'package:zovi/core/in_app_notification/app_in_app_notification.dart';
+import 'package:zovi/core/locale/app_locale.dart';
 import 'package:zovi/core/snackbar/app_snackbar.dart';
 import 'package:zovi/core/theme/app_colors.dart';
 import 'package:zovi/core/utils/constants/asset_paths.dart';
@@ -106,7 +107,9 @@ final class _ChatDetailViewState extends State<ChatDetailView> {
     _isRequest = widget.args.isRequest && !widget.args.isGroup;
     _memberCount = widget.args.memberCount ?? 0;
     _avatarPath = widget.args.avatarPath.trim();
-    _headerName = widget.args.name.trim();
+    _headerName = widget.args.localizedName.trim().isNotEmpty
+        ? widget.args.localizedName.trim()
+        : widget.args.name.trim();
 
     if (widget.args.isGroup) {
       final tribeId = widget.args.tribeId.trim();
@@ -152,6 +155,7 @@ final class _ChatDetailViewState extends State<ChatDetailView> {
     }
 
     _controller.addListener(_onTextChanged);
+    AppLocale.listenable.addListener(_onLocaleChanged);
     ActiveChatTracker.instance.enter(
       conversationId: _conversationId,
       peerUserId: widget.args.isGroup ? null : _peerUserId,
@@ -268,8 +272,37 @@ final class _ChatDetailViewState extends State<ChatDetailView> {
     return false;
   }
 
+  void _onLocaleChanged() {
+    if (!mounted) return;
+    final nextHeader = widget.args.localizedName.trim();
+    if (nextHeader.isNotEmpty) {
+      _headerName = nextHeader;
+    }
+    _tribeMembers = const [];
+    _messagesCache.clear();
+    _newestRemoteAt = null;
+    getIt<TribeRepository>().clearDetailCache();
+    if (mounted) setState(() {});
+    unawaited(_reloadAfterLocaleChange());
+  }
+
+  Future<void> _reloadAfterLocaleChange() async {
+    if (widget.args.isGroup) {
+      final tribeId = widget.args.tribeId.trim();
+      if (tribeId.isNotEmpty) {
+        final tribe =
+            await getIt<TribeRepository>().refreshTribeDetail(tribeId);
+        if (!mounted) return;
+        _applyGroupMetaFromTribe(tribe);
+      }
+    }
+    if (!mounted) return;
+    await _pullMessages(silent: false);
+  }
+
   @override
   void dispose() {
+    AppLocale.listenable.removeListener(_onLocaleChanged);
     ActiveChatTracker.instance.leave(conversationId: _conversationId);
     _persistMessagesToCache();
     _poll?.cancel();
@@ -642,6 +675,9 @@ final class _ChatDetailViewState extends State<ChatDetailView> {
       ];
 
       if (_sameMessageIds(_messages, next) && silent) {
+        if (_senderLabelsDiffer(_messages, next)) {
+          _replaceAllMessages(next, clearShimmer: false);
+        }
         _updateNewestCursor(withReplyOwners);
         if (_showShimmer && mounted) {
           setState(() => _showShimmer = false);
@@ -790,6 +826,17 @@ final class _ChatDetailViewState extends State<ChatDetailView> {
       if (a[i].id != b[i].id) return false;
     }
     return true;
+  }
+
+  bool _senderLabelsDiffer(List<_ChatMessage> a, List<_ChatMessage> b) {
+    if (a.length != b.length) return true;
+    for (var i = 0; i < a.length; i++) {
+      if ((a[i].senderName ?? '') != (b[i].senderName ?? '')) return true;
+      if ((a[i].senderUsername ?? '') != (b[i].senderUsername ?? '')) {
+        return true;
+      }
+    }
+    return false;
   }
 
   void _onTextChanged() {
@@ -2543,7 +2590,8 @@ final class _ChatDetailHeader extends StatelessWidget {
                 context.push(
                   RoutePaths.groupInfo.path,
                   extra: GroupInfoRouteArgs(
-                    name: title.isNotEmpty ? title : args.name,
+                    name: title.isNotEmpty ? title : args.localizedName,
+                    nameKey: args.nameKey,
                     avatarPath: avatarPath,
                     memberCount: memberCount,
                     tribeId: args.tribeId,

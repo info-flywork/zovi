@@ -386,124 +386,133 @@ final class _CreateGroupNameSheetState extends State<_CreateGroupNameSheet> {
 
   @override
   Widget build(BuildContext context) {
-    return SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 16, 16, 10),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Stack(
-              children: [
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: GestureDetector(
-                    onTap: () => Navigator.of(context).pop(),
-                    behavior: HitTestBehavior.opaque,
-                    child: const AppIcon(AssetPaths.iconCloseCircle, size: 32),
+    final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
+    return Padding(
+      padding: EdgeInsets.only(bottom: bottomInset),
+      child: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 10),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Stack(
+                children: [
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: GestureDetector(
+                      onTap: () => Navigator.of(context).pop(),
+                      behavior: HitTestBehavior.opaque,
+                      child: const AppIcon(
+                        AssetPaths.iconCloseCircle,
+                        size: 32,
+                      ),
+                    ),
                   ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Text(
-              'tribe_create_name_sheet_title'.tr(),
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.w600,
-                height: 1,
-                letterSpacing: -0.4,
-                color: AppColors.black,
+                ],
               ),
-            ),
-            const SizedBox(height: 10),
-            Text(
-              'tribe_create_name_sheet_subtitle'.tr(),
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.w400,
-                height: 24 / 20,
-                letterSpacing: -0.4,
-                color: AppColors.textSecondary,
-              ),
-            ),
-            const SizedBox(height: 24),
-            Align(
-              alignment: Alignment.centerLeft,
-              child: Text(
-                'tribe_create_name_sheet_field_label'.tr(),
+              const SizedBox(height: 12),
+              Text(
+                'tribe_create_name_sheet_title'.tr(),
+                textAlign: TextAlign.center,
                 style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w500,
-                  height: 20 / 16,
-                  letterSpacing: -0.32,
+                  fontSize: 20,
+                  fontWeight: FontWeight.w600,
+                  height: 1,
+                  letterSpacing: -0.4,
+                  color: AppColors.black,
+                ),
+              ),
+              const SizedBox(height: 10),
+              Text(
+                'tribe_create_name_sheet_subtitle'.tr(),
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w400,
+                  height: 24 / 20,
+                  letterSpacing: -0.4,
                   color: AppColors.textSecondary,
                 ),
               ),
-            ),
-            const SizedBox(height: 10),
-            Container(
-              width: double.infinity,
-              height: 60,
-              padding: const EdgeInsets.symmetric(horizontal: 10),
-              decoration: BoxDecoration(
-                color: AppColors.white,
-                borderRadius: BorderRadius.circular(99999),
-                border: Border.all(
-                  color: AppColors.black.withValues(alpha: 0.05),
-                ),
-              ),
-              child: Center(
-                child: TextField(
-                  controller: _nameController,
-                  maxLength: 40,
-                  decoration: InputDecoration(
-                    border: InputBorder.none,
-                    counterText: '',
-                    hintText: 'tribe_create_name_sheet_placeholder'.tr(),
-                    hintStyle: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w500,
-                      height: 20 / 16,
-                      letterSpacing: -0.32,
-                      color: AppColors.black.withValues(alpha: 0.30),
-                    ),
-                  ),
+              const SizedBox(height: 24),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  'tribe_create_name_sheet_field_label'.tr(),
                   style: const TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w500,
                     height: 20 / 16,
                     letterSpacing: -0.32,
-                    color: AppColors.black,
+                    color: AppColors.textSecondary,
                   ),
                 ),
               ),
-            ),
-            const SizedBox(height: 24),
-            AppButton(
-              label: 'tribe_create_name_sheet_confirm'.tr(),
-              onPressed: _submit,
-            ),
-            const SizedBox(height: 14),
-            GestureDetector(
-              onTap: () => Navigator.of(context).pop(),
-              behavior: HitTestBehavior.opaque,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 6),
-                child: Text(
-                  'cancel'.tr(),
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    height: 20 / 16,
-                    color: AppColors.deepRoast,
+              const SizedBox(height: 10),
+              Container(
+                width: double.infinity,
+                height: 60,
+                padding: const EdgeInsets.symmetric(horizontal: 10),
+                decoration: BoxDecoration(
+                  color: AppColors.white,
+                  borderRadius: BorderRadius.circular(99999),
+                  border: Border.all(
+                    color: AppColors.black.withValues(alpha: 0.05),
+                  ),
+                ),
+                child: Center(
+                  child: TextField(
+                    controller: _nameController,
+                    maxLength: 40,
+                    textInputAction: TextInputAction.done,
+                    onSubmitted: (_) => _submit(),
+                    decoration: InputDecoration(
+                      border: InputBorder.none,
+                      counterText: '',
+                      hintText: 'tribe_create_name_sheet_placeholder'.tr(),
+                      hintStyle: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                        height: 20 / 16,
+                        letterSpacing: -0.32,
+                        color: AppColors.black.withValues(alpha: 0.30),
+                      ),
+                    ),
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
+                      height: 20 / 16,
+                      letterSpacing: -0.32,
+                      color: AppColors.black,
+                    ),
                   ),
                 ),
               ),
-            ),
-          ],
+              const SizedBox(height: 24),
+              AppButton(
+                label: 'tribe_create_name_sheet_confirm'.tr(),
+                onPressed: _submit,
+              ),
+              const SizedBox(height: 14),
+              GestureDetector(
+                onTap: () => Navigator.of(context).pop(),
+                behavior: HitTestBehavior.opaque,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 6),
+                  child: Text(
+                    'cancel'.tr(),
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      height: 20 / 16,
+                      color: AppColors.deepRoast,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
