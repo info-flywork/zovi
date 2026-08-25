@@ -1536,6 +1536,17 @@ final class AuthRepository {
     ];
   }
 
+  Future<void> deleteStory(String storyId) async {
+    final id = storyId.trim();
+    if (id.isEmpty) return;
+    await _network.send<Map<String, dynamic>>(
+      path: '/stories/$id',
+      method: RequestType.delete,
+      parserModel: (json) => json,
+    );
+    _explorePulsesCache = null;
+  }
+
   Future<void> markStoryViewedRemote(String storyId) async {
     final id = storyId.trim();
     if (id.isEmpty) return;

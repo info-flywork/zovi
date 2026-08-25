@@ -16,6 +16,7 @@ import 'package:zovi/core/snackbar/app_snackbar.dart';
 import 'package:zovi/core/theme/app_colors.dart';
 import 'package:zovi/core/utils/constants/asset_paths.dart';
 import 'package:zovi/core/utils/navigation/open_user_profile.dart';
+import 'package:zovi/core/widgets/app_confirm_dialog.dart';
 import 'package:zovi/core/widgets/app_icon.dart';
 import 'package:zovi/core/widgets/app_loading.dart';
 import 'package:zovi/core/widgets/profile_avatar.dart';
@@ -52,6 +53,7 @@ final class _StoryDetailViewState extends State<StoryDetailView>
   var _dragging = false;
   var _pausedForDismiss = false;
   var _replySending = false;
+  var _deleting = false;
   final _replyController = TextEditingController();
   final _replyFocus = FocusNode();
 
@@ -291,6 +293,12 @@ final class _StoryDetailViewState extends State<StoryDetailView>
     return myHandle.isNotEmpty && myHandle == storyHandle;
   }
 
+  bool get _canDeleteCurrent {
+    if (_current.isPulse) return false;
+    final id = _current.storyId?.trim() ?? '';
+    return id.isNotEmpty && _isOwnCurrentStory;
+  }
+
   bool get _canReplyToCurrent {
     if (_isOwnCurrentStory) return false;
     final ownerId = _current.userId?.trim() ?? '';
@@ -309,6 +317,74 @@ final class _StoryDetailViewState extends State<StoryDetailView>
       return id.isEmpty ? null : id;
     } catch (_) {
       return null;
+    }
+  }
+
+  Future<void> _confirmDeleteStory() async {
+    if (!_canDeleteCurrent || _deleting) return;
+    _pause();
+    final confirmed = await showAppConfirmDialog(
+      context,
+      title: 'story_delete_title'.tr(),
+      subtitle: 'story_delete_subtitle'.tr(),
+      confirmLabel: 'story_delete_confirm'.tr(),
+    );
+    if (!mounted) return;
+    if (!confirmed) {
+      if (!_replyFocus.hasFocus && !_pausedForDismiss) _resume();
+      return;
+    }
+    await _deleteCurrentStory();
+  }
+
+  Future<void> _deleteCurrentStory() async {
+    final storyId = _current.storyId?.trim() ?? '';
+    if (storyId.isEmpty || _deleting) return;
+    setState(() => _deleting = true);
+    try {
+      await getIt<UserRepository>().deleteStory(storyId);
+      if (!mounted) return;
+
+      try {
+        getIt<HomeBloc>().add(const HomeStoriesRefreshRequested());
+      } catch (_) {}
+      try {
+        getIt<StoriesBloc>().add(const StoriesRefreshRequested(force: true));
+      } catch (_) {}
+
+      final removedIndex = _index;
+      final nextItems = [
+        for (var i = 0; i < _items.length; i++)
+          if (i != removedIndex) _items[i],
+      ];
+      if (nextItems.isEmpty) {
+        context.pop();
+        return;
+      }
+
+      final nextIndex = removedIndex.clamp(0, nextItems.length - 1);
+      setState(() {
+        _items = nextItems;
+        _index = nextIndex;
+        _deleting = false;
+      });
+      if (_pageController.hasClients) {
+        _pageController.jumpToPage(nextIndex);
+      }
+      unawaited(_markCurrentViewed());
+      await _bootstrapPlayback();
+      if (mounted && !_replyFocus.hasFocus && !_pausedForDismiss) {
+        _resume();
+      }
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _deleting = false);
+      AppSnackbar.instance.show(
+        context,
+        'story_delete_failed'.tr(),
+        isError: true,
+      );
+      if (!_replyFocus.hasFocus && !_pausedForDismiss) _resume();
     }
   }
 
@@ -652,6 +728,31 @@ final class _StoryDetailViewState extends State<StoryDetailView>
                                 ),
                               ),
                               const SizedBox(width: 10),
+                              if (_canDeleteCurrent) ...[
+                                GestureDetector(
+                                  onTap: _deleting
+                                      ? null
+                                      : _confirmDeleteStory,
+                                  behavior: HitTestBehavior.opaque,
+                                  child: Padding(
+                                    padding: const EdgeInsets.only(right: 8),
+                                    child: _deleting
+                                        ? const SizedBox(
+                                            width: 22,
+                                            height: 22,
+                                            child: AppLoading(
+                                              color: AppColors.white,
+                                              strokeWidth: 2,
+                                            ),
+                                          )
+                                        : const AppIcon(
+                                            AssetPaths.iconTrash,
+                                            size: 22,
+                                            color: AppColors.white,
+                                          ),
+                                  ),
+                                ),
+                              ],
                               GestureDetector(
                                 onTap: () => context.pop(),
                                 behavior: HitTestBehavior.opaque,

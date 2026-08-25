@@ -2620,6 +2620,34 @@ final class UserRepository {
     return items;
   }
 
+  Future<void> deleteStory(String storyId) async {
+    final id = storyId.trim();
+    if (id.isEmpty) return;
+    await _authRepository.deleteStory(id);
+    _removeStoryFromCaches(id);
+    // Linked pulse (source_type=story) is soft-deleted on the server too.
+    _cachedMyPulses = const [];
+    _myPulsesFetched = false;
+  }
+
+  void _removeStoryFromCaches(String storyId) {
+    final id = storyId.trim();
+    if (id.isEmpty) return;
+    if (_cachedMyStoryItems.any((item) => item.storyId == id)) {
+      _cacheMyStoryItems([
+        for (final item in _cachedMyStoryItems)
+          if (item.storyId != id) item,
+      ]);
+    }
+    if (_cachedExploreItems.any((item) => item.storyId == id)) {
+      _cachedExploreItems = List<StoryMediaItem>.unmodifiable([
+        for (final item in _cachedExploreItems)
+          if (item.storyId != id) item,
+      ]);
+      _storyFeedFetchedAt = null;
+    }
+  }
+
   Future<PublishedStory> publishStory({
     required String imagePath,
     required String audience,
