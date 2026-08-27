@@ -56,11 +56,10 @@ android {
             } else {
                 signingConfigs.getByName("debug")
             }
+            // Google Sign-In / Credential Manager break under R8 for some plugin
+            // versions; keep minify off until keep-rules are proven on device.
             isMinifyEnabled = false
-            proguardFiles(
-                getDefaultProguardFile("proguard-android-optimize.txt"),
-                "proguard-rules.pro",
-            )
+            isShrinkResources = false
         }
     }
 }

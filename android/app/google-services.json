@@ -14,6 +14,14 @@
       },
       "oauth_client": [
         {
+          "client_id": "226127781305-0i80vv2pidgr0ois0mttn2qhvnujjg6v.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.flywork.zovi",
+            "certificate_hash": "328515c99a43094d77efc86a4c395c73b8b1398e"
+          }
+        },
+        {
           "client_id": "226127781305-86v2d5lqdst396supl7i9hd741421cja.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {

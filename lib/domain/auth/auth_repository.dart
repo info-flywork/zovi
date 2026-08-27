@@ -188,10 +188,15 @@ final class AuthRepository {
 
   Future<AuthSession> signInWithGoogle() async {
     await _ensureGoogleInitialized();
-    final googleUser = await GoogleSignIn.instance.authenticate();
+    final googleUser = await GoogleSignIn.instance.authenticate(
+      scopeHint: const ['email', 'profile'],
+    );
     final idToken = googleUser.authentication.idToken;
-    if (idToken == null) {
-      throw StateError('Google Sign-In did not return an ID token.');
+    if (idToken == null || idToken.isEmpty) {
+      throw StateError(
+        'Google Sign-In did not return an ID token. '
+        'Check Firebase Android SHA fingerprints + Web client ID.',
+      );
     }
 
     final credential = GoogleAuthProvider.credential(idToken: idToken);

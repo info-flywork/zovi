@@ -36,7 +36,18 @@ mixin OnboardingViewMixin on State<OnboardingView> {
           .withLoading(context);
       if (!mounted) return;
       _goAfterAuth(session);
-    } catch (_) {
+    } on GoogleSignInException catch (e) {
+      // ignore: avoid_print
+      print('google_sign_in_failed code=${e.code} desc=${e.description}');
+      if (!mounted) return;
+      if (e.code == GoogleSignInExceptionCode.canceled ||
+          e.code == GoogleSignInExceptionCode.interrupted) {
+        return;
+      }
+      showErrorSnackbar('error_google_sign_in'.tr());
+    } catch (e) {
+      // ignore: avoid_print
+      print('google_sign_in_failed error=$e');
       if (!mounted) return;
       showErrorSnackbar('error_google_sign_in'.tr());
     }

@@ -25,8 +25,12 @@ Future<void> openProfileLink(String rawUrl) async {
   final withScheme = trimmed.contains('://') ? trimmed : 'https://$trimmed';
   final uri = Uri.tryParse(withScheme);
   if (uri == null) return;
-  if (await canLaunchUrl(uri)) {
-    await launchUrl(uri, mode: LaunchMode.externalApplication);
+  final launched = await launchUrl(
+    uri,
+    mode: LaunchMode.externalApplication,
+  );
+  if (!launched) {
+    await launchUrl(uri, mode: LaunchMode.platformDefault);
   }
 }
 

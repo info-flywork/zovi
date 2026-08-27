@@ -5,7 +5,7 @@ abstract final class StringConstants {
   /// `--dart-define=API_BASE_URL=https://zovi.fly-work.com`
   static const String baseUrl = String.fromEnvironment(
     'API_BASE_URL',
-    defaultValue: 'http://127.0.0.1:3056',
+    defaultValue: 'https://zovi.fly-work.com',
   );
 
   static const String termsUrl = 'https://fly-work.com/zovi/terms/';
