@@ -1,7 +1,9 @@
 import 'dart:io';
 
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:zovi/core/theme/app_colors.dart';
+import 'package:zovi/core/utils/bunny_image_url.dart';
 import 'package:zovi/core/utils/constants/asset_paths.dart';
 import 'package:zovi/core/widgets/app_icon.dart';
 
@@ -59,13 +61,15 @@ final class ProfileAvatar extends StatelessWidget {
     if (!_hasPhoto) {
       child = _placeholder;
     } else if (_isNetwork) {
-      child = Image.network(
-        path,
+      final pixelWidth = (size * 2).round().clamp(64, 256);
+      child = CachedNetworkImage(
+        imageUrl: bunnySizedUrl(path, pixelWidth),
         fit: BoxFit.cover,
-        cacheWidth: (size * 2).round().clamp(64, 256),
+        memCacheWidth: pixelWidth,
         filterQuality: FilterQuality.low,
-        gaplessPlayback: true,
-        errorBuilder: (_, _, _) => _placeholder,
+        fadeInDuration: Duration.zero,
+        placeholder: (_, _) => _placeholder,
+        errorWidget: (_, _, _) => _placeholder,
       );
     } else if (_isFilePath) {
       final filePath = path.startsWith('file:')

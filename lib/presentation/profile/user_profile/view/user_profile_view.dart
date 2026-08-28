@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 import 'dart:ui' show lerpDouble;
 
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
@@ -10,6 +11,7 @@ import 'package:zovi/core/di/injection.dart';
 import 'package:zovi/core/in_app_notification/app_in_app_notification.dart';
 import 'package:zovi/core/in_app_notification/in_app_notification_data.dart';
 import 'package:zovi/core/theme/app_colors.dart';
+import 'package:zovi/core/utils/bunny_image_url.dart';
 import 'package:zovi/core/utils/constants/asset_paths.dart';
 import 'package:zovi/core/utils/enum/route_paths.dart';
 import 'package:zovi/core/widgets/app_icon.dart';
@@ -1646,10 +1648,16 @@ final class _PulseNetworkImage extends StatelessWidget {
     if (isVideo) {
       image = const ColoredBox(color: AppColors.black);
     } else if (path.startsWith('http://') || path.startsWith('https://')) {
-      image = Image.network(
-        path,
+      final pixelWidth =
+          ((MediaQuery.sizeOf(context).width / 3) * MediaQuery.devicePixelRatioOf(context))
+              .ceil()
+              .clamp(160, 480);
+      image = CachedNetworkImage(
+        imageUrl: bunnySizedUrl(path, pixelWidth),
         fit: BoxFit.cover,
-        errorBuilder: (_, _, _) =>
+        memCacheWidth: pixelWidth,
+        fadeInDuration: Duration.zero,
+        errorWidget: (_, _, _) =>
             const ColoredBox(color: AppColors.surfaceGray),
       );
     } else if (path.startsWith('/') || path.startsWith('file:')) {
@@ -1803,10 +1811,12 @@ final class _CheckInList extends StatelessWidget {
                         borderRadius: BorderRadius.circular(6),
                         child: item.hasPhoto
                             ? (item.isNetwork
-                                  ? Image.network(
-                                      item.imagePath,
+                                  ? CachedNetworkImage(
+                                      imageUrl: bunnySizedUrl(item.imagePath, 60),
                                       fit: BoxFit.cover,
-                                      errorBuilder: (_, _, _) => Image.asset(
+                                      memCacheWidth: 60,
+                                      fadeInDuration: Duration.zero,
+                                      errorWidget: (_, _, _) => Image.asset(
                                         AssetPaths.checkinPlace,
                                         fit: BoxFit.cover,
                                       ),

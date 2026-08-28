@@ -3,6 +3,7 @@ import 'dart:io';
 import 'dart:ui' as ui;
 
 import 'package:audioplayers/audioplayers.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -10,6 +11,7 @@ import 'package:go_router/go_router.dart';
 import 'package:video_player/video_player.dart';
 import 'package:zovi/core/cache/music_audio_cache.dart';
 import 'package:zovi/core/di/injection.dart';
+import 'package:zovi/core/utils/bunny_image_url.dart';
 import 'package:zovi/core/in_app_notification/app_in_app_notification.dart';
 import 'package:zovi/core/in_app_notification/in_app_notification_data.dart';
 import 'package:zovi/core/snackbar/app_snackbar.dart';
@@ -63,6 +65,11 @@ final class _StoryDetailViewState extends State<StoryDetailView>
   var _musicSeeking = false;
   VideoPlayerController? _videoController;
   var _videoToken = 0;
+
+  // Next-up video is initialized ahead of time so swiping into it doesn't
+  // show a load/black-frame gap.
+  VideoPlayerController? _preloadController;
+  String? _preloadedPath;
 
   StoryMediaItem get _current => _items[_index];
 
@@ -202,6 +209,7 @@ final class _StoryDetailViewState extends State<StoryDetailView>
     await _syncVideo();
     await _syncMusic();
     if (mounted) _startProgress();
+    unawaited(_preloadNextVideo());
   }
 
   Future<void> _disposeVideo() async {
@@ -215,16 +223,87 @@ final class _StoryDetailViewState extends State<StoryDetailView>
     await controller.dispose();
   }
 
+  Future<void> _disposePreload() async {
+    final controller = _preloadController;
+    _preloadController = null;
+    _preloadedPath = null;
+    if (controller == null) return;
+    try {
+      await controller.dispose();
+    } catch (_) {}
+  }
+
+  /// Initializes (without playing) the next item's video so swiping to it
+  /// is instant. Only ever holds one preloaded controller at a time.
+  Future<void> _preloadNextVideo() async {
+    final nextIndex = _index + 1;
+    if (nextIndex >= _items.length) return;
+    final next = _items[nextIndex];
+    if (!next.isVideoMedia || !next.isNetworkImage) return;
+    final path = next.imagePath.trim();
+    if (path.isEmpty || path == _preloadedPath) return;
+
+    await _disposePreload();
+    final token = _videoToken;
+    final controller = VideoPlayerController.networkUrl(Uri.parse(path));
+    _preloadedPath = path;
+    _preloadController = controller;
+    try {
+      await controller.initialize();
+      // Bail if the user already navigated away while this was loading.
+      if (!mounted || token != _videoToken || _preloadController != controller) {
+        await controller.dispose();
+        return;
+      }
+      await controller.setLooping(false);
+    } catch (_) {
+      if (identical(_preloadController, controller)) {
+        _preloadController = null;
+        _preloadedPath = null;
+      }
+      try {
+        await controller.dispose();
+      } catch (_) {}
+    }
+  }
+
   Future<void> _syncVideo() async {
-    await _disposeVideo();
     final item = _current;
+    final path = item.imagePath.trim();
+
+    // Reuse the preloaded controller if it's already sitting on this item.
+    if (item.isVideoMedia && _preloadController != null && _preloadedPath == path) {
+      await _disposeVideo();
+      final controller = _preloadController!;
+      _preloadController = null;
+      _preloadedPath = null;
+      final token = ++_videoToken;
+      _videoController = controller;
+      try {
+        final duration = controller.value.duration;
+        _progressController.duration = duration > const Duration(milliseconds: 400)
+            ? duration
+            : _storyDuration;
+        if (!_paused) await controller.play();
+        if (mounted) setState(() {});
+      } catch (_) {
+        if (identical(_videoController, controller)) _videoController = null;
+        try {
+          await controller.dispose();
+        } catch (_) {}
+        _progressController.duration = _storyDuration;
+      }
+      unawaited(token == _videoToken ? _preloadNextVideo() : Future.value());
+      return;
+    }
+
+    await _disposeVideo();
     if (!item.isVideoMedia) {
       _progressController.duration = _storyDuration;
       return;
     }
 
     final token = ++_videoToken;
-    final path = item.imagePath.trim();
     final controller = item.isNetworkImage
         ? VideoPlayerController.networkUrl(Uri.parse(path))
         : VideoPlayerController.file(File(path.replaceFirst('file://', '')));
@@ -259,6 +338,7 @@ final class _StoryDetailViewState extends State<StoryDetailView>
     unawaited(_stopMusic());
     unawaited(_musicPlayer.dispose());
     unawaited(_disposeVideo());
+    unawaited(_disposePreload());
     _progressController
       ..removeStatusListener(_onProgressStatus)
       ..dispose();
@@ -500,6 +580,7 @@ final class _StoryDetailViewState extends State<StoryDetailView>
     unawaited(_markCurrentViewed());
     await _syncVideo();
     unawaited(_syncMusic());
+    unawaited(_preloadNextVideo());
     await _pageController.animateToPage(
       index,
       duration: const Duration(milliseconds: 240),
@@ -529,6 +610,7 @@ final class _StoryDetailViewState extends State<StoryDetailView>
       await _syncVideo();
       await _syncMusic();
       if (mounted) _startProgress();
+      unawaited(_preloadNextVideo());
     }());
   }
 
@@ -637,12 +719,18 @@ final class _StoryDetailViewState extends State<StoryDetailView>
       );
     }
     if (item.isNetworkImage) {
-      return Image.network(
-        item.imagePath,
+      final pixelWidth =
+          (MediaQuery.sizeOf(context).width * MediaQuery.devicePixelRatioOf(context))
+              .round();
+      return CachedNetworkImage(
+        imageUrl: bunnySizedUrl(item.imagePath, pixelWidth, quality: 85),
         fit: BoxFit.cover,
         width: double.infinity,
         height: double.infinity,
-        errorBuilder: (_, _, _) => const ColoredBox(color: AppColors.black),
+        memCacheWidth: pixelWidth,
+        fadeInDuration: Duration.zero,
+        placeholder: (_, _) => const ColoredBox(color: AppColors.black),
+        errorWidget: (_, _, _) => const ColoredBox(color: AppColors.black),
       );
     }
     return Image.asset(
@@ -902,12 +990,14 @@ final class _StoryMusicPill extends StatelessWidget {
             children: [
               ClipOval(
                 child: cover.startsWith('http')
-                    ? Image.network(
-                        cover,
+                    ? CachedNetworkImage(
+                        imageUrl: bunnySizedUrl(cover, 56),
                         width: 28,
                         height: 28,
                         fit: BoxFit.cover,
-                        errorBuilder: (_, _, _) => Image.asset(
+                        memCacheWidth: 56,
+                        fadeInDuration: Duration.zero,
+                        errorWidget: (_, _, _) => Image.asset(
                           AssetPaths.stamp13,
                           width: 28,
                           height: 28,

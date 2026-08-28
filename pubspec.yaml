@@ -1,7 +1,7 @@
 name: zovi
 description: Zovi — be here, share now
 publish_to: 'none'
-version: 1.0.0+6
+version: 1.0.0+7
 
 environment:
   sdk: ^3.12.1
@@ -26,6 +26,8 @@ dependencies:
   url_launcher: ^6.3.2
   permission_handler: ^12.0.3
   image_picker: ^1.2.3
+  cached_network_image: ^3.4.1
+  flutter_image_compress: ^2.3.0
   easy_localization: ^3.0.8
   flutter_localizations:
     sdk: flutter
@@ -49,6 +51,7 @@ dependencies:
   onesignal_flutter: ^5.6.6
   purchases_flutter: ^10.9.1
   purchases_ui_flutter: ^10.9.1
+  web_socket_channel: ^3.0.3
 
 dev_dependencies:
   flutter_test:

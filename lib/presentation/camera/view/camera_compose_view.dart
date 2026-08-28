@@ -7,6 +7,7 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:go_router/go_router.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:photo_manager/photo_manager.dart';
@@ -171,6 +172,23 @@ final class _CameraComposeViewState extends State<CameraComposeView> {
     return bytes?.buffer.asUint8List();
   }
 
+  /// Same capture, re-encoded to a smaller JPEG for upload — the composed
+  /// canvas is opaque (base photo fills it), so dropping alpha is safe.
+  /// Runs off the Dart isolate via the native compressor, not `compute()`.
+  Future<Uint8List?> _captureComposeBytesForUpload() async {
+    final png = await _captureComposeBytes();
+    if (png == null || png.isEmpty) return null;
+    try {
+      return await FlutterImageCompress.compressWithList(
+        png,
+        quality: 85,
+        format: CompressFormat.jpeg,
+      );
+    } catch (_) {
+      return png;
+    }
+  }
+
   Future<void> _saveToGallery() async {
     if (_saving) return;
     setState(() => _saving = true);
@@ -227,11 +245,11 @@ final class _CameraComposeViewState extends State<CameraComposeView> {
       await CameraDrafts.saveRemoteFromPath(args.imagePath, isVideo: true);
       return;
     }
-    final bytes = await _captureComposeBytes();
+    final bytes = await _captureComposeBytesForUpload();
     if (bytes == null || bytes.isEmpty) {
       throw StateError('capture failed');
     }
-    await CameraDrafts.saveRemote(bytes);
+    await CameraDrafts.saveRemote(bytes, ext: '.jpg');
   }
 
   Future<void> _onClosePressed() async {
@@ -289,7 +307,7 @@ final class _CameraComposeViewState extends State<CameraComposeView> {
       if (args.isVideo) {
         uploadPath = args.imagePath;
       } else {
-        final bytes = await _captureComposeBytes();
+        final bytes = await _captureComposeBytesForUpload();
         if (bytes == null || bytes.isEmpty) {
           _showBanner(
             titleKey: 'camera_compose_save_failed',
@@ -301,7 +319,7 @@ final class _CameraComposeViewState extends State<CameraComposeView> {
 
         final dir = await getTemporaryDirectory();
         tempFile = File(
-          '${dir.path}/story_share_${DateTime.now().millisecondsSinceEpoch}.png',
+          '${dir.path}/story_share_${DateTime.now().millisecondsSinceEpoch}.jpg',
         );
         await tempFile.writeAsBytes(bytes, flush: true);
         uploadPath = tempFile.path;

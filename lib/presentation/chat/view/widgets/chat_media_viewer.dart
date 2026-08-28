@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:zovi/core/theme/app_colors.dart';
 import 'package:zovi/core/utils/media_kind.dart';
@@ -113,10 +114,11 @@ final class ChatMediaViewer extends StatelessWidget {
       );
     }
     if (networkUrl != null && networkUrl!.isNotEmpty) {
-      return Image.network(
-        networkUrl!,
+      return CachedNetworkImage(
+        imageUrl: networkUrl!,
         fit: BoxFit.contain,
-        errorBuilder: (_, _, _) => const SizedBox.shrink(),
+        fadeInDuration: Duration.zero,
+        errorWidget: (_, _, _) => const SizedBox.shrink(),
       );
     }
     if (assetPath != null) {

@@ -1,5 +1,6 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/foundation.dart';
+import 'package:zovi/core/chat/realtime_socket_service.dart';
 import 'package:zovi/core/network/network_manager.dart';
 import 'package:zovi/core/utils/enum/request_type.dart';
 
@@ -192,9 +193,10 @@ String? storyIdFromReplyPreview(String? preview) {
 }
 
 final class ChatRepository {
-  ChatRepository(this._network);
+  ChatRepository(this._network, [this._realtime]);
 
   final NetworkManager _network;
+  final RealtimeSocketService? _realtime;
 
   /// peerUserId → son bilinen DM. Profile "Mesaj gönder" her seferinde
   /// POST /chat/conversations atmasın diye.
@@ -352,6 +354,22 @@ final class ChatRepository {
     String? replyToMessageId,
     String? replyPreview,
   }) async {
+    final ack = await _realtime?.request({
+      'type': 'send_message',
+      'conversationId': conversationId,
+      'messageType': type,
+      if (body != null) 'body': body,
+      if (mediaUrl != null) 'mediaUrl': mediaUrl,
+      if (replyToMessageId != null && replyToMessageId.isNotEmpty)
+        'replyToMessageId': replyToMessageId,
+      if (replyPreview != null && replyPreview.isNotEmpty)
+        'replyPreview': replyPreview,
+    }, timeout: const Duration(seconds: 5));
+    if (ack != null && ack['ok'] == true) {
+      final raw = (ack['data'] as Map?)?['message'];
+      if (raw is Map) return ChatMessage.fromJson(Map<String, dynamic>.from(raw));
+    }
+
     final result = await _network.send<Map<String, dynamic>>(
       path:
           '/chat/conversations/${Uri.encodeComponent(conversationId)}/messages',
@@ -390,6 +408,12 @@ final class ChatRepository {
   }
 
   Future<void> markRead(String conversationId) async {
+    final ack = await _realtime?.request({
+      'type': 'mark_read',
+      'conversationId': conversationId,
+    }, timeout: const Duration(seconds: 2));
+    if (ack != null && ack['ok'] == true) return;
+
     await _network.send<Map<String, dynamic>>(
       path: '/chat/conversations/${Uri.encodeComponent(conversationId)}/read',
       method: RequestType.post,
@@ -447,6 +471,13 @@ final class ChatRepository {
   Future<void> pulseTyping(String conversationId) async {
     final id = conversationId.trim();
     if (id.isEmpty) return;
+
+    final ack = await _realtime?.request({
+      'type': 'typing',
+      'conversationId': id,
+    }, timeout: const Duration(seconds: 2));
+    if (ack != null && ack['ok'] == true) return;
+
     await _network.send<Map<String, dynamic>>(
       path: '/chat/conversations/${Uri.encodeComponent(id)}/typing',
       method: RequestType.post,

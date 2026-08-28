@@ -164,12 +164,17 @@ final class _PulseCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final Widget image;
     if (_isNetwork) {
-      image = Image.network(
-        imagePath,
+      final pixelWidth =
+          ((MediaQuery.sizeOf(context).width / 3) * MediaQuery.devicePixelRatioOf(context))
+              .ceil()
+              .clamp(160, 480);
+      image = CachedNetworkImage(
+        imageUrl: bunnySizedUrl(imagePath, pixelWidth),
         fit: BoxFit.cover,
-        gaplessPlayback: true,
+        memCacheWidth: pixelWidth,
         filterQuality: FilterQuality.low,
-        errorBuilder: (_, _, _) =>
+        fadeInDuration: Duration.zero,
+        errorWidget: (_, _, _) =>
             const ColoredBox(color: AppColors.surfaceGray),
       );
     } else if (_isFile) {

@@ -112,16 +112,21 @@ abstract final class CameraDrafts {
     return file;
   }
 
-  /// Upload compose bytes to CDN/DB and mirror locally.
-  static Future<StoryDraftItem> saveRemote(List<int> bytes) async {
+  /// Upload compose bytes to CDN/DB and mirror locally. `ext` must match the
+  /// actual encoding of `bytes` (e.g. '.jpg' for pre-compressed output) so
+  /// the upload's inferred Content-Type is correct.
+  static Future<StoryDraftItem> saveRemote(
+    List<int> bytes, {
+    String ext = '.png',
+  }) async {
     final dir = await directory();
     final temp = File(
-      '${dir.path}/upload_${DateTime.now().millisecondsSinceEpoch}.png',
+      '${dir.path}/upload_${DateTime.now().millisecondsSinceEpoch}$ext',
     );
     await temp.writeAsBytes(bytes, flush: true);
     try {
       final draft = await getIt<AuthRepository>().uploadStoryDraft(temp.path);
-      await cacheRemoteDraft(draftId: draft.id, bytes: bytes);
+      await cacheRemoteDraft(draftId: draft.id, bytes: bytes, ext: ext);
       return draft;
     } finally {
       try {

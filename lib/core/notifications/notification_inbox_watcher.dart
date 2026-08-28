@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:zovi/core/chat/active_chat_tracker.dart';
+import 'package:zovi/core/chat/realtime_socket_service.dart';
 import 'package:zovi/core/in_app_notification/app_in_app_notification.dart';
 import 'package:zovi/core/in_app_notification/in_app_notification_data.dart';
 import 'package:zovi/core/notifications/chat_notification_watcher.dart';
@@ -17,9 +18,12 @@ import 'package:zovi/domain/auth/auth_repository.dart';
 /// Polling the inbox keeps the banner working in both cases; ids seen here and
 /// ids claimed by an incoming push share one set, so nothing shows twice.
 final class NotificationInboxWatcher with WidgetsBindingObserver {
-  NotificationInboxWatcher(this._authRepository);
+  NotificationInboxWatcher(this._authRepository, [this._realtime]);
 
-  static const _interval = Duration(seconds: 10);
+  static const _fastInterval = Duration(seconds: 10);
+  // Safety-net cadence once the realtime socket is confirmed connected —
+  // real updates arrive via the socket's immediate refresh instead.
+  static const _slowInterval = Duration(seconds: 45);
 
   /// Until the inbox is primed there is nothing to fetch yet (sign-in is still
   /// in flight), so ticking fast here costs nothing and closes the window where
@@ -32,6 +36,7 @@ final class NotificationInboxWatcher with WidgetsBindingObserver {
   static const _pageSize = 30;
 
   final AuthRepository _authRepository;
+  final RealtimeSocketService? _realtime;
 
   /// Latest inbox page. Screens listen to this instead of re-fetching, so a
   /// CTA that the server recomputed (accepted request, follow back) settles
@@ -39,6 +44,9 @@ final class NotificationInboxWatcher with WidgetsBindingObserver {
   final inbox = ValueNotifier<List<AppNotificationItem>>(const []);
 
   Timer? _timer;
+  Duration _interval = _fastInterval;
+  StreamSubscription<Map<String, dynamic>>? _realtimeEventsSub;
+  VoidCallback? _realtimeConnectedListener;
   final _seen = <String>{};
   String? _primedUserId;
   var _polling = false;
@@ -49,6 +57,18 @@ final class NotificationInboxWatcher with WidgetsBindingObserver {
     WidgetsBinding.instance.addObserver(this);
     _schedule(_warmupInterval);
     unawaited(_poll());
+
+    final realtime = _realtime;
+    if (realtime != null) {
+      _realtimeConnectedListener = () {
+        _interval = realtime.connected.value ? _slowInterval : _fastInterval;
+        _schedule(_interval);
+      };
+      realtime.connected.addListener(_realtimeConnectedListener!);
+      _realtimeEventsSub = realtime.events.listen((event) {
+        if (event['type'] == 'notification:new') unawaited(_poll());
+      });
+    }
   }
 
   void stop() {
@@ -56,6 +76,12 @@ final class NotificationInboxWatcher with WidgetsBindingObserver {
     _timer!.cancel();
     _timer = null;
     WidgetsBinding.instance.removeObserver(this);
+    final listener = _realtimeConnectedListener;
+    if (listener != null) _realtime?.connected.removeListener(listener);
+    _realtimeConnectedListener = null;
+    unawaited(_realtimeEventsSub?.cancel());
+    _realtimeEventsSub = null;
+    _interval = _fastInterval;
     _seen.clear();
     _primedUserId = null;
   }

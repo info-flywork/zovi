@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 import 'dart:ui' show lerpDouble;
 
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart' show RenderAbstractViewport;
@@ -14,6 +15,7 @@ import 'package:latlong2/latlong.dart';
 import 'package:zovi/core/billing/open_coin_paywall.dart';
 import 'package:zovi/core/di/injection.dart';
 import 'package:zovi/core/theme/app_colors.dart';
+import 'package:zovi/core/utils/bunny_image_url.dart';
 import 'package:zovi/core/utils/constants/asset_paths.dart';
 import 'package:zovi/core/utils/enum/route_paths.dart';
 import 'package:zovi/core/widgets/app_icon.dart';

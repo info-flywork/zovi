@@ -3,6 +3,7 @@ import 'dart:io';
 import 'dart:math' as math;
 
 import 'package:audioplayers/audioplayers.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
@@ -13,11 +14,13 @@ import 'package:record/record.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:zovi/core/cache/chat_messages_cache.dart';
 import 'package:zovi/core/chat/active_chat_tracker.dart';
+import 'package:zovi/core/chat/realtime_socket_service.dart';
 import 'package:zovi/core/di/injection.dart';
 import 'package:zovi/core/in_app_notification/app_in_app_notification.dart';
 import 'package:zovi/core/locale/app_locale.dart';
 import 'package:zovi/core/snackbar/app_snackbar.dart';
 import 'package:zovi/core/theme/app_colors.dart';
+import 'package:zovi/core/utils/bunny_image_url.dart';
 import 'package:zovi/core/utils/constants/asset_paths.dart';
 import 'package:zovi/core/utils/enum/route_paths.dart';
 import 'package:zovi/core/utils/navigation/open_story_by_id.dart';
@@ -68,6 +71,7 @@ final class _ChatDetailViewState extends State<ChatDetailView> {
   Timer? _recordingTimer;
   Timer? _poll;
   Timer? _typingPoll;
+  StreamSubscription<Map<String, dynamic>>? _realtimeSub;
   DateTime? _lastTypingPulseAt;
   List<ChatTypingUser> _typers = const [];
   StreamSubscription<Amplitude>? _amplitudeSub;
@@ -175,6 +179,22 @@ final class _ChatDetailViewState extends State<ChatDetailView> {
       const Duration(milliseconds: 1600),
       (_) => unawaited(_pullTyping()),
     );
+    _realtimeSub = getIt<RealtimeSocketService>().events.listen(
+      _onRealtimeEvent,
+    );
+  }
+
+  /// Additive only — the polling timers above stay untouched as the safety
+  /// net. A matching WS event just makes the update land sooner.
+  void _onRealtimeEvent(Map<String, dynamic> event) {
+    final conversationId = event['conversationId'] as String?;
+    if (conversationId == null || conversationId != _conversationId) return;
+    switch (event['type']) {
+      case 'message:new':
+        unawaited(_pullMessages(silent: true));
+      case 'typing':
+        unawaited(_pullTyping());
+    }
   }
 
   void _applyGroupMetaFromTribe(Tribe? tribe, {bool notify = true}) {
@@ -307,6 +327,7 @@ final class _ChatDetailViewState extends State<ChatDetailView> {
     _persistMessagesToCache();
     _poll?.cancel();
     _typingPoll?.cancel();
+    unawaited(_realtimeSub?.cancel());
     _recordingTimer?.cancel();
     unawaited(_amplitudeSub?.cancel());
     _controller
@@ -2195,10 +2216,12 @@ final class _StoryReplyQuote extends StatelessWidget {
                 width: 36,
                 height: 48,
                 child: mediaUrl.startsWith('http')
-                    ? Image.network(
-                        mediaUrl,
+                    ? CachedNetworkImage(
+                        imageUrl: bunnySizedUrl(mediaUrl, 72),
                         fit: BoxFit.cover,
-                        errorBuilder: (_, _, _) => ColoredBox(
+                        memCacheWidth: 72,
+                        fadeInDuration: Duration.zero,
+                        errorWidget: (_, _, _) => ColoredBox(
                           color: AppColors.black.withValues(alpha: 0.25),
                           child: const Icon(
                             Icons.auto_stories_outlined,
@@ -2788,12 +2811,14 @@ final class _MessageBubble extends StatelessWidget {
           child: ClipRRect(
             borderRadius: BorderRadius.circular(16),
             child: isNetwork
-                ? Image.network(
-                    path,
+                ? CachedNetworkImage(
+                    imageUrl: bunnySizedUrl(path, 440),
                     width: 220,
                     height: 220,
                     fit: BoxFit.cover,
-                    errorBuilder: (_, _, _) => Container(
+                    memCacheWidth: 440,
+                    fadeInDuration: Duration.zero,
+                    errorWidget: (_, _, _) => Container(
                       width: 220,
                       height: 220,
                       color: AppColors.surfaceGray,

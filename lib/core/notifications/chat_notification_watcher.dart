@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:zovi/core/chat/active_chat_tracker.dart';
+import 'package:zovi/core/chat/realtime_socket_service.dart';
 import 'package:zovi/core/in_app_notification/app_in_app_notification.dart';
 import 'package:zovi/core/in_app_notification/in_app_notification_data.dart';
 import 'package:zovi/domain/auth/auth_repository.dart';
@@ -12,16 +13,23 @@ import 'package:zovi/domain/chat/chat_repository.dart';
 /// debug). Shares a seen-key set with [PushNotificationService] so a push
 /// and a poll never double-fire the same message.
 final class ChatNotificationWatcher with WidgetsBindingObserver {
-  ChatNotificationWatcher(this._chat, this._auth);
+  ChatNotificationWatcher(this._chat, this._auth, [this._realtime]);
 
-  static const _interval = Duration(seconds: 2);
+  static const _fastInterval = Duration(seconds: 2);
+  // Safety-net cadence once the realtime socket is confirmed connected —
+  // real updates arrive via the socket's immediate refresh instead.
+  static const _slowInterval = Duration(seconds: 30);
   static const _warmupInterval = Duration(milliseconds: 800);
   static const _seenLimit = 200;
 
   final ChatRepository _chat;
   final AuthRepository _auth;
+  final RealtimeSocketService? _realtime;
 
   Timer? _timer;
+  Duration _interval = _fastInterval;
+  StreamSubscription<Map<String, dynamic>>? _realtimeEventsSub;
+  VoidCallback? _realtimeConnectedListener;
   final _seen = <String>{};
   /// conversationId → last known lastMessageAt iso / unread fingerprint
   final _fingerprints = <String, String>{};
@@ -34,13 +42,38 @@ final class ChatNotificationWatcher with WidgetsBindingObserver {
     WidgetsBinding.instance.addObserver(this);
     _schedule(_warmupInterval);
     unawaited(_poll());
+
+    final realtime = _realtime;
+    if (realtime != null) {
+      _realtimeConnectedListener = () {
+        _interval = realtime.connected.value ? _slowInterval : _fastInterval;
+        _schedule(_interval);
+      };
+      realtime.connected.addListener(_realtimeConnectedListener!);
+      _realtimeEventsSub = realtime.events.listen((event) {
+        if (event['type'] == 'message:new' ||
+            event['type'] == 'conversation:update') {
+          unawaited(_poll());
+        }
+      });
+    }
   }
+
+  /// Pulls the conversation lists right away — lets a realtime ping or an
+  /// external caller settle the banner state without waiting for the timer.
+  Future<void> refresh() => _poll();
 
   void stop() {
     if (_timer == null) return;
     _timer!.cancel();
     _timer = null;
     WidgetsBinding.instance.removeObserver(this);
+    final listener = _realtimeConnectedListener;
+    if (listener != null) _realtime?.connected.removeListener(listener);
+    _realtimeConnectedListener = null;
+    unawaited(_realtimeEventsSub?.cancel());
+    _realtimeEventsSub = null;
+    _interval = _fastInterval;
     _seen.clear();
     _fingerprints.clear();
     _primedUserId = null;

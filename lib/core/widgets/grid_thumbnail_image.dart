@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:zovi/core/utils/bunny_image_url.dart';
 import 'package:zovi/core/utils/media_kind.dart';
 
 /// Small square grid tile — decode-resized, cache-friendly network image.
@@ -19,20 +20,6 @@ final class GridThumbnailImage extends StatelessWidget {
     return ((width / columns) * dpr).ceil().clamp(160, 480);
   }
 
-  /// Bunny Optimizer query — ignored if the zone has no optimizer.
-  static String sizedUrl(String url, int width) {
-    final uri = Uri.tryParse(url);
-    if (uri == null || !uri.host.contains('b-cdn.net')) return url;
-    if (uri.queryParameters.containsKey('width')) return url;
-    return uri.replace(
-      queryParameters: {
-        ...uri.queryParameters,
-        'width': '$width',
-        'quality': '70',
-      },
-    ).toString();
-  }
-
   @override
   Widget build(BuildContext context) {
     if (isVideoMediaPath(url)) {
@@ -40,7 +27,7 @@ final class GridThumbnailImage extends StatelessWidget {
     }
     final side = cacheSize ?? cacheSideFor(context);
     return Image.network(
-      sizedUrl(url, side),
+      bunnySizedUrl(url, side, quality: 70),
       fit: BoxFit.cover,
       width: double.infinity,
       height: double.infinity,

@@ -2,6 +2,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:get_it/get_it.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:zovi/core/billing/revenuecat_service.dart';
+import 'package:zovi/core/chat/realtime_socket_service.dart';
 import 'package:zovi/core/cache/music_audio_cache.dart';
 import 'package:zovi/core/cache/music_catalog_cache.dart';
 import 'package:zovi/core/cache/chat_messages_cache.dart';
@@ -46,9 +47,12 @@ Future<void> configureDependencies() async {
   }
 
   if (getIt.isRegistered<AuthRepository>()) {
+    if (!getIt.isRegistered<RealtimeSocketService>()) {
+      getIt.registerLazySingleton(() => RealtimeSocketService(getIt()));
+    }
     if (!getIt.isRegistered<ChatNotificationWatcher>()) {
       getIt.registerLazySingleton(
-        () => ChatNotificationWatcher(getIt(), getIt()),
+        () => ChatNotificationWatcher(getIt(), getIt(), getIt()),
       );
     }
     return;
@@ -89,13 +93,16 @@ Future<void> configureDependencies() async {
       ),
     )
     ..registerLazySingleton(() => UserRepository(getIt()))
-    ..registerLazySingleton(() => ChatRepository(getIt()))
+    ..registerLazySingleton(() => ChatRepository(getIt(), getIt()))
     ..registerLazySingleton(() => TribeRepository(getIt(), detailCache: getIt()))
     ..registerLazySingleton(() => DeepLinkService(getIt()))
     ..registerLazySingleton(PushNotificationService.new)
     ..registerLazySingleton(RevenueCatService.new)
-    ..registerLazySingleton(() => NotificationInboxWatcher(getIt()))
-    ..registerLazySingleton(() => ChatNotificationWatcher(getIt(), getIt()))
+    ..registerLazySingleton(() => RealtimeSocketService(getIt()))
+    ..registerLazySingleton(() => NotificationInboxWatcher(getIt(), getIt()))
+    ..registerLazySingleton(
+      () => ChatNotificationWatcher(getIt(), getIt(), getIt()),
+    )
     ..registerFactory(() => SplashBloc(getIt(), getIt()))
     ..registerFactory(() => IntroBloc(getIt()))
     ..registerFactory(() => OnboardingBloc(getIt()))

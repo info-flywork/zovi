@@ -45,33 +45,53 @@ final class NetworkManager {
     Map<String, dynamic>? data,
     Duration sendTimeout = const Duration(seconds: 60),
     Duration receiveTimeout = const Duration(seconds: 60),
+    void Function(int sent, int total)? onSendProgress,
+    int retries = 1,
   }) async {
-    final fields = <String, dynamic>{...?data};
     final name = filename ?? filePath.split('/').last;
-    fields[fieldName] = await MultipartFile.fromFile(
-      filePath,
-      filename: name,
-      contentType: _contentTypeFor(filePath, name),
-    );
-    final formData = FormData.fromMap(fields);
+    final contentType = _contentTypeFor(filePath, name);
 
-    final response = await _dio.post<dynamic>(
-      path,
-      data: formData,
-      options: Options(
-        contentType: 'multipart/form-data',
-        sendTimeout: sendTimeout,
-        receiveTimeout: receiveTimeout,
-      ),
-    );
+    Object? lastError;
+    for (var attempt = 0; attempt <= retries; attempt++) {
+      try {
+        final fields = <String, dynamic>{...?data};
+        fields[fieldName] = await MultipartFile.fromFile(
+          filePath,
+          filename: name,
+          contentType: contentType,
+        );
+        final formData = FormData.fromMap(fields);
 
-    final body = response.data;
-    if (body is! Map<String, dynamic>) return null;
-    final payload = body['data'];
-    if (payload is Map<String, dynamic>) {
-      return parserModel(payload);
+        final response = await _dio.post<dynamic>(
+          path,
+          data: formData,
+          onSendProgress: onSendProgress,
+          options: Options(
+            contentType: 'multipart/form-data',
+            sendTimeout: sendTimeout,
+            receiveTimeout: receiveTimeout,
+          ),
+        );
+
+        final body = response.data;
+        if (body is! Map<String, dynamic>) return null;
+        final payload = body['data'];
+        if (payload is Map<String, dynamic>) {
+          return parserModel(payload);
+        }
+        return parserModel(body);
+      } on DioException catch (e) {
+        lastError = e;
+        // Retry only on transient failures — never on a 4xx the server
+        // already rejected the request for.
+        final status = e.response?.statusCode;
+        final retryable = status == null || status >= 500;
+        if (!retryable || attempt == retries) rethrow;
+        await Future<void>.delayed(Duration(milliseconds: 500 * (attempt + 1)));
+      }
     }
-    return parserModel(body);
+    if (lastError != null) throw lastError;
+    return null;
   }
 }
 

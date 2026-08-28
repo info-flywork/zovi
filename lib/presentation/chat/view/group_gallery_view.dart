@@ -1,11 +1,13 @@
 import 'dart:async';
 
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:zovi/core/di/injection.dart';
 import 'package:zovi/core/theme/app_colors.dart';
+import 'package:zovi/core/utils/bunny_image_url.dart';
 import 'package:zovi/core/utils/constants/asset_paths.dart';
 import 'package:zovi/core/widgets/app_icon.dart';
 import 'package:zovi/domain/chat/chat_repository.dart';
@@ -211,10 +213,17 @@ final class _GroupGalleryViewState extends State<GroupGalleryView> {
                                         ),
                                       ),
                                     )
-                                  : Image.network(
-                                      url,
+                                  : CachedNetworkImage(
+                                      imageUrl: bunnySizedUrl(
+                                        url,
+                                        ((MediaQuery.sizeOf(context).width / 3) *
+                                                MediaQuery.devicePixelRatioOf(context))
+                                            .ceil()
+                                            .clamp(160, 480),
+                                      ),
                                       fit: BoxFit.cover,
-                                      errorBuilder: (_, _, _) => ColoredBox(
+                                      fadeInDuration: Duration.zero,
+                                      errorWidget: (_, _, _) => ColoredBox(
                                         color: AppColors.textSecondary
                                             .withValues(alpha: 0.12),
                                         child: const Center(
