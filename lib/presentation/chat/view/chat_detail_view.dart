@@ -73,7 +73,7 @@ final class _ChatDetailViewState extends State<ChatDetailView> {
   Timer? _typingPoll;
   StreamSubscription<Map<String, dynamic>>? _realtimeSub;
   DateTime? _lastTypingPulseAt;
-  List<ChatTypingUser> _typers = const [];
+  final _typersNotifier = ValueNotifier<List<ChatTypingUser>>(const []);
   StreamSubscription<Amplitude>? _amplitudeSub;
   String? _recordingPath;
   final List<double> _waveLevels = List<double>.generate(28, (_) => 0.12);
@@ -327,6 +327,7 @@ final class _ChatDetailViewState extends State<ChatDetailView> {
     _persistMessagesToCache();
     _poll?.cancel();
     _typingPoll?.cancel();
+    _typersNotifier.dispose();
     unawaited(_realtimeSub?.cancel());
     _recordingTimer?.cancel();
     unawaited(_amplitudeSub?.cancel());
@@ -1022,14 +1023,15 @@ final class _ChatDetailViewState extends State<ChatDetailView> {
     try {
       final typers = await _repo.listTyping(id);
       if (!mounted) return;
+      final current = _typersNotifier.value;
       final same =
-          typers.length == _typers.length &&
+          typers.length == current.length &&
           [
             for (var i = 0; i < typers.length; i++)
-              typers[i].userId == _typers[i].userId,
+              typers[i].userId == current[i].userId,
           ].every((ok) => ok);
       if (same) return;
-      setState(() => _typers = typers);
+      _typersNotifier.value = typers;
     } catch (_) {}
   }
 
@@ -1758,11 +1760,22 @@ final class _ChatDetailViewState extends State<ChatDetailView> {
                       },
                     ),
             ),
-            if (_typers.isNotEmpty)
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 6),
-                child: _ChatTypingIndicator(typers: _typers),
-              ),
+            ValueListenableBuilder<List<ChatTypingUser>>(
+              valueListenable: _typersNotifier,
+              builder: (context, typers, _) {
+                return AnimatedSize(
+                  duration: const Duration(milliseconds: 180),
+                  curve: Curves.easeOut,
+                  alignment: Alignment.topCenter,
+                  child: typers.isEmpty
+                      ? const SizedBox(width: double.infinity)
+                      : Padding(
+                          padding: const EdgeInsets.fromLTRB(16, 0, 16, 6),
+                          child: _ChatTypingIndicator(typers: typers),
+                        ),
+                );
+              },
+            ),
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
               child: Column(

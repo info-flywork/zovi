@@ -197,7 +197,6 @@ final class _ChatRequestsViewState extends State<ChatRequestsView> {
                   ? const _RequestEmptyState()
                   : AnimatedList(
                       key: _listKey,
-                      clipBehavior: Clip.none,
                       physics: const ClampingScrollPhysics(),
                       padding: const EdgeInsets.fromLTRB(0, 16, 0, 24),
                       initialItemCount: _requests.length,

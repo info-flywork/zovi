@@ -344,81 +344,90 @@ final class _ChatLoadedBodyState extends State<ChatLoadedBody>
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
-          child: Text(
-            'chat_title'.tr(),
-            style: const TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w500,
-              height: 1,
-              letterSpacing: -0.32,
-              color: AppColors.black,
-            ),
-          ),
-        ),
-        const SizedBox(height: 16),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: AppSearchField(
-            hintText: 'chat_search_friends'.tr(),
-            onDebouncedChanged: _onSearchChanged,
-          ),
-        ),
-        const SizedBox(height: 20),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: Row(
+        ColoredBox(
+          color: AppColors.white,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                'chat_messages'.tr(),
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                  height: 1,
-                  letterSpacing: -0.32,
-                  color: AppColors.black,
-                ),
-              ),
-              const Spacer(),
-              GestureDetector(
-                onTap: _openRequests,
-                behavior: HitTestBehavior.opaque,
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
                 child: Text(
-                  hasRequests
-                      ? 'chat_request_count'.tr(
-                          namedArgs: {'count': '$requestCount'},
-                        )
-                      : 'chat_request'.tr(),
-                  style: TextStyle(
-                    fontSize: 14,
+                  'chat_title'.tr(),
+                  style: const TextStyle(
+                    fontSize: 16,
                     fontWeight: FontWeight.w500,
                     height: 1,
-                    letterSpacing: -0.28,
-                    color: hasRequests
-                        ? AppColors.zoviOrange
-                        : AppColors.textSecondary,
+                    letterSpacing: -0.32,
+                    color: AppColors.black,
                   ),
                 ),
               ),
+              const SizedBox(height: 16),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: AppSearchField(
+                  hintText: 'chat_search_friends'.tr(),
+                  onDebouncedChanged: _onSearchChanged,
+                ),
+              ),
+              const SizedBox(height: 20),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Row(
+                  children: [
+                    Text(
+                      'chat_messages'.tr(),
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        height: 1,
+                        letterSpacing: -0.32,
+                        color: AppColors.black,
+                      ),
+                    ),
+                    const Spacer(),
+                    GestureDetector(
+                      onTap: _openRequests,
+                      behavior: HitTestBehavior.opaque,
+                      child: Text(
+                        hasRequests
+                            ? 'chat_request_count'.tr(
+                                namedArgs: {'count': '$requestCount'},
+                              )
+                            : 'chat_request'.tr(),
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                          height: 1,
+                          letterSpacing: -0.28,
+                          color: hasRequests
+                              ? AppColors.zoviOrange
+                              : AppColors.textSecondary,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
             ],
           ),
         ),
-        const SizedBox(height: 16),
         Expanded(
-          child: _loading
-              ? const AppLoading(size: 28)
-              : isEmpty
-              ? _ChatEmptyState(isSearching: _query.trim().isNotEmpty)
-              : AnimatedList(
-                  key: _listKey,
-                  clipBehavior: Clip.none,
-                  physics: const ClampingScrollPhysics(),
-                  padding: EdgeInsets.only(
-                    bottom:
-                        MainWrapper.navBarHeight +
-                        MediaQuery.paddingOf(context).bottom,
-                  ),
+          child: ColoredBox(
+            color: AppColors.white,
+            child: _loading
+                ? const AppLoading(size: 28)
+                : isEmpty
+                ? _ChatEmptyState(isSearching: _query.trim().isNotEmpty)
+                : AnimatedList(
+                    key: _listKey,
+                    physics: const ClampingScrollPhysics(),
+                    padding: EdgeInsets.only(
+                      bottom:
+                          MainWrapper.navBarHeight +
+                          MediaQuery.paddingOf(context).bottom,
+                    ),
                   initialItemCount: _visibleChats.length,
                   itemBuilder: (context, index, animation) {
                     final chat = _visibleChats[index];
@@ -454,6 +463,7 @@ final class _ChatLoadedBodyState extends State<ChatLoadedBody>
                     );
                   },
                 ),
+          ),
         ),
       ],
     );
